@@ -1,0 +1,1940 @@
+import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:health/health.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:charts_flutter/flutter.dart' as charts;
+import 'package:flutter_local_notifications/flutter_local_notifications.dart'; // NEW
+import 'dart:async';
+
+/// Simple Logger for error and behavior tracking.
+class Logger {
+  static void logError(String message, [dynamic error, StackTrace? stackTrace]) {
+    print("ERROR: $message");
+    if (error != null) print("Error: $error");
+    if (stackTrace != null) print("StackTrace: $stackTrace");
+
+    // Optionally, log to Firestore (offline caching supported by Firestore).
+    FirebaseFirestore.instance.collection('logs').add({
+      'type': 'error',
+      'message': message,
+      'error': error?.toString() ?? '',
+      'stackTrace': stackTrace?.toString() ?? '',
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+  }
+
+  static void logEvent(String event, [Map<String, dynamic>? details]) {
+    print("EVENT: $event, details: $details");
+    // Optionally, log to Firestore.
+    FirebaseFirestore.instance.collection('logs').add({
+      'type': 'event',
+      'event': event,
+      'details': details,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+  }
+}
+
+// NEW: Initialize a global flutterLocalNotificationsPlugin
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await Firebase.initializeApp();
+    // Firestore offline persistence
+    FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: true);
+
+    // Initialize local notifications
+    const AndroidInitializationSettings androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    // iOS request permission automatically or handle in app
+    const IOSInitializationSettings iosSettings = IOSInitializationSettings();
+    const InitializationSettings initSettings =
+        InitializationSettings(android: androidSettings, iOS: iosSettings);
+
+    await flutterLocalNotificationsPlugin.initialize(initSettings);
+  } catch (e, stack) {
+    Logger.logError('Firebase / Notifications initialization failed', e, stack);
+  }
+  runApp(Fuel());
+}
+
+class Fuel extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Fuel',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        scaffoldBackgroundColor: Colors.grey[100],
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+        appBarTheme: AppBarTheme(elevation: 2),
+      ),
+      home: AuthGate(),
+    );
+  }
+}
+
+class AuthGate extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
+        return snapshot.hasData ? HomeScreen() : LoginScreen();
+      },
+    );
+  }
+}
+
+class AuthService {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  Future<User?> signUpWithEmail(String email, String password, BuildContext context) async {
+    try {
+      UserCredential cred =
+          await _auth.createUserWithEmailAndPassword(email: email, password: password);
+      if (cred.user != null) {
+        // Create user doc with baseline data
+        await _firestore.collection('users').doc(cred.user!.uid).set({
+          'email': email,
+          'weight': 70.0,
+          'height': 170.0,
+          'age': 25,
+          'gender': 'unknown',
+          'dietary_restrictions': '',
+          'fitness_goals': '',
+          'last_auto_track': null,
+        });
+        Logger.logEvent("User signed up", {'uid': cred.user!.uid});
+      }
+      return cred.user;
+    } catch (e, stack) {
+      Logger.logError("Sign-up failed", e, stack);
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Sign-up failed: $e')));
+      return null;
+    }
+  }
+
+  Future<User?> signInWithEmail(String email, String password, BuildContext context) async {
+    try {
+      UserCredential cred =
+          await _auth.signInWithEmailAndPassword(email: email, password: password);
+      Logger.logEvent("User signed in", {'uid': cred.user!.uid});
+      return cred.user;
+    } catch (e, stack) {
+      Logger.logError("Sign-in failed", e, stack);
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Sign-in failed: $e')));
+      return null;
+    }
+  }
+
+  Future<void> signOut() async {
+    await _auth.signOut();
+    Logger.logEvent("User signed out");
+  }
+}
+
+class HealthService {
+  final HealthFactory health = HealthFactory();
+
+  Future<bool> requestPermissions(BuildContext context) async {
+    final types = <HealthDataType>[
+      HealthDataType.STEPS,
+      HealthDataType.HEART_RATE,
+      HealthDataType.ACTIVE_ENERGY_BURNED,
+    ];
+    if (!await Permission.activityRecognition.isGranted) {
+      var status = await Permission.activityRecognition.request();
+      if (status.isDenied) {
+        _showPermissionDialog(context);
+        return false;
+      }
+    }
+    return await health.requestAuthorization(types);
+  }
+
+  void _showPermissionDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Permission Required'),
+        content: Text(
+            'This app needs activity recognition permissions to auto-track your fitness data.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Cancel')),
+          TextButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                await Permission.activityRecognition.request();
+              },
+              child: Text('Retry')),
+        ],
+      ),
+    );
+  }
+
+  Future<int> getStepsInInterval(DateTime start, DateTime end) async {
+    try {
+      return await health.getTotalStepsInInterval(start, end) ?? 0;
+    } catch (e, stack) {
+      Logger.logError("Failed to get steps in interval", e, stack);
+      return 0;
+    }
+  }
+
+  Future<double> getHeartRateInInterval(DateTime start, DateTime end) async {
+    try {
+      List<HealthDataPoint> data =
+          await health.readHealthData(HealthDataType.HEART_RATE, start, end);
+      return data.isNotEmpty
+          ? data.fold(0.0, (sum, point) => sum + (point.value as double)) /
+              data.length
+          : 0.0;
+    } catch (e, stack) {
+      Logger.logError("Failed to get heart rate in interval", e, stack);
+      return 0.0;
+    }
+  }
+
+  Future<double> getActiveEnergyInInterval(DateTime start, DateTime end) async {
+    try {
+      List<HealthDataPoint> data =
+          await health.readHealthData(HealthDataType.ACTIVE_ENERGY_BURNED, start, end);
+      return data.isNotEmpty
+          ? data.map((e) => e.value as double).reduce((a, b) => a + b)
+          : 0.0;
+    } catch (e, stack) {
+      Logger.logError("Failed to get active energy in interval", e, stack);
+      return 0.0;
+    }
+  }
+
+  Future<int> calculateCaloriesBurnedInInterval(DateTime start, DateTime end) async {
+    try {
+      int steps = await getStepsInInterval(start, end);
+      double heartRate = await getHeartRateInInterval(start, end);
+      double activeEnergy = await getActiveEnergyInInterval(start, end);
+
+      DocumentSnapshot userProfile = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(FirebaseAuth.instance.currentUser!.uid)
+          .get();
+
+      double weight = userProfile.get('weight')?.toDouble() ?? 70.0;
+      int age = userProfile.get('age') ?? 25;
+      String gender = userProfile.get('gender') ?? 'unknown';
+      double factor = (gender == 'male') ? 1.1 : 0.9;
+
+      return (steps * 0.04 * (weight / 70) +
+              heartRate * 0.5 * (age / 30) * factor +
+              activeEnergy * 0.001)
+          .round();
+    } catch (e, stack) {
+      Logger.logError("Failed to calculate calories burned", e, stack);
+      return 0;
+    }
+  }
+
+  Future<void> logAutoTrackedCalories(DateTime start, DateTime end) async {
+    try {
+      String uid = FirebaseAuth.instance.currentUser!.uid;
+      DocumentReference userDoc =
+          FirebaseFirestore.instance.collection('users').doc(uid);
+      DocumentSnapshot snapshot = await userDoc.get();
+      Timestamp? lastAutoTrack = snapshot['last_auto_track'];
+      DateTime now = DateTime.now();
+      DateTime todayStart = DateTime(now.year, now.month, now.day);
+
+      if (lastAutoTrack == null || lastAutoTrack.toDate().isBefore(todayStart)) {
+        int calories = await calculateCaloriesBurnedInInterval(start, end);
+        await userDoc.collection('activities').add({
+          'type': 'Auto-Tracked Activity',
+          'calories': calories,
+          'duration': end.difference(start).inMinutes,
+          'timestamp': FieldValue.serverTimestamp(),
+          'auto': true,
+        });
+        await userDoc.update({'last_auto_track': FieldValue.serverTimestamp()});
+
+        // Example: We can also push a local notification once auto-tracked
+        _showNotification("Auto-tracked Activity",
+            "You've burned $calories cal so far today. Good job!");
+        Logger.logEvent("Auto-tracked calories logged", {'calories': calories});
+      }
+    } catch (e, stack) {
+      Logger.logError("Failed to log auto-tracked calories", e, stack);
+    }
+  }
+
+  /// Example method to show a local notification.
+  Future<void> _showNotification(String title, String body) async {
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'fuel_channel_id',
+      'Fuel Notifications',
+      channelDescription: 'Notifications about your fitness progress',
+      importance: Importance.max,
+      priority: Priority.high,
+      showWhen: true,
+    );
+
+    const NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+
+    await flutterLocalNotificationsPlugin.show(
+      0, // notification ID
+      title,
+      body,
+      platformChannelSpecifics,
+      payload: 'Default_Sound',
+    );
+  }
+}
+
+/// Advanced NLP parser to extract detailed parameters from voice commands.
+Map<String, dynamic> advancedParseVoiceCommand(String command) {
+  String activityType = '';
+  int duration = 0;
+  int calories = 0;
+  double distance = 0.0;
+  int sets = 0;
+  int weight = 0;
+
+  // Duration
+  RegExp durationRegex = RegExp(r'(\d+)\s*min', caseSensitive: false);
+  Match? durationMatch = durationRegex.firstMatch(command);
+  if (durationMatch != null) {
+    duration = int.parse(durationMatch.group(1)!);
+  }
+
+  // Calories
+  RegExp caloriesRegex =
+      RegExp(r'(\d+)\s*(?:cal(?:ories)?|kcal)', caseSensitive: false);
+  Match? caloriesMatch = caloriesRegex.firstMatch(command);
+  if (caloriesMatch != null) {
+    calories = int.parse(caloriesMatch.group(1)!);
+  }
+
+  // Distance
+  RegExp distanceRegex = RegExp(r'(\d+(\.\d+)?)\s*km', caseSensitive: false);
+  Match? distanceMatch = distanceRegex.firstMatch(command);
+  if (distanceMatch != null) {
+    distance = double.parse(distanceMatch.group(1)!);
+  }
+
+  // Sets
+  RegExp setsRegex = RegExp(r'(\d+)\s*sets?', caseSensitive: false);
+  Match? setsMatch = setsRegex.firstMatch(command);
+  if (setsMatch != null) {
+    sets = int.parse(setsMatch.group(1)!);
+  }
+
+  // Weight
+  RegExp weightRegex = RegExp(r'(\d+)\s*(?:lbs|kg)', caseSensitive: false);
+  Match? weightMatch = weightRegex.firstMatch(command);
+  if (weightMatch != null) {
+    weight = int.parse(weightMatch.group(1)!);
+  }
+
+  // Activity type: assume first phrase until a number or "for" keyword.
+  RegExp typeRegex = RegExp(r'^([\w\s]+?)(?:\s*(?:for|\d))', caseSensitive: false);
+  Match? typeMatch = typeRegex.firstMatch(command);
+  if (typeMatch != null) {
+    activityType = typeMatch.group(1)!.trim();
+  } else {
+    activityType = command.split(' ').first;
+  }
+
+  return {
+    'activityType': activityType,
+    'duration': duration,
+    'calories': calories,
+    'distance': distance,
+    'sets': sets,
+    'weight': weight,
+  };
+}
+
+/// LogDialog can be used for multiple types of logs (Activity, Food, Supplements, etc.).
+class LogDialog extends StatelessWidget {
+  final String uid;
+  final String title;
+  final String collection;
+  final String? docId;
+  final String? defaultType;
+  final int defaultValue1;
+  final int defaultValue2;
+  final double? defaultDistance;
+  final int? defaultSets;
+  final int? defaultWeight;
+
+  LogDialog({
+    required this.uid,
+    required this.title,
+    required this.collection,
+    this.docId,
+    this.defaultType = '',
+    this.defaultValue1 = 0,
+    this.defaultValue2 = 0,
+    this.defaultDistance,
+    this.defaultSets,
+    this.defaultWeight,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final formKey = GlobalKey<FormState>();
+    String name = defaultType!;
+    int value1 = defaultValue1;
+    int value2 = defaultValue2;
+    String distanceStr = defaultDistance != null ? defaultDistance.toString() : '';
+    String setsStr = defaultSets != null ? defaultSets.toString() : '';
+    String weightStr = defaultWeight != null ? defaultWeight.toString() : '';
+    bool isSubmitting = false;
+
+    return StatefulBuilder(
+      builder: (context, setStateDialog) => AlertDialog(
+        title: Text('${docId == null ? 'Log' : 'Edit'} $title'),
+        content: Form(
+          key: formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Name / Type
+                TextFormField(
+                  initialValue: name,
+                  decoration: InputDecoration(
+                    labelText: (title == 'Additions')
+                        ? 'Supplement Name'
+                        : '$title Type',
+                  ),
+                  onChanged: (v) => name = v,
+                  validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+                ),
+                // Calories or quantity
+                TextFormField(
+                  initialValue: value1.toString(),
+                  decoration: InputDecoration(
+                    labelText: (title == 'Additions') ? 'Quantity' : 'Calories',
+                  ),
+                  keyboardType: TextInputType.number,
+                  onChanged: (v) => value1 = int.tryParse(v) ?? 0,
+                  validator: (v) =>
+                      (int.tryParse(v ?? '') == null) ? 'Number required' : null,
+                ),
+                // Duration only for activity
+                if (title != 'Additions' && title != 'Food')
+                  TextFormField(
+                    initialValue: value2.toString(),
+                    decoration: InputDecoration(labelText: 'Duration (mins)'),
+                    keyboardType: TextInputType.number,
+                    onChanged: (v) => value2 = int.tryParse(v) ?? 0,
+                    validator: (v) =>
+                        (int.tryParse(v ?? '') == null) ? 'Number required' : null,
+                  ),
+
+                // Activity extra fields
+                if (title == 'Activity') ...[
+                  TextFormField(
+                    initialValue: distanceStr,
+                    decoration: InputDecoration(labelText: 'Distance (km)'),
+                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (v) => distanceStr = v,
+                  ),
+                  TextFormField(
+                    initialValue: setsStr,
+                    decoration: InputDecoration(labelText: 'Sets'),
+                    keyboardType: TextInputType.number,
+                    onChanged: (v) => setsStr = v,
+                  ),
+                  TextFormField(
+                    initialValue: weightStr,
+                    decoration: InputDecoration(labelText: 'Weight (lbs/kg)'),
+                    keyboardType: TextInputType.number,
+                    onChanged: (v) => weightStr = v,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          if (isSubmitting)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: CircularProgressIndicator(),
+            ),
+          if (!isSubmitting)
+            TextButton(
+              onPressed: () async {
+                if (formKey.currentState!.validate()) {
+                  setStateDialog(() => isSubmitting = true);
+
+                  // Build the data map
+                  Map<String, dynamic> data;
+                  if (title == 'Additions') {
+                    data = {
+                      'name': name,
+                      'quantity': value1,
+                      'timestamp': FieldValue.serverTimestamp()
+                    };
+                  } else if (title == 'Food') {
+                    data = {
+                      'type': name,
+                      'calories': value1,
+                      'timestamp': FieldValue.serverTimestamp()
+                    };
+                  } else {
+                    // Activity
+                    data = {
+                      'type': name,
+                      'calories': value1,
+                      'duration': value2,
+                      'timestamp': FieldValue.serverTimestamp(),
+                      'auto': false,
+                    };
+                    if (distanceStr.isNotEmpty) {
+                      data['distance'] = double.tryParse(distanceStr);
+                    }
+                    if (setsStr.isNotEmpty) {
+                      data['sets'] = int.tryParse(setsStr);
+                    }
+                    if (weightStr.isNotEmpty) {
+                      data['weight'] = int.tryParse(weightStr);
+                    }
+                  }
+
+                  DocumentReference ref = FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(uid)
+                      .collection(collection)
+                      .doc(docId);
+
+                  try {
+                    if (docId == null) {
+                      await ref.set(data);
+                    } else {
+                      await ref.update(data);
+                    }
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text(
+                            '$title ${docId == null ? 'logged' : 'updated'}!')));
+                    Logger.logEvent("$title logged/updated", data);
+                  } catch (e, stack) {
+                    Logger.logError("Failed to save log", e, stack);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Failed to save: $e')));
+                  }
+                }
+              },
+              child: Text('Save'),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class HomeScreen extends StatefulWidget {
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
+}
+
+/// We now have FIVE TABS: Activity, Caloric Intake, Additions, Trends, and the new HabitTrackingTab.
+class _HomeScreenState extends State<HomeScreen> {
+  int _selectedIndex = 0;
+  final HealthService _healthService = HealthService();
+
+  @override
+  void initState() {
+    super.initState();
+    // Request permissions. Consider deferring this until after first login / welcome screen, if you prefer.
+    _healthService.requestPermissions(context);
+  }
+
+  void _onItemTapped(int index) => setState(() => _selectedIndex = index);
+
+  @override
+  Widget build(BuildContext context) {
+    Widget connectivityBanner = StreamBuilder<ConnectivityResult>(
+      stream: Connectivity().onConnectivityChanged,
+      builder: (context, snapshot) {
+        if (snapshot.hasData && snapshot.data == ConnectivityResult.none) {
+          return Container(
+            width: double.infinity,
+            color: Colors.red,
+            padding: EdgeInsets.all(8),
+            child: Text(
+              'No Internet Connection - Using Cached Data',
+              style: TextStyle(color: Colors.white),
+              textAlign: TextAlign.center,
+            ),
+          );
+        }
+        return SizedBox.shrink();
+      },
+    );
+
+    final List<Widget> _pages = [
+      ActivityTab(),
+      CaloricIntakeTab(),
+      AdditionsTab(),
+      TrendsTab(),
+      HabitTrackingTab(), // NEW TAB
+    ];
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Fuel'),
+        actions: [
+          IconButton(
+              icon: Icon(Icons.person),
+              onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => ProfileScreen()),
+                  )),
+          IconButton(
+              icon: Icon(Icons.logout),
+              onPressed: () async => await AuthService().signOut()),
+        ],
+      ),
+      body: Column(
+        children: [
+          connectivityBanner,
+          Expanded(
+            child: _pages[_selectedIndex],
+          ),
+        ],
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        items: const [
+          BottomNavigationBarItem(
+              icon: Icon(Icons.directions_run), label: 'Activity'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.fastfood), label: 'Caloric Intake'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.local_pharmacy), label: 'Additions'),
+          BottomNavigationBarItem(icon: Icon(Icons.show_chart), label: 'Trends'),
+          BottomNavigationBarItem(icon: Icon(Icons.smoke_free), label: 'Habits'),
+        ],
+        currentIndex: _selectedIndex,
+        selectedItemColor: Colors.blue,
+        unselectedItemColor: Colors.grey,
+        onTap: _onItemTapped,
+      ),
+    );
+  }
+}
+
+/// ProfileScreen with additional fields, stored offline in Firestore as well.
+class ProfileScreen extends StatelessWidget {
+  final _formKey = GlobalKey<FormState>();
+  final _weightController = TextEditingController();
+  final _heightController = TextEditingController();
+  final _ageController = TextEditingController();
+  final _dietaryController = TextEditingController();
+  final _goalsController = TextEditingController();
+  String _gender = 'unknown';
+
+  @override
+  Widget build(BuildContext context) {
+    final userDoc = FirebaseFirestore.instance
+        .collection('users')
+        .doc(FirebaseAuth.instance.currentUser!.uid);
+
+    return Scaffold(
+      appBar: AppBar(title: Text('Profile')),
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: FutureBuilder<DocumentSnapshot>(
+          future: userDoc.get(),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return Center(child: CircularProgressIndicator());
+            }
+            Map<String, dynamic>? data =
+                snapshot.data!.data() as Map<String, dynamic>?;
+            if (data == null) {
+              return Center(child: Text("No profile data found."));
+            }
+            _weightController.text = data['weight'].toString();
+            _heightController.text = data['height'].toString();
+            _ageController.text = data['age'].toString();
+            _gender = data['gender'] ?? 'unknown';
+            _dietaryController.text = data['dietary_restrictions'] ?? '';
+            _goalsController.text = data['fitness_goals'] ?? '';
+
+            return Form(
+              key: _formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    TextFormField(
+                      controller: _weightController,
+                      decoration: InputDecoration(labelText: 'Weight (kg)'),
+                      keyboardType: TextInputType.number,
+                      validator: (v) {
+                        double? weight = double.tryParse(v ?? '');
+                        if (weight == null || weight < 20 || weight > 500) {
+                          return 'Weight must be between 20-500 kg';
+                        }
+                        return null;
+                      },
+                    ),
+                    TextFormField(
+                      controller: _heightController,
+                      decoration: InputDecoration(labelText: 'Height (cm)'),
+                      keyboardType: TextInputType.number,
+                      validator: (v) {
+                        double? height = double.tryParse(v ?? '');
+                        if (height == null || height < 50 || height > 250) {
+                          return 'Height must be between 50-250 cm';
+                        }
+                        return null;
+                      },
+                    ),
+                    TextFormField(
+                      controller: _ageController,
+                      decoration: InputDecoration(labelText: 'Age'),
+                      keyboardType: TextInputType.number,
+                      validator: (v) {
+                        int? age = int.tryParse(v ?? '');
+                        if (age == null || age < 1 || age > 120) {
+                          return 'Age must be between 1-120';
+                        }
+                        return null;
+                      },
+                    ),
+                    DropdownButtonFormField<String>(
+                      value: _gender,
+                      decoration: InputDecoration(labelText: 'Gender'),
+                      items: ['unknown', 'male', 'female']
+                          .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                          .toList(),
+                      onChanged: (v) => _gender = v!,
+                    ),
+                    TextFormField(
+                      controller: _dietaryController,
+                      decoration:
+                          InputDecoration(labelText: 'Dietary Restrictions'),
+                    ),
+                    TextFormField(
+                      controller: _goalsController,
+                      decoration: InputDecoration(labelText: 'Fitness Goals'),
+                    ),
+                    SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: () async {
+                        if (_formKey.currentState!.validate()) {
+                          try {
+                            await userDoc.update({
+                              'weight': double.parse(_weightController.text),
+                              'height': double.parse(_heightController.text),
+                              'age': int.parse(_ageController.text),
+                              'gender': _gender,
+                              'dietary_restrictions': _dietaryController.text,
+                              'fitness_goals': _goalsController.text,
+                            });
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Profile updated!')));
+                            Logger.logEvent("Profile updated", {
+                              'weight': _weightController.text,
+                              'height': _heightController.text,
+                              'age': _ageController.text,
+                              'gender': _gender,
+                              'dietary_restrictions': _dietaryController.text,
+                              'fitness_goals': _goalsController.text,
+                            });
+                          } catch (e, stack) {
+                            Logger.logError("Profile update failed", e, stack);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Update failed: $e')));
+                          }
+                        }
+                      },
+                      child: Text('Save'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// ActivityTab with advanced voice parsing, auto-tracking, and a local notification example.
+class ActivityTab extends StatefulWidget {
+  @override
+  _ActivityTabState createState() => _ActivityTabState();
+}
+
+class _ActivityTabState extends State<ActivityTab> {
+  String selectedTimeframe = 'Daily';
+  bool useAutoTracking = false;
+  final HealthService _healthService = HealthService();
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  bool _isListening = false;
+  String _speechText = "";
+
+  @override
+  void initState() {
+    super.initState();
+    _healthService.requestPermissions(context);
+  }
+
+  DateTime _getTimeframeStart() {
+    var now = DateTime.now();
+    switch (selectedTimeframe) {
+      case 'Weekly':
+        return now.subtract(Duration(days: 7));
+      case 'Monthly':
+        return now.subtract(Duration(days: 30));
+      case '6 Months':
+        return now.subtract(Duration(days: 180));
+      default:
+        return DateTime(now.year, now.month, now.day);
+    }
+  }
+
+  void _toggleListening() async {
+    if (!_isListening) {
+      bool available = await _speech.initialize(
+        onError: (e) => setState(() => _isListening = false),
+      );
+      if (available) {
+        setState(() => _isListening = true);
+        _speech.listen(onResult: (result) {
+          setState(() => _speechText = result.recognizedWords);
+          if (result.finalResult) {
+            _speech.stop();
+            setState(() => _isListening = false);
+            _showSpeechConfirmationDialog(
+                FirebaseAuth.instance.currentUser!.uid);
+          }
+        });
+      }
+    } else {
+      _speech.stop();
+      setState(() => _isListening = false);
+    }
+  }
+
+  void _showSpeechConfirmationDialog(String uid) {
+    Map<String, dynamic> parsed = advancedParseVoiceCommand(_speechText);
+    showDialog(
+      context: context,
+      builder: (context) => LogDialog(
+        uid: uid,
+        title: 'Activity',
+        collection: 'activities',
+        defaultType: parsed['activityType'] ?? '',
+        defaultValue1: parsed['calories'] ?? 0,
+        defaultValue2: parsed['duration'] ?? 0,
+        defaultDistance: parsed['distance'],
+        defaultSets: parsed['sets'],
+        defaultWeight: parsed['weight'],
+      ),
+    );
+  }
+
+  void _editActivity(String docId, Map<String, dynamic> data, String uid) {
+    showDialog(
+      context: context,
+      builder: (context) => LogDialog(
+        uid: uid,
+        title: 'Activity',
+        collection: 'activities',
+        docId: docId,
+        defaultType: data['type'],
+        defaultValue1: data['calories'],
+        defaultValue2: data['duration'] ?? 0,
+        defaultDistance: data['distance'] != null
+            ? (data['distance'] as num).toDouble()
+            : null,
+        defaultSets: data['sets'],
+        defaultWeight: data['weight'],
+      ),
+    );
+  }
+
+  void _deleteActivity(String docId, String uid) async {
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('activities')
+        .doc(docId)
+        .delete();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser!;
+    DateTime startTime = _getTimeframeStart();
+    DateTime now = DateTime.now();
+
+    // If auto-tracking is on, we trigger a log. Could also do this in a once-per-day approach in initState.
+    if (useAutoTracking) {
+      _healthService.logAutoTrackedCalories(startTime, now);
+    }
+
+    return Scaffold(
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Title and timeframe
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Activity', style: Theme.of(context).textTheme.headline5),
+                DropdownButton<String>(
+                  value: selectedTimeframe,
+                  onChanged: (value) => setState(() => selectedTimeframe = value!),
+                  items: ['Daily', 'Weekly', 'Monthly', '6 Months']
+                      .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                      .toList(),
+                ),
+              ],
+            ),
+            SwitchListTile(
+              title: Text('Auto Tracking'),
+              value: useAutoTracking,
+              onChanged: (v) => setState(() => useAutoTracking = v),
+            ),
+            // Summary stats
+            FutureBuilder<int>(
+              future: _healthService.calculateCaloriesBurnedInInterval(startTime, now),
+              builder: (context, calSnapshot) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    FutureBuilder<int>(
+                      future: _healthService.getStepsInInterval(startTime, now),
+                      builder: (context, s) => Text(
+                        'Steps: ${s.data ?? 0}',
+                        style: TextStyle(fontSize: 18),
+                      ),
+                    ),
+                    FutureBuilder<double>(
+                      future: _healthService.getHeartRateInInterval(startTime, now),
+                      builder: (context, h) => Text(
+                        'Avg HR: ${h.data?.toStringAsFixed(1) ?? 0} bpm',
+                        style: TextStyle(fontSize: 18),
+                      ),
+                    ),
+                    FutureBuilder<double>(
+                      future: _healthService.getActiveEnergyInInterval(startTime, now),
+                      builder: (context, e) => Text(
+                        'Energy: ${e.data?.toStringAsFixed(1) ?? 0} kcal',
+                        style: TextStyle(fontSize: 18),
+                      ),
+                    ),
+                    // List of activities
+                    StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(user.uid)
+                          .collection('activities')
+                          .where('timestamp', isGreaterThan: startTime)
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return Center(child: CircularProgressIndicator());
+                        }
+                        var docs = snapshot.data!.docs;
+                        int manualCalories = docs
+                            .where((doc) => !(doc['auto'] ?? false))
+                            .fold(0, (sum, doc) => sum + (doc['calories'] as int));
+                        int totalCalories = manualCalories +
+                            (useAutoTracking ? (calSnapshot.data ?? 0) : 0);
+
+                        return Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Total Calories Burned: $totalCalories kcal',
+                                style: TextStyle(
+                                    fontSize: 18, fontWeight: FontWeight.bold),
+                              ),
+                              if (useAutoTracking)
+                                Text(
+                                  'Auto: ${calSnapshot.data ?? 0} kcal | Manual: $manualCalories kcal',
+                                  style: TextStyle(fontSize: 16),
+                                ),
+                              Text(
+                                'Workouts: ${docs.length}',
+                                style: TextStyle(fontSize: 18),
+                              ),
+                              Expanded(
+                                child: ListView.builder(
+                                  itemCount: docs.length,
+                                  itemBuilder: (context, index) {
+                                    var data = docs[index].data() as Map<String, dynamic>;
+                                    return Card(
+                                      child: ListTile(
+                                        leading: Icon(Icons.directions_run),
+                                        title: Text(data['type'] ?? 'Activity'),
+                                        subtitle: Text(
+                                            '${data['calories']} kcal, ${data['duration'] ?? 0} mins'),
+                                        trailing: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            IconButton(
+                                              icon: Icon(Icons.edit),
+                                              onPressed: () => _editActivity(
+                                                  docs[index].id, data, user.uid),
+                                            ),
+                                            IconButton(
+                                              icon: Icon(Icons.delete),
+                                              onPressed: () => _deleteActivity(
+                                                  docs[index].id, user.uid),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          // Manual add
+          FloatingActionButton(
+            onPressed: () => showDialog(
+              context: context,
+              builder: (context) => LogDialog(
+                uid: user.uid,
+                title: 'Activity',
+                collection: 'activities',
+              ),
+            ),
+            child: Icon(Icons.add),
+            heroTag: 'addActivity',
+          ),
+          SizedBox(height: 10),
+          // Voice input
+          FloatingActionButton(
+            onPressed: _toggleListening,
+            child: Icon(_isListening ? Icons.mic : Icons.mic_none),
+            heroTag: 'voiceActivity',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// CaloricIntakeTab for food logs.
+class CaloricIntakeTab extends StatefulWidget {
+  @override
+  _CaloricIntakeTabState createState() => _CaloricIntakeTabState();
+}
+
+class _CaloricIntakeTabState extends State<CaloricIntakeTab> {
+  String selectedTimeframe = 'Daily';
+
+  DateTime _getTimeframeStart() {
+    var now = DateTime.now();
+    switch (selectedTimeframe) {
+      case 'Weekly':
+        return now.subtract(Duration(days: 7));
+      case 'Monthly':
+        return now.subtract(Duration(days: 30));
+      case '6 Months':
+        return now.subtract(Duration(days: 180));
+      default:
+        return DateTime(now.year, now.month, now.day);
+    }
+  }
+
+  void _editFoodLog(String docId, Map<String, dynamic> data, String uid) {
+    showDialog(
+      context: context,
+      builder: (context) => LogDialog(
+        uid: uid,
+        title: 'Food',
+        collection: 'food_logs',
+        docId: docId,
+        defaultType: data['type'],
+        defaultValue1: data['calories'],
+      ),
+    );
+  }
+
+  void _deleteFoodLog(String docId, String uid) {
+    FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('food_logs')
+        .doc(docId)
+        .delete();
+  }
+
+  void _showLogDialog(
+      BuildContext context, String uid, String title, String collection) {
+    showDialog(
+      context: context,
+      builder: (context) => LogDialog(
+        uid: uid,
+        title: title,
+        collection: collection,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser!;
+    DateTime startTime = _getTimeframeStart();
+
+    return Scaffold(
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Title + timeframe
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Caloric Intake',
+                    style: Theme.of(context).textTheme.headline5),
+                DropdownButton<String>(
+                  value: selectedTimeframe,
+                  onChanged: (value) =>
+                      setState(() => selectedTimeframe = value!),
+                  items: ['Daily', 'Weekly', 'Monthly', '6 Months']
+                      .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                      .toList(),
+                ),
+              ],
+            ),
+            // Food logs
+            StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .collection('food_logs')
+                  .where('timestamp', isGreaterThan: startTime)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return Center(child: CircularProgressIndicator());
+                }
+                var docs = snapshot.data!.docs;
+                int totalCalories = docs.fold(
+                    0, (sum, doc) => sum + (doc['calories'] as int));
+
+                return Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Total Calories: $totalCalories kcal',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: docs.length,
+                          itemBuilder: (context, index) {
+                            var data = docs[index].data() as Map<String, dynamic>;
+                            return Card(
+                              child: ListTile(
+                                leading: Icon(Icons.fastfood),
+                                title: Text(data['type'] ?? 'Food'),
+                                subtitle: Text('${data['calories']} kcal'),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                        icon: Icon(Icons.edit),
+                                        onPressed: () => _editFoodLog(
+                                            docs[index].id, data, user.uid)),
+                                    IconButton(
+                                        icon: Icon(Icons.delete),
+                                        onPressed: () => _deleteFoodLog(
+                                            docs[index].id, user.uid)),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () =>
+            _showLogDialog(context, user.uid, 'Food', 'food_logs'),
+        child: Icon(Icons.add),
+      ),
+    );
+  }
+}
+
+/// AdditionsTab for supplements (vitamins, etc.).
+class AdditionsTab extends StatefulWidget {
+  @override
+  _AdditionsTabState createState() => _AdditionsTabState();
+}
+
+class _AdditionsTabState extends State<AdditionsTab> {
+  String selectedTimeframe = 'Daily';
+
+  DateTime _getTimeframeStart() {
+    var now = DateTime.now();
+    switch (selectedTimeframe) {
+      case 'Weekly':
+        return now.subtract(Duration(days: 7));
+      case 'Monthly':
+        return now.subtract(Duration(days: 30));
+      case '6 Months':
+        return now.subtract(Duration(days: 180));
+      default:
+        return DateTime(now.year, now.month, now.day);
+    }
+  }
+
+  void _editSupplement(String docId, Map<String, dynamic> data, String uid) {
+    showDialog(
+      context: context,
+      builder: (context) => LogDialog(
+        uid: uid,
+        title: 'Additions',
+        collection: 'supplements',
+        docId: docId,
+        defaultType: data['name'],
+        defaultValue1: data['quantity'],
+      ),
+    );
+  }
+
+  void _deleteSupplement(String docId, String uid) {
+    FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('supplements')
+        .doc(docId)
+        .delete();
+  }
+
+  void _showLogDialog(
+      BuildContext context, String uid, String title, String collection) {
+    showDialog(
+      context: context,
+      builder: (context) => LogDialog(
+        uid: uid,
+        title: title,
+        collection: collection,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser!;
+    DateTime startTime = _getTimeframeStart();
+
+    return Scaffold(
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Title + timeframe
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Additions', style: Theme.of(context).textTheme.headline5),
+                DropdownButton<String>(
+                  value: selectedTimeframe,
+                  onChanged: (value) => setState(() => selectedTimeframe = value!),
+                  items: ['Daily', 'Weekly', 'Monthly', '6 Months']
+                      .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                      .toList(),
+                ),
+              ],
+            ),
+            // Supplements list
+            StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .collection('supplements')
+                  .where('timestamp', isGreaterThan: startTime)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return Center(child: CircularProgressIndicator());
+                }
+                var docs = snapshot.data!.docs;
+
+                return Expanded(
+                  child: ListView.builder(
+                    itemCount: docs.length,
+                    itemBuilder: (context, index) {
+                      var data = docs[index].data() as Map<String, dynamic>;
+                      return Card(
+                        child: ListTile(
+                          leading: Icon(Icons.local_pharmacy),
+                          title: Text(data['name']),
+                          subtitle: Text('Quantity: ${data['quantity']}'),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: Icon(Icons.edit),
+                                onPressed: () => _editSupplement(
+                                    docs[index].id, data, user.uid),
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.delete),
+                                onPressed: () => _deleteSupplement(
+                                    docs[index].id, user.uid),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () =>
+            _showLogDialog(context, user.uid, 'Additions', 'supplements'),
+        child: Icon(Icons.add),
+      ),
+    );
+  }
+}
+
+/// NEW: More robust Habit Tracking Tab with a 30-day "quit plan" approach.
+class HabitTrackingTab extends StatefulWidget {
+  @override
+  _HabitTrackingTabState createState() => _HabitTrackingTabState();
+}
+
+class _HabitTrackingTabState extends State<HabitTrackingTab> {
+  final user = FirebaseAuth.instance.currentUser!;
+  String selectedHabit = "Smoking/Vaping";
+  int currentUsage = 0;
+  String? planText;
+  bool isLoadingPlan = false;
+
+  // Define a list of habits and their negative effects
+  final Map<String, String> negativeEffects = {
+    "Smoking/Vaping": "Harms lungs, heart, and overall health.",
+    "Alcohol": "Excessive drinking damages liver and heart.",
+    "Coffee": "Too much caffeine can lead to insomnia or anxiety.",
+    "Soda": "High sugar leads to obesity, diabetes, and cavities.",
+  };
+
+  // Example: Build or fetch a 30-day plan
+  Future<void> _generateOrFetchQuitPlan() async {
+    setState(() => isLoadingPlan = true);
+
+    final docRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('quit_plans')
+        .doc(selectedHabit);
+    DocumentSnapshot docSnap = await docRef.get();
+
+    // If we have an existing plan in Firestore, use it. Otherwise, create one.
+    if (docSnap.exists && docSnap.data() != null) {
+      Map<String, dynamic> data = docSnap.data() as Map<String, dynamic>;
+      planText = data['planText'];
+    } else {
+      // We'll do a naive approach: if the user used X times in the last 7 days,
+      // we'll reduce usage by ~1/4 each week for 4 weeks => 30-day plan
+      DateTime now = DateTime.now();
+      DateTime oneWeekAgo = now.subtract(Duration(days: 7));
+      QuerySnapshot logs = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('bad_habits')
+          .where('habitType', isEqualTo: selectedHabit)
+          .where('timestamp', isGreaterThan: oneWeekAgo)
+          .get();
+
+      int totalIn7Days = 0;
+      for (var l in logs.docs) {
+        totalIn7Days += (l['usage'] ?? 0) as int;
+      }
+      double dailyAvg = totalIn7Days / 7.0;
+      // Let’s say week1 => dailyAvg, week2 => 75% dailyAvg, week3 => 50%, week4 => 25%, then 0
+      planText = "Your recent average usage is ${dailyAvg.toStringAsFixed(1)} per day.\n"
+          "Recommended 30-day plan:\n"
+          " - Week 1: ~${(dailyAvg).toStringAsFixed(1)} per day\n"
+          " - Week 2: ~${(dailyAvg * 0.75).toStringAsFixed(1)} per day\n"
+          " - Week 3: ~${(dailyAvg * 0.50).toStringAsFixed(1)} per day\n"
+          " - Week 4: ~${(dailyAvg * 0.25).toStringAsFixed(1)} per day\n"
+          "Then reduce to 0!\n";
+
+      // Save plan to Firestore for future reference
+      await docRef.set({'planText': planText, 'createdAt': FieldValue.serverTimestamp()});
+    }
+
+    setState(() => isLoadingPlan = false);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _generateOrFetchQuitPlan();
+  }
+
+  Future<void> _logHabitUsage() async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('bad_habits')
+          .add({
+        'habitType': selectedHabit,
+        'usage': currentUsage,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Usage logged')));
+      Logger.logEvent("Habit usage logged", {
+        'habit': selectedHabit,
+        'usage': currentUsage,
+      });
+
+      // Re-generate plan to reflect new usage logs (optional)
+      await _generateOrFetchQuitPlan();
+    } catch (e, stack) {
+      Logger.logError("Failed to log habit usage", e, stack);
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to log usage: $e')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Habit Tracking",
+                style: Theme.of(context).textTheme.headline5),
+            SizedBox(height: 10),
+            // Habit dropdown
+            DropdownButton<String>(
+              value: selectedHabit,
+              onChanged: (value) async {
+                setState(() {
+                  selectedHabit = value!;
+                  planText = null;
+                });
+                await _generateOrFetchQuitPlan();
+              },
+              items: negativeEffects.keys.map((habit) {
+                return DropdownMenuItem<String>(
+                  value: habit,
+                  child: Text(habit),
+                );
+              }).toList(),
+            ),
+            SizedBox(height: 10),
+            // Negative effects text
+            Text(negativeEffects[selectedHabit] ?? '',
+                style: TextStyle(color: Colors.grey[700])),
+            SizedBox(height: 20),
+            // Input usage
+            Text("Today's $selectedHabit usage:"),
+            SizedBox(height: 5),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    keyboardType: TextInputType.number,
+                    onChanged: (val) {
+                      int? usage = int.tryParse(val);
+                      if (usage != null) currentUsage = usage;
+                    },
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(),
+                      labelText: "Number of units",
+                    ),
+                  ),
+                ),
+                SizedBox(width: 10),
+                ElevatedButton(
+                  onPressed: _logHabitUsage,
+                  child: Text("Log Usage"),
+                ),
+              ],
+            ),
+            SizedBox(height: 20),
+            // The 30-day plan
+            if (isLoadingPlan)
+              Center(child: CircularProgressIndicator())
+            else if (planText != null)
+              Text(
+                planText!,
+                style: TextStyle(fontSize: 16),
+              ),
+            SizedBox(height: 10),
+            Text("Recent Logs",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            SizedBox(height: 5),
+            // Recent logs
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(user.uid)
+                    .collection('bad_habits')
+                    .where('habitType', isEqualTo: selectedHabit)
+                    .orderBy('timestamp', descending: true)
+                    .limit(30)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return Center(child: CircularProgressIndicator());
+                  }
+                  var docs = snapshot.data!.docs;
+                  if (docs.isEmpty) {
+                    return Center(
+                      child: Text("No recent logs for $selectedHabit"),
+                    );
+                  }
+                  return ListView.builder(
+                    itemCount: docs.length,
+                    itemBuilder: (context, index) {
+                      var data = docs[index].data() as Map<String, dynamic>;
+                      Timestamp? ts = data['timestamp'];
+                      DateTime dateTime =
+                          ts != null ? ts.toDate() : DateTime.now();
+                      return Card(
+                        child: ListTile(
+                          title: Text(
+                              "${data['usage']} units on ${dateTime.toLocal().toString().split('.')[0]}"),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// TrendsTab with enhanced customization: custom date range, metric toggles, and chart type options.
+class TrendsTab extends StatefulWidget {
+  @override
+  _TrendsTabState createState() => _TrendsTabState();
+}
+
+class _TrendsTabState extends State<TrendsTab> {
+  String selectedAggregation = 'Daily Totals';
+  String selectedChartType = 'Line'; // Options: Line, Bar, Area
+  // Custom date range.
+  DateTime _startDate = DateTime.now().subtract(Duration(days: 30));
+  DateTime _endDate = DateTime.now();
+  // Metric toggles.
+  bool _showBurned = true;
+  bool _showConsumed = true;
+  bool _showNet = false;
+
+  // Helper formatting
+  String _formatDate(DateTime dt) =>
+      "${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}";
+  String _formatMonth(DateTime dt) =>
+      "${dt.year}-${dt.month.toString().padLeft(2, '0')}";
+  String _formatWeek(DateTime dt) {
+    int week = ((dt.day - 1) / 7).floor() + 1;
+    return "${dt.year}-W${week.toString().padLeft(2, '0')}";
+  }
+
+  Future<List<ChartData>> _fetchChartData() async {
+    String uid = FirebaseAuth.instance.currentUser!.uid;
+    List<ChartData> data = [];
+    Map<String, int> aggregateBurned = {};
+    Map<String, int> aggregateConsumed = {};
+
+    final activitySnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('activities')
+        .where('timestamp', isGreaterThan: _startDate)
+        .where('timestamp', isLessThanOrEqualTo: _endDate)
+        .get();
+
+    final foodSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('food_logs')
+        .where('timestamp', isGreaterThan: _startDate)
+        .where('timestamp', isLessThanOrEqualTo: _endDate)
+        .get();
+
+    for (var doc in activitySnapshot.docs) {
+      Timestamp ts = doc['timestamp'];
+      DateTime dt = ts.toDate();
+      String key;
+      if (selectedAggregation == 'Daily Totals')
+        key = _formatDate(dt);
+      else if (selectedAggregation == 'Weekly Totals')
+        key = _formatWeek(dt);
+      else if (selectedAggregation == 'Monthly Totals' ||
+          selectedAggregation == 'Monthly Averages')
+        key = _formatMonth(dt);
+      else
+        key = _formatDate(dt);
+
+      int cal = doc['calories'] as int;
+      aggregateBurned[key] = (aggregateBurned[key] ?? 0) + cal;
+    }
+
+    for (var doc in foodSnapshot.docs) {
+      Timestamp ts = doc['timestamp'];
+      DateTime dt = ts.toDate();
+      String key;
+      if (selectedAggregation == 'Daily Totals')
+        key = _formatDate(dt);
+      else if (selectedAggregation == 'Weekly Totals')
+        key = _formatWeek(dt);
+      else if (selectedAggregation == 'Monthly Totals' ||
+          selectedAggregation == 'Monthly Averages')
+        key = _formatMonth(dt);
+      else
+        key = _formatDate(dt);
+
+      int cal = doc['calories'] as int;
+      aggregateConsumed[key] = (aggregateConsumed[key] ?? 0) + cal;
+    }
+
+    Set<String> allKeys = {...aggregateBurned.keys, ...aggregateConsumed.keys};
+    for (var key in allKeys) {
+      int burned = aggregateBurned[key] ?? 0;
+      int consumed = aggregateConsumed[key] ?? 0;
+      data.add(ChartData(key, burned, consumed));
+    }
+
+    // If "Monthly Averages" is selected, just do naive /30
+    if (selectedAggregation == 'Monthly Averages') {
+      data = data.map((cd) {
+        return ChartData(
+          cd.label,
+          (cd.valueBurned / 30).round(),
+          (cd.valueConsumed / 30).round(),
+        );
+      }).toList();
+    }
+
+    data.sort((a, b) => a.label.compareTo(b.label));
+    return data;
+  }
+
+  Future<void> _selectDateRange(BuildContext context) async {
+    DateTimeRange? picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      initialDateRange: DateTimeRange(start: _startDate, end: _endDate),
+    );
+    if (picked != null) {
+      setState(() {
+        _startDate = picked.start;
+        _endDate = picked.end;
+      });
+      Logger.logEvent("Date range changed", {
+        'start': _startDate.toIso8601String(),
+        'end': _endDate.toIso8601String(),
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Trends'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.date_range),
+            onPressed: () => _selectDateRange(context),
+          ),
+        ],
+      ),
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            // Aggregation and chart type controls
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                DropdownButton<String>(
+                  value: selectedAggregation,
+                  onChanged: (value) =>
+                      setState(() => selectedAggregation = value!),
+                  items: [
+                    'Daily Totals',
+                    'Weekly Totals',
+                    'Monthly Totals',
+                    'Monthly Averages'
+                  ].map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                      .toList(),
+                ),
+                DropdownButton<String>(
+                  value: selectedChartType,
+                  onChanged: (value) => setState(() => selectedChartType = value!),
+                  items: ['Line', 'Bar', 'Area']
+                      .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                      .toList(),
+                ),
+              ],
+            ),
+            // Metric toggles
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Row(
+                  children: [
+                    Checkbox(
+                      value: _showBurned,
+                      onChanged: (v) => setState(() => _showBurned = v!),
+                    ),
+                    Text('Burned')
+                  ],
+                ),
+                Row(
+                  children: [
+                    Checkbox(
+                      value: _showConsumed,
+                      onChanged: (v) => setState(() => _showConsumed = v!),
+                    ),
+                    Text('Consumed')
+                  ],
+                ),
+                Row(
+                  children: [
+                    Checkbox(
+                      value: _showNet,
+                      onChanged: (v) => setState(() => _showNet = v!),
+                    ),
+                    Text('Net')
+                  ],
+                ),
+              ],
+            ),
+            SizedBox(height: 16),
+            Expanded(
+              child: FutureBuilder<List<ChartData>>(
+                future: _fetchChartData(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return Center(child: CircularProgressIndicator());
+                  }
+                  List<ChartData> data = snapshot.data!;
+                  List<charts.Series<ChartData, String>> series = [];
+
+                  if (_showBurned) {
+                    series.add(charts.Series(
+                      id: "Calories Burned",
+                      data: data,
+                      domainFn: (ChartData series, _) => series.label,
+                      measureFn: (ChartData series, _) => series.valueBurned,
+                      colorFn: (_, __) =>
+                          charts.MaterialPalette.red.shadeDefault,
+                    ));
+                  }
+                  if (_showConsumed) {
+                    series.add(charts.Series(
+                      id: "Calories Consumed",
+                      data: data,
+                      domainFn: (ChartData series, _) => series.label,
+                      measureFn: (ChartData series, _) => series.valueConsumed,
+                      colorFn: (_, __) =>
+                          charts.MaterialPalette.green.shadeDefault,
+                    ));
+                  }
+                  if (_showNet) {
+                    series.add(charts.Series(
+                      id: "Net Calories",
+                      data: data,
+                      domainFn: (ChartData series, _) => series.label,
+                      measureFn: (ChartData series, _) =>
+                          (series.valueBurned - series.valueConsumed),
+                      colorFn: (_, __) =>
+                          charts.MaterialPalette.blue.shadeDefault,
+                    ));
+                  }
+
+                  List<charts.ChartBehavior<String>> behaviors = [
+                    charts.SeriesLegend(),
+                    charts.PanAndZoomBehavior(),
+                  ];
+
+                  if (selectedChartType == 'Line') {
+                    return charts.LineChart(
+                      series,
+                      animate: true,
+                      behaviors: behaviors,
+                    );
+                  } else if (selectedChartType == 'Bar') {
+                    return charts.BarChart(
+                      series,
+                      animate: true,
+                      behaviors: behaviors,
+                    );
+                  } else if (selectedChartType == 'Area') {
+                    return charts.LineChart(
+                      series,
+                      animate: true,
+                      behaviors: behaviors,
+                      defaultRenderer: charts.LineRendererConfig(
+                        includeArea: true,
+                        stacked: false,
+                      ),
+                    );
+                  } else {
+                    return Container();
+                  }
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ChartData {
+  final String label;
+  final int valueBurned;
+  final int valueConsumed;
+  ChartData(this.label, this.valueBurned, this.valueConsumed);
+}
+
+/// Basic login screen for new or existing users
+class LoginScreen extends StatelessWidget {
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Login to Fuel')),
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              // Email
+              TextFormField(
+                controller: _emailController,
+                decoration: InputDecoration(labelText: 'Email'),
+                validator: (v) => v!.contains('@') ? null : 'Invalid email',
+              ),
+              // Password
+              TextFormField(
+                controller: _passwordController,
+                decoration: InputDecoration(labelText: 'Password'),
+                obscureText: true,
+                validator: (v) =>
+                    (v == null || v.length < 6) ? '6+ chars required' : null,
+              ),
+              SizedBox(height: 20),
+              // Sign In
+              ElevatedButton(
+                onPressed: () async {
+                  if (_formKey.currentState!.validate()) {
+                    final user = await AuthService().signInWithEmail(
+                        _emailController.text, _passwordController.text, context);
+                    if (user != null) {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => HomeScreen()),
+                      );
+                    }
+                  }
+                },
+                child: Text('Sign In'),
+              ),
+              // Sign Up
+              TextButton(
+                onPressed: () async {
+                  if (_formKey.currentState!.validate()) {
+                    final user = await AuthService().signUpWithEmail(
+                        _emailController.text,
+                        _passwordController.text,
+                        context);
+                    if (user != null) {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => HomeScreen()),
+                      );
+                    }
+                  }
+                },
+                child: Text('Sign Up'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
