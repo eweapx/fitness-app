@@ -1,4 +1,4 @@
-modules = ["flutter"]
+modules = ["flutter", "nodejs-20"]
 
 [nix]
 channel = "stable-24_05"
@@ -13,10 +13,10 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Flutter Web Server"
+args = "Node Express Server"
 
 [[workflows.workflow]]
-name = "Flutter Web Server"
+name = "Node Express Server"
 author = "agent"
 
 [workflows.workflow.metadata]
@@ -27,7 +27,7 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd /home/runner/workspace && flutter run -d web-server --web-port 5000 --web-hostname 0.0.0.0"
+args = "node server.js"
 waitForPort = 5000
 
 [deployment]

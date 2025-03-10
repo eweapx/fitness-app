@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fuel Fitness</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f8f9fa;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .app-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .stats-card {
+      border-radius: 15px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      margin-bottom: 25px;
+      padding: 20px;
+      background-color: white;
+    }
+    .stat-icon {
+      font-size: 2rem;
+      margin-bottom: 10px;
+    }
+    .stat-value {
+      font-size: 1.8rem;
+      font-weight: bold;
+    }
+    .stat-label {
+      font-size: 0.9rem;
+      color: #6c757d;
+    }
+    .activity-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 15px;
+      font-size: 1.5rem;
+    }
+    .activity-time {
+      font-size: 0.8rem;
+      color: #adb5bd;
+    }
+    .navbar {
+      border-radius: 0 0 15px 15px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .firebase-card {
+      background-color: #f8f9fa;
+    }
+    .firebase-status {
+      color: #fd7e14;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+    <div class="container">
+      <a class="navbar-brand" href="#">Fuel Fitness</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal">
+              <i class="bi bi-info-circle"></i> About
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="app-container">
+    <!-- Daily Stats Summary -->
+    <div class="stats-card">
+      <h5 class="mb-4">Today's Progress</h5>
+      <div class="row text-center">
+        <div class="col-4">
+          <div class="stat-icon text-warning">
+            <i class="bi bi-fire"></i>
+          </div>
+          <div class="stat-value" id="calories">0</div>
+          <div class="stat-label">Calories</div>
+        </div>
+        <div class="col-4">
+          <div class="stat-icon text-primary">
+            <i class="bi bi-lightning"></i>
+          </div>
+          <div class="stat-value" id="steps">0</div>
+          <div class="stat-label">Steps</div>
+        </div>
+        <div class="col-4">
+          <div class="stat-icon text-success">
+            <i class="bi bi-activity"></i>
+          </div>
+          <div class="stat-value" id="activities">0</div>
+          <div class="stat-label">Activities</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Activities -->
+    <div class="stats-card">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h5 class="mb-0">Recent Activities</h5>
+      </div>
+      <div id="activities-list">
+        <!-- Activities will be added here dynamically -->
+      </div>
+      <div id="no-activities" class="text-center text-muted py-4">
+        No activities logged yet. Click the button below to add one!
+      </div>
+    </div>
+
+    <!-- Firebase Status -->
+    <div class="stats-card firebase-card">
+      <div class="d-flex align-items-center mb-3">
+        <div class="me-2 text-warning">
+          <i class="bi bi-cloud"></i>
+        </div>
+        <h5 class="mb-0">Firebase Status</h5>
+      </div>
+      <p class="firebase-status">Firebase connection requires configuration</p>
+      <p class="text-muted">Add your Firebase API key to enable cloud sync, authentication, and real-time data.</p>
+      <button class="btn btn-outline-primary" id="configure-firebase">
+        <i class="bi bi-cloud-upload"></i> Configure Firebase
+      </button>
+    </div>
+  </div>
+
+  <!-- Log Activity Button -->
+  <div class="position-fixed bottom-0 end-0 m-4">
+    <button class="btn btn-primary rounded-circle p-3 shadow" data-bs-toggle="modal" data-bs-target="#logActivityModal">
+      <i class="bi bi-plus-lg fs-5"></i>
+    </button>
+  </div>
+
+  <!-- About Modal -->
+  <div class="modal fade" id="aboutModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">About Fuel Fitness</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p><strong>Platform:</strong> Web</p>
+          <p>A comprehensive fitness tracking application</p>
+          <p><strong>Version:</strong> 1.0.0 (2025)</p>
+          <p>This app helps you track workouts, calories, and healthy habits.</p>
+          <p class="firebase-status">Firebase Status: Not Connected</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Log Activity Modal -->
+  <div class="modal fade" id="logActivityModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Log New Activity</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="activity-form">
+            <div class="mb-3">
+              <label for="activity-name" class="form-label">Activity Name</label>
+              <input type="text" class="form-control" id="activity-name" placeholder="e.g. Running, Cycling" required>
+            </div>
+            <div class="mb-3">
+              <label for="activity-calories" class="form-label">Calories Burned</label>
+              <input type="number" class="form-control" id="activity-calories" placeholder="e.g. 200" required>
+            </div>
+            <div class="mb-3">
+              <label for="activity-duration" class="form-label">Duration (minutes)</label>
+              <input type="number" class="form-control" id="activity-duration" placeholder="e.g. 30" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Activity Type</label>
+              <div class="d-flex flex-wrap">
+                <div class="form-check me-3 mb-2">
+                  <input class="form-check-input" type="radio" name="activity-type" id="type-running" value="running" checked>
+                  <label class="form-check-label" for="type-running">Running</label>
+                </div>
+                <div class="form-check me-3 mb-2">
+                  <input class="form-check-input" type="radio" name="activity-type" id="type-cycling" value="cycling">
+                  <label class="form-check-label" for="type-cycling">Cycling</label>
+                </div>
+                <div class="form-check me-3 mb-2">
+                  <input class="form-check-input" type="radio" name="activity-type" id="type-weights" value="weights">
+                  <label class="form-check-label" for="type-weights">Weights</label>
+                </div>
+                <div class="form-check me-3 mb-2">
+                  <input class="form-check-input" type="radio" name="activity-type" id="type-swimming" value="swimming">
+                  <label class="form-check-label" for="type-swimming">Swimming</label>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="save-activity">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase Config Modal -->
+  <div class="modal fade" id="firebaseConfigModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Configure Firebase</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>To enable cloud features, you need to provide a Firebase API key.</p>
+          <div class="mb-3">
+            <label for="firebase-api-key" class="form-label">Firebase API Key</label>
+            <input type="password" class="form-control" id="firebase-api-key" placeholder="Enter your Firebase API key">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="save-firebase-key">Save Key</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <!-- Bootstrap and JavaScript Dependencies -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <script>
+    // Activity class for storing activity data
+    class Activity {
+      constructor(name, calories, duration, type, date = new Date()) {
+        this.name = name;
+        this.calories = calories;
+        this.duration = duration;
+        this.type = type;
+        this.date = date;
+      }
+    }
+
+    // App state
+    const state = {
+      caloriesBurned: 0,
+      stepsCount: 0,
+      activitiesLogged: 0,
+      activities: []
+    };
+
+    // Activity icon and color mapping
+    const activityIcons = {
+      running: { icon: 'bi-lightning', color: '#3498db' },
+      cycling: { icon: 'bi-bicycle', color: '#e74c3c' },
+      weights: { icon: 'bi-trophy', color: '#9b59b6' },
+      swimming: { icon: 'bi-water', color: '#2ecc71' }
+    };
+
+    // Format date
+    function formatDate(date) {
+      const options = { month: 'short', day: 'numeric', year: 'numeric' };
+      return new Date(date).toLocaleDateString('en-US', options);
+    }
+
+    // Update UI stats
+    function updateStats() {
+      document.getElementById('calories').textContent = state.caloriesBurned;
+      document.getElementById('steps').textContent = state.stepsCount;
+      document.getElementById('activities').textContent = state.activitiesLogged;
+    }
+
+    // Render activities list
+    function renderActivities() {
+      const activitiesList = document.getElementById('activities-list');
+      const noActivities = document.getElementById('no-activities');
+      
+      if (state.activities.length === 0) {
+        activitiesList.innerHTML = '';
+        noActivities.style.display = 'block';
+        return;
+      }
+      
+      noActivities.style.display = 'none';
+      activitiesList.innerHTML = '';
+      
+      state.activities.forEach(activity => {
+        const activityInfo = activityIcons[activity.type] || { icon: 'bi-activity', color: '#3498db' };
+        
+        const activityEl = document.createElement('div');
+        activityEl.className = 'mb-3 pb-3 border-bottom';
+        activityEl.innerHTML = `
+          <div class="d-flex">
+            <div class="activity-icon" style="background-color: ${activityInfo.color}20;">
+              <i class="bi ${activityInfo.icon}" style="color: ${activityInfo.color};"></i>
+            </div>
+            <div>
+              <div class="fw-bold">${activity.name}</div>
+              <div class="text-muted small">${activity.calories} calories · ${activity.duration} min</div>
+              <div class="activity-time">${formatDate(activity.date)}</div>
+            </div>
+          </div>
+        `;
+        
+        activitiesList.appendChild(activityEl);
+      });
+    }
+
+    // Add a new activity
+    function addActivity(activity) {
+      state.activities.unshift(activity);
+      state.caloriesBurned += parseInt(activity.calories);
+      state.activitiesLogged += 1;
+      
+      // Update UI
+      updateStats();
+      renderActivities();
+      
+      // Show success message
+      showAlert('Activity logged successfully!', 'success');
+    }
+
+    // Show alert
+    function showAlert(message, type = 'primary') {
+      const alertContainer = document.createElement('div');
+      alertContainer.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3`;
+      alertContainer.style.zIndex = '1050';
+      alertContainer.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      `;
+      
+      document.body.appendChild(alertContainer);
+      
+      // Auto dismiss after 3 seconds
+      setTimeout(() => {
+        alertContainer.remove();
+      }, 3000);
+    }
+
+    // Initialize the app
+    function initApp() {
+      // Add sample activities
+      const runningActivity = new Activity('Running', 250, 30, 'running', new Date(Date.now() - 3 * 60 * 60 * 1000));
+      const weightsActivity = new Activity('Weight Training', 150, 45, 'weights', new Date(Date.now() - 5 * 60 * 60 * 1000));
+      
+      state.activities.push(runningActivity, weightsActivity);
+      state.caloriesBurned = 400;
+      state.stepsCount = 5000;
+      state.activitiesLogged = 2;
+      
+      // Update UI
+      updateStats();
+      renderActivities();
+      
+      // Event handlers
+      document.getElementById('save-activity').addEventListener('click', function() {
+        const nameInput = document.getElementById('activity-name');
+        const caloriesInput = document.getElementById('activity-calories');
+        const durationInput = document.getElementById('activity-duration');
+        const activityType = document.querySelector('input[name="activity-type"]:checked').value;
+        
+        // Validate inputs
+        if (!nameInput.value || !caloriesInput.value || !durationInput.value) {
+          showAlert('Please fill in all fields', 'danger');
+          return;
+        }
+        
+        // Create new activity
+        const newActivity = new Activity(
+          nameInput.value,
+          parseInt(caloriesInput.value),
+          parseInt(durationInput.value),
+          activityType
+        );
+        
+        // Add activity and close modal
+        addActivity(newActivity);
+        
+        // Close modal and reset form
+        const modal = bootstrap.Modal.getInstance(document.getElementById('logActivityModal'));
+        modal.hide();
+        document.getElementById('activity-form').reset();
+      });
+      
+      // Configure Firebase button
+      document.getElementById('configure-firebase').addEventListener('click', function() {
+        const firebaseModal = new bootstrap.Modal(document.getElementById('firebaseConfigModal'));
+        firebaseModal.show();
+      });
+      
+      // Save Firebase key
+      document.getElementById('save-firebase-key').addEventListener('click', function() {
+        const apiKey = document.getElementById('firebase-api-key').value;
+        
+        if (!apiKey) {
+          showAlert('Please enter a valid API key', 'danger');
+          return;
+        }
+        
+        // In a real app, we would save this securely and initialize Firebase
+        showAlert('Firebase API key would be configured here', 'primary');
+        
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('firebaseConfigModal'));
+        modal.hide();
+      });
+    }
+
+    // Run the app when DOM is loaded
+    document.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>

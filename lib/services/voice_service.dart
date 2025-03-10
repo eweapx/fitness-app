@@ -1,245 +1,233 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
-import '../utils/logger.dart';
-import 'health_service.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 
-/// Service for voice commands and speech recognition
+/// A service that handles voice commands for the Fuel app
 class VoiceService {
-  // Singleton implementation
   static final VoiceService _instance = VoiceService._internal();
-  factory VoiceService() => _instance;
+  
+  // Private constructor
   VoiceService._internal();
   
-  // In a real app, we would use the speech_to_text package
-  // final SpeechToText _speech = SpeechToText();
+  // Factory constructor
+  factory VoiceService() {
+    return _instance;
+  }
   
+  // Speech to text instance
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  
+  bool _initialized = false;
   bool _isListening = false;
-  bool _isInitialized = false;
-  final HealthService _healthService = HealthService();
   
-  // Stream controller for voice commands
-  final StreamController<String> _commandStreamController = StreamController<String>.broadcast();
-  Stream<String> get commandStream => _commandStreamController.stream;
+  // Getters
+  bool get isInitialized => _initialized;
+  bool get isListening => _isListening;
   
   /// Initialize the voice service
   Future<bool> initialize() async {
-    try {
-      // Check microphone permission
-      final status = await Permission.microphone.status;
-      if (!status.isGranted) {
-        final result = await Permission.microphone.request();
-        if (!result.isGranted) {
-          return false;
-        }
-      }
-      
-      // In a real app, we would initialize the speech to text service
-      // _isInitialized = await _speech.initialize(
-      //   onStatus: _onSpeechStatus,
-      //   onError: _onSpeechError,
-      // );
-      
-      _isInitialized = true;
-      return _isInitialized;
-    } catch (e, stack) {
-      Logger.logError('Voice service initialization failed', e, stack);
-      return false;
-    }
-  }
-  
-  /// Start listening for voice commands
-  Future<bool> startListening(Function(String) onResult) async {
-    if (!_isInitialized) {
-      if (!await initialize()) {
+    if (_initialized) return true;
+    
+    // Request microphone permission
+    if (!await Permission.microphone.isGranted) {
+      final status = await Permission.microphone.request();
+      if (status != PermissionStatus.granted) {
+        debugPrint('Microphone permission denied');
         return false;
       }
     }
     
+    // Initialize speech recognition
     try {
-      // In a real app, we would start the speech recognition
-      // await _speech.listen(
-      //   onResult: _onSpeechResult,
-      //   listenFor: Duration(seconds: 30),
-      //   pauseFor: Duration(seconds: 5),
-      //   partialResults: true,
-      //   localeId: 'en_US',
-      // );
-      
-      _isListening = true;
-      Logger.logEvent('Voice listening started');
-      
-      // Simulate a voice command after a delay for testing
-      Future.delayed(const Duration(seconds: 2), () {
-        if (_isListening) {
-          String result = 'log running 30 minutes';
-          _onSpeechResult(result);
-          onResult(result);
-        }
-      });
-      
-      return true;
-    } catch (e, stack) {
-      Logger.logError('Start listening failed', e, stack);
+      _initialized = await _speech.initialize(
+        onStatus: (status) {
+          debugPrint('Speech status: $status');
+          if (status == 'done' || status == 'notListening') {
+            _isListening = false;
+          }
+        },
+        onError: (error) {
+          debugPrint('Speech error: $error');
+          _isListening = false;
+        },
+      );
+      return _initialized;
+    } catch (e) {
+      debugPrint('Error initializing speech recognition: $e');
+      _initialized = false;
       return false;
     }
+  }
+  
+  /// Show permission dialog
+  void showPermissionDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Microphone Permission'),
+        content: const Text(
+          'This app needs microphone access to process voice commands. '
+          'Please grant microphone permission in your device settings.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await openAppSettings();
+            },
+            child: const Text('Open Settings'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  /// Start listening for voice commands
+  Future<bool> startListening({
+    required Function(String) onResult,
+    String? localeId,
+  }) async {
+    if (!_initialized) {
+      final success = await initialize();
+      if (!success) return false;
+    }
+    
+    if (_speech.isListening) {
+      return false;
+    }
+    
+    final available = await _speech.initialize();
+    if (!available) {
+      debugPrint('Speech recognition not available');
+      return false;
+    }
+    
+    _isListening = await _speech.listen(
+      onResult: (result) {
+        if (result.finalResult) {
+          final command = result.recognizedWords.toLowerCase();
+          onResult(command);
+        }
+      },
+      localeId: localeId,
+      listenMode: stt.ListenMode.confirmation,
+      cancelOnError: true,
+      partialResults: false,
+    );
+    
+    return _isListening;
   }
   
   /// Stop listening for voice commands
-  Future<bool> stopListening() async {
-    if (!_isInitialized || !_isListening) {
-      return false;
-    }
-    
-    try {
-      // In a real app, we would stop the speech recognition
-      // await _speech.stop();
-      
+  Future<void> stopListening() async {
+    if (_isListening) {
+      await _speech.stop();
       _isListening = false;
-      Logger.logEvent('Voice listening stopped');
-      return true;
-    } catch (e, stack) {
-      Logger.logError('Stop listening failed', e, stack);
-      return false;
     }
-  }
-  
-  /// Process voice command result
-  void _onSpeechResult(String text) {
-    if (!_isListening) return;
-    
-    final String command = text.toLowerCase();
-    Logger.logEvent('Voice command received', {'command': command});
-    
-    // Process command
-    _processCommand(command);
-    
-    // Push to stream
-    _commandStreamController.add(command);
   }
   
   /// Process a voice command
-  Future<void> _processCommand(String command) async {
-    // Simple command detection for demo
-    try {
-      // Logging an activity
-      if (command.contains('log') || command.contains('add')) {
-        await _processActivityLogCommand(command);
-      }
-      // Starting tracking
-      else if ((command.contains('start') || command.contains('begin')) && 
-          (command.contains('track') || command.contains('tracking'))) {
-        await _healthService.startAutoTracking();
-        await _notifySuccess('Tracking started');
-      }
-      // Stopping tracking
-      else if ((command.contains('stop') || command.contains('end')) && 
-          (command.contains('track') || command.contains('tracking'))) {
-        await _healthService.stopAutoTracking();
-        await _notifySuccess('Tracking stopped');
-      }
-      // Show summary
-      else if (command.contains('summary') || command.contains('report')) {
-        await _notifySuccess('Showing activity summary');
-        // In a real app, this would navigate to the summary screen
-      }
-      else {
-        await _notifyError('Unrecognized command: $command');
-      }
-    } catch (e, stack) {
-      Logger.logError('Error processing command', e, stack);
-      await _notifyError('Error processing command');
-    }
-  }
-  
-  /// Process activity logging commands
-  Future<void> _processActivityLogCommand(String command) async {
-    // Extract activity type and duration
-    String? activityType;
-    int? duration;
+  Map<String, dynamic> processCommand(String command) {
+    command = command.toLowerCase().trim();
     
-    // Check for common activities
-    final activities = [
-      'walking', 'running', 'jogging', 'cycling', 'swimming',
-      'hiking', 'yoga', 'workout', 'exercise', 'training',
-      'weights', 'lifting', 'gym', 'cardio'
-    ];
-    
-    for (final activity in activities) {
-      if (command.contains(activity)) {
-        activityType = activity;
-        break;
-      }
+    // Check for step count commands
+    if (command.contains('how many steps') || 
+        command.contains('step count') || 
+        command.contains('steps today')) {
+      return {
+        'type': 'query',
+        'category': 'steps',
+        'action': 'get_count',
+      };
     }
     
-    // If no matching activity, use default
-    activityType ??= 'exercise';
+    // Check for calorie commands
+    if (command.contains('calories') || command.contains('calorie count')) {
+      return {
+        'type': 'query',
+        'category': 'calories',
+        'action': 'get_count',
+      };
+    }
     
-    // Extract duration
-    final RegExp durationRegex = RegExp(r'(\d+)\s*(min|minute|minutes|hour|hours|hr|hrs)');
-    final match = durationRegex.firstMatch(command);
+    // Check for heart rate commands
+    if (command.contains('heart rate') || command.contains('pulse')) {
+      return {
+        'type': 'query',
+        'category': 'heart_rate',
+        'action': 'get_value',
+      };
+    }
     
-    if (match != null) {
-      duration = int.parse(match.group(1)!);
-      final unit = match.group(2);
+    // Check for workout start/stop commands
+    if (command.contains('start workout') || 
+        command.contains('begin workout') || 
+        command.contains('start tracking')) {
+      return {
+        'type': 'control',
+        'category': 'workout',
+        'action': 'start',
+      };
+    }
+    
+    if (command.contains('stop workout') || 
+        command.contains('end workout') || 
+        command.contains('finish workout')) {
+      return {
+        'type': 'control',
+        'category': 'workout',
+        'action': 'stop',
+      };
+    }
+    
+    // Check for timer commands
+    if (command.contains('start timer')) {
+      // Extract duration if mentioned, default to 1 minute
+      int minutes = 1;
+      final regex = RegExp(r'(\d+)\s*(minute|minutes|min)');
+      final match = regex.firstMatch(command);
+      if (match != null) {
+        minutes = int.parse(match.group(1)!);
+      }
       
-      // Convert hours to minutes
-      if (unit != null && (unit.contains('hour') || unit.contains('hr'))) {
-        duration *= 60;
-      }
-    } else {
-      // Default duration if not specified
-      duration = 30;
+      return {
+        'type': 'control',
+        'category': 'timer',
+        'action': 'start',
+        'duration': minutes,
+      };
     }
     
-    // Calculate estimated calories (simple estimate)
-    int calories = 0;
-    switch (activityType) {
-      case 'running':
-      case 'jogging':
-        calories = (duration * 10).round(); // About 10 cal/min
-        break;
-      case 'cycling':
-        calories = (duration * 8).round(); // About 8 cal/min
-        break;
-      case 'swimming':
-        calories = (duration * 9).round(); // About 9 cal/min
-        break;
-      case 'walking':
-        calories = (duration * 5).round(); // About 5 cal/min
-        break;
-      default:
-        calories = (duration * 7).round(); // Default ~7 cal/min
+    if (command.contains('stop timer') || command.contains('cancel timer')) {
+      return {
+        'type': 'control',
+        'category': 'timer',
+        'action': 'stop',
+      };
     }
     
-    // Log the activity
-    final success = await _healthService.logManualActivity(
-      activityType: activityType,
-      calories: calories,
-      duration: duration,
-    );
-    
-    if (success) {
-      await _notifySuccess('Logged $activityType for $duration minutes');
-    } else {
-      await _notifyError('Failed to log activity');
-    }
+    // If we can't identify the command
+    return {
+      'type': 'unknown',
+      'original': command,
+    };
   }
   
-  /// Notify user of success
-  Future<void> _notifySuccess(String message) async {
-    // In a real app, this would display a notification or speak the response
-    Logger.logEvent('Voice command success', {'message': message});
-  }
-  
-  /// Notify user of error
-  Future<void> _notifyError(String message) async {
-    // In a real app, this would display a notification or speak the response
-    Logger.logEvent('Voice command error', {'message': message});
-  }
-  
-  /// Dispose resources
-  void dispose() {
-    _commandStreamController.close();
+  /// Get a list of available voice commands as help text
+  List<String> getAvailableCommands() {
+    return [
+      'How many steps did I take today?',
+      'What\'s my step count?',
+      'How many calories did I burn?',
+      'What\'s my heart rate?',
+      'Start workout',
+      'Stop workout',
+      'Start timer for 5 minutes',
+      'Stop timer',
+    ];
   }
 }

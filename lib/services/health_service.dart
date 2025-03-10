@@ -1,219 +1,207 @@
-import 'dart:async';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/material.dart';
+import 'package:health/health.dart';
 import 'package:permission_handler/permission_handler.dart';
-import '../utils/logger.dart';
 
-/// Service to handle health data integration
+/// Service to handle health data interactions with device health APIs
 class HealthService {
-  // Singleton implementation
-  static final HealthService _instance = HealthService._internal();
-  factory HealthService() => _instance;
-  HealthService._internal();
+  final HealthFactory health = HealthFactory();
   
-  // Key for preferences
-  static const String _healthPermissionKey = 'health_permission_granted';
-  static const String _lastSyncKey = 'health_last_sync';
-  
-  // Mock data until health data plugin is integrated
-  // In a real app, this would use health_connect or another plugin
-  bool _permissionGranted = false;
-  
-  /// Initialize the health service
-  Future<void> initialize() async {
-    final prefs = await SharedPreferences.getInstance();
-    _permissionGranted = prefs.getBool(_healthPermissionKey) ?? false;
-    
-    // Check if permissions are still valid (they might be revoked in settings)
-    if (_permissionGranted) {
-      final status = await Permission.activityRecognition.status;
-      if (!status.isGranted) {
-        _permissionGranted = false;
-        await prefs.setBool(_healthPermissionKey, false);
-      }
-    }
-    
-    Logger.logEvent('HealthService initialized', {'permissionGranted': _permissionGranted});
-  }
-  
-  /// Request necessary permissions for health data
-  Future<bool> requestPermissions() async {
-    try {
-      // Request activity recognition permission (for step counting)
-      final status = await Permission.activityRecognition.request();
-      _permissionGranted = status.isGranted;
-      
-      // Store permission status
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_healthPermissionKey, _permissionGranted);
-      
-      Logger.logEvent('Health permissions requested', {'granted': _permissionGranted});
-      return _permissionGranted;
-    } catch (e, stack) {
-      Logger.logError('Error requesting health permissions', e, stack);
-      return false;
-    }
-  }
-  
-  /// Check if health permissions are granted
-  Future<bool> hasPermissions() async {
-    if (_permissionGranted) return true;
-    
-    try {
-      final status = await Permission.activityRecognition.status;
-      _permissionGranted = status.isGranted;
-      return _permissionGranted;
-    } catch (e) {
-      Logger.logError('Error checking health permissions', e);
-      return false;
-    }
-  }
-  
-  /// Get step count in the specified interval
-  Future<int> getStepsInInterval(DateTime start, DateTime end) async {
-    // In a real app, this would query a health data API/plugin
-    // For now, we'll provide simulated data for demo purposes
-    if (!await hasPermissions()) {
-      return 0; // Can't access data without permissions
-    }
-    
-    // Simple simulation for demo
-    final hoursInPeriod = end.difference(start).inHours;
-    final averageStepsPerHour = 500; // Average 12K steps per day ÷ 24 hours
-    
-    // Add some variability
-    final stepCount = (hoursInPeriod * averageStepsPerHour * 
-        (0.7 + (DateTime.now().millisecond % 60) / 100)).round();
-    
-    return stepCount;
-  }
-  
-  /// Get average heart rate in the specified interval
-  Future<double> getHeartRateInInterval(DateTime start, DateTime end) async {
-    // In a real app, this would query a health data API/plugin
-    if (!await hasPermissions()) {
-      return 0.0;
-    }
-    
-    // Simulate heart rate data (typically 60-100 bpm at rest)
-    return 70.0 + (DateTime.now().second % 30);
-  }
-  
-  /// Get active energy (calories) burned in the specified interval
-  Future<double> getActiveEnergyInInterval(DateTime start, DateTime end) async {
-    // In a real app, this would query a health data API/plugin
-    if (!await hasPermissions()) {
-      return 0.0;
-    }
-    
-    // Simple simulation based on time period - average person burns ~2000 kcal/day
-    final hoursInPeriod = end.difference(start).inHours;
-    final baseHourlyCalories = 2000 / 24; // Base metabolic calories per hour
-    
-    // Add some activity calories with variability
-    final activityMultiplier = 1.2 + (DateTime.now().millisecond % 100) / 100;
-    
-    return hoursInPeriod * baseHourlyCalories * activityMultiplier;
-  }
-  
-  /// Sync health data with the backend
-  Future<bool> syncHealthData() async {
-    try {
-      if (!await hasPermissions()) {
+  // Types of health data to be requested
+  static final List<HealthDataType> healthTypes = [
+    HealthDataType.STEPS,
+    HealthDataType.ACTIVE_ENERGY_BURNED,
+    HealthDataType.HEART_RATE,
+    // Include workout data for all platforms
+    HealthDataType.DISTANCE_WALKING_RUNNING,
+  ];
+
+  /// Request necessary permissions to access health data
+  Future<bool> requestPermissions(BuildContext context) async {
+    // First check activity recognition permission (required for step data)
+    if (!await Permission.activityRecognition.isGranted) {
+      var status = await Permission.activityRecognition.request();
+      if (status.isDenied || status.isPermanentlyDenied) {
+        _showPermissionDialog(context);
         return false;
       }
-      
-      // Get last sync time
-      final prefs = await SharedPreferences.getInstance();
-      final lastSync = DateTime.fromMillisecondsSinceEpoch(
-        prefs.getInt(_lastSyncKey) ?? 
-        DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch
+    }
+    
+    // Then request health data authorization
+    try {
+      return await health.requestAuthorization(healthTypes);
+    } catch (e) {
+      debugPrint('Error requesting health authorization: $e');
+      return false;
+    }
+  }
+
+  /// Show a dialog explaining why permissions are needed
+  void _showPermissionDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Permission Required'),
+        content: const Text(
+          'This app needs activity recognition permissions to track your fitness data.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await openAppSettings();
+            },
+            child: const Text('Open Settings'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Get steps within a time interval
+  Future<int> getStepsInInterval(DateTime start, DateTime end) async {
+    try {
+      // Get step data points
+      List<HealthDataPoint> data = await health.getHealthDataFromTypes(
+        start, 
+        end, 
+        [HealthDataType.STEPS]
       );
       
-      // Update last sync time
-      await prefs.setInt(_lastSyncKey, DateTime.now().millisecondsSinceEpoch);
+      if (data.isEmpty) return 0;
       
-      Logger.logEvent('Health data synced', {'lastSync': lastSync.toString()});
-      return true;
-    } catch (e, stack) {
-      Logger.logError('Error syncing health data', e, stack);
-      return false;
-    }
-  }
-  
-  /// Log a manual activity to the user's health data using a map
-  Future<bool> _logActivity(Map<String, dynamic> activityData) async {
-    try {
-      // In a real app, we would save this to Firestore and local health data
-      Logger.logEvent('Manual activity logged', activityData);
-      return true;
-    } catch (e, stack) {
-      Logger.logError('Error logging manual activity', e, stack);
-      return false;
-    }
-  }
-  
-  /// Start automatic activity tracking
-  Future<bool> startAutoTracking() async {
-    try {
-      if (!await hasPermissions()) {
-        return false;
+      // Sum up step counts
+      int steps = 0;
+      for (var point in data) {
+        steps += point.value.toInt();
       }
       
-      // In a real app, we would start the device's activity tracking
-      Logger.logEvent('Auto tracking started');
-      return true;
-    } catch (e, stack) {
-      Logger.logError('Error starting auto tracking', e, stack);
-      return false;
+      return steps;
+    } catch (e) {
+      debugPrint('Failed to get steps: $e');
+      return 0;
     }
   }
-  
-  /// Stop automatic activity tracking
-  Future<bool> stopAutoTracking() async {
+
+  /// Get heart rate within a time interval
+  Future<double> getHeartRateInInterval(DateTime start, DateTime end) async {
     try {
-      // In a real app, we would stop the device's activity tracking
-      Logger.logEvent('Auto tracking stopped');
-      return true;
-    } catch (e, stack) {
-      Logger.logError('Error stopping auto tracking', e, stack);
-      return false;
-    }
-  }
-  
-  /// Request notification permissions
-  Future<bool> requestNotificationPermissions() async {
-    try {
-      // In a real app, this would request notification permissions on the device
-      Logger.logEvent('Notification permissions requested');
-      return true;
-    } catch (e, stack) {
-      Logger.logError('Error requesting notification permissions', e, stack);
-      return false;
-    }
-  }
-  
-  /// Log a manual activity with specific details
-  Future<bool> logManualActivity({
-    required String activityType,
-    required int calories,
-    required int duration,
-    double? distance,
-  }) async {
-    try {
-      final activityData = {
-        'activityType': activityType,
-        'calories': calories,
-        'duration': duration,
-        'distance': distance,
-        'timestamp': DateTime.now().toIso8601String(),
-      };
+      List<HealthDataPoint> data = await health.getHealthDataFromTypes(
+        start, 
+        end, 
+        [HealthDataType.HEART_RATE]
+      );
       
-      // In a real app, we would save this to Firestore and local health data
-      Logger.logEvent('Manual activity logged', activityData);
-      return true;
-    } catch (e, stack) {
-      Logger.logError('Error logging manual activity', e, stack);
-      return false;
+      if (data.isEmpty) return 0.0;
+      
+      double sum = 0.0;
+      int count = 0;
+      
+      for (var point in data) {
+        // Simply use the numeric value directly
+        sum += point.value.toDouble();
+        count++;
+      }
+      
+      return count > 0 ? sum / count : 0.0;
+    } catch (e) {
+      debugPrint('Failed to get heart rate: $e');
+      return 0.0;
     }
+  }
+
+  /// Get active energy burned within a time interval
+  Future<double> getActiveEnergyInInterval(DateTime start, DateTime end) async {
+    try {
+      List<HealthDataPoint> data = await health.getHealthDataFromTypes(
+        start, 
+        end, 
+        [HealthDataType.ACTIVE_ENERGY_BURNED]
+      );
+      
+      if (data.isEmpty) return 0.0;
+      
+      double totalEnergy = 0.0;
+      
+      for (var point in data) {
+        // Simply use the numeric value directly
+        totalEnergy += point.value.toDouble();
+      }
+      
+      return totalEnergy;
+    } catch (e) {
+      debugPrint('Failed to get active energy: $e');
+      return 0.0;
+    }
+  }
+
+  /// Get distance walked or run within a time interval
+  Future<double> getDistanceInInterval(DateTime start, DateTime end) async {
+    try {
+      List<HealthDataPoint> data = await health.getHealthDataFromTypes(
+        start, 
+        end, 
+        [HealthDataType.DISTANCE_WALKING_RUNNING]
+      );
+      
+      if (data.isEmpty) return 0.0;
+      
+      double totalDistance = 0.0;
+      
+      for (var point in data) {
+        // Simply use the numeric value directly
+        totalDistance += point.value.toDouble();
+      }
+      
+      return totalDistance;
+    } catch (e) {
+      debugPrint('Failed to get distance: $e');
+      return 0.0;
+    }
+  }
+  
+  /// Calculate estimated calories burned based on available health data
+  Future<int> calculateCaloriesBurnedToday() async {
+    try {
+      // Use today's timeframe
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      
+      // Collect all the data
+      int steps = await getStepsInInterval(today, now);
+      double activeEnergy = await getActiveEnergyInInterval(today, now);
+      
+      // Return value from active energy if available, otherwise estimate from steps
+      if (activeEnergy > 0) {
+        return activeEnergy.round();
+      } else {
+        // Simple formula to estimate calories from steps (very approximate)
+        return (steps * 0.04).round();
+      }
+    } catch (e) {
+      debugPrint('Error calculating calories: $e');
+      return 0;
+    }
+  }
+  
+  /// Get a summary of today's health data
+  Future<Map<String, dynamic>> getTodayHealthSummary() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
+    // Get all data in parallel
+    final steps = await getStepsInInterval(today, now);
+    final calories = await calculateCaloriesBurnedToday();
+    final distance = await getDistanceInInterval(today, now);
+    
+    return {
+      'steps': steps,
+      'calories': calories,
+      'distance': distance.toStringAsFixed(2),
+      'lastUpdated': now.toString(),
+    };
   }
 }

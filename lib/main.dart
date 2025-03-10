@@ -1,46 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:firebase_core/firebase_core.dart';
+import 'package:intl/intl.dart';
 
-void main() async {
+void main() {
   // Initialize Flutter bindings
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize Firebase with error handling
-  FirebaseOptions? firebaseOptions;
-  bool firebaseInitialized = false;
-
-  try {
-    // Use Firebase API key from environment
-    firebaseOptions = const FirebaseOptions(
-      apiKey: String.fromEnvironment('FIREBASE_API_KEY', defaultValue: ''),
-      appId: '1:123456789012:android:1234567890123456',
-      messagingSenderId: '123456789012',
-      projectId: 'fuel-fitness-app',
-    );
-    
-    if (firebaseOptions.apiKey.isNotEmpty) {
-      await Firebase.initializeApp(options: firebaseOptions);
-      firebaseInitialized = true;
-      print('Firebase initialized successfully');
-    } else {
-      print('Firebase API key not provided, running in offline mode');
-    }
-  } catch (e) {
-    print('Failed to initialize Firebase: $e');
-  }
-
-  // Run the app with Firebase initialization status
-  runApp(FuelApp(firebaseInitialized: firebaseInitialized));
+  // Run the app
+  runApp(const FuelApp());
 }
 
 class FuelApp extends StatelessWidget {
-  final bool firebaseInitialized;
-  
-  const FuelApp({
-    super.key, 
-    required this.firebaseInitialized
-  });
+  const FuelApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -51,18 +22,13 @@ class FuelApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      home: HomePage(firebaseInitialized: firebaseInitialized),
+      home: const HomePage(),
     );
   }
 }
 
 class HomePage extends StatefulWidget {
-  final bool firebaseInitialized;
-  
-  const HomePage({
-    super.key, 
-    required this.firebaseInitialized
-  });
+  const HomePage({super.key});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -72,30 +38,52 @@ class _HomePageState extends State<HomePage> {
   int _caloriesBurned = 0;
   int _stepsCount = 0;
   int _activitiesLogged = 0;
-
+  
+  final List<ActivityRecord> _recentActivities = [];
+  final DateFormat _dateFormatter = DateFormat('MMM d, yyyy');
+  
   @override
   void initState() {
     super.initState();
-    _loadData();
+    // Add some sample activities
+    _recentActivities.add(
+      ActivityRecord(
+        name: 'Running', 
+        calories: 250, 
+        duration: 30, 
+        iconData: Icons.directions_run,
+        color: Colors.blue,
+        date: DateTime.now().subtract(const Duration(hours: 3)),
+      ),
+    );
+    _recentActivities.add(
+      ActivityRecord(
+        name: 'Weight Training', 
+        calories: 150, 
+        duration: 45, 
+        iconData: Icons.fitness_center,
+        color: Colors.purple,
+        date: DateTime.now().subtract(const Duration(hours: 5)),
+      ),
+    );
   }
 
-  void _loadData() {
-    // Simulate loading data
-    Future.delayed(const Duration(milliseconds: 500), () {
-      setState(() {
-        _caloriesBurned = 350;
-        _stepsCount = 5280;
-        _activitiesLogged = 2;
-      });
-    });
-  }
-
+  // Simple activity logging for quick actions
   void _logActivity() {
-    setState(() {
-      _caloriesBurned += 150;
-      _activitiesLogged++;
-    });
-    _showActivityLoggedMessage();
+    // Show dialog to log activity
+    showDialog(
+      context: context,
+      builder: (context) => ActivityLogDialog(
+        onSave: (ActivityRecord activity) {
+          setState(() {
+            _recentActivities.insert(0, activity);
+            _caloriesBurned += activity.calories;
+            _activitiesLogged++;
+          });
+          _showActivityLoggedMessage();
+        },
+      ),
+    );
   }
 
   void _showActivityLoggedMessage() {
@@ -236,19 +224,33 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             const SizedBox(height: 16),
-            _buildActivityItem(
-              'Running',
-              '250 calories · 30 min',
-              Icons.directions_run,
-              Colors.blue,
-            ),
-            const Divider(),
-            _buildActivityItem(
-              'Weight Training',
-              '100 calories · 20 min',
-              Icons.fitness_center,
-              Colors.purple,
-            ),
+            if (_recentActivities.isEmpty)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text(
+                    'No activities logged yet. Tap the + button to add one!',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+              )
+            else
+              Column(
+                children: _recentActivities.map((activity) {
+                  return Column(
+                    children: [
+                      _buildActivityItem(
+                        activity.name,
+                        '${activity.calories} calories · ${activity.duration} min',
+                        activity.iconData,
+                        activity.color,
+                        _dateFormatter.format(activity.date),
+                      ),
+                      const Divider(),
+                    ],
+                  );
+                }).toList(),
+              ),
           ],
         ),
       ),
@@ -260,6 +262,7 @@ class _HomePageState extends State<HomePage> {
     String subtitle,
     IconData icon,
     Color color,
+    String date,
   ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -292,6 +295,13 @@ class _HomePageState extends State<HomePage> {
                     color: Colors.grey[600],
                   ),
                 ),
+                Text(
+                  date,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[400],
+                  ),
+                ),
               ],
             ),
           ),
@@ -301,13 +311,9 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildFirebaseStatus() {
-    final Color statusColor = widget.firebaseInitialized ? Colors.green : Colors.orange;
-    final String statusText = widget.firebaseInitialized 
-        ? 'Firebase connected successfully'
-        : 'Firebase connection requires configuration';
-    final String detailText = widget.firebaseInitialized
-        ? 'Your fitness data will be synced to the cloud.'
-        : 'Add your Firebase API key to enable cloud sync, authentication, and real-time data.';
+    final Color statusColor = Colors.orange;
+    final String statusText = 'Firebase connection requires configuration';
+    final String detailText = 'Add your Firebase API key to enable cloud sync, authentication, and real-time data.';
     
     return Card(
       elevation: 4,
@@ -319,7 +325,7 @@ class _HomePageState extends State<HomePage> {
           children: [
             Row(
               children: [
-                Icon(widget.firebaseInitialized ? Icons.cloud_done : Icons.cloud_off, color: statusColor),
+                Icon(Icons.cloud_off, color: statusColor),
                 const SizedBox(width: 8),
                 Text(
                   'Firebase Status',
@@ -346,12 +352,11 @@ class _HomePageState extends State<HomePage> {
               style: const TextStyle(fontSize: 14),
             ),
             const SizedBox(height: 12),
-            if (!widget.firebaseInitialized)
-              OutlinedButton.icon(
-                onPressed: _configureFirebase,
-                icon: const Icon(Icons.cloud_upload),
-                label: const Text('Configure Firebase'),
-              ),
+            OutlinedButton.icon(
+              onPressed: _configureFirebase,
+              icon: const Icon(Icons.cloud_upload),
+              label: const Text('Configure Firebase'),
+            ),
           ],
         ),
       ),
@@ -376,10 +381,10 @@ class _HomePageState extends State<HomePage> {
             const Text(
                 'This app helps you track workouts, calories, and healthy habits.'),
             const SizedBox(height: 16),
-            Text(
-              'Firebase Status: ${widget.firebaseInitialized ? 'Connected' : 'Not Connected'}',
+            const Text(
+              'Firebase Status: Not Connected',
               style: TextStyle(
-                color: widget.firebaseInitialized ? Colors.green : Colors.orange,
+                color: Colors.orange,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -439,13 +444,201 @@ class _HomePageState extends State<HomePage> {
 
   void _askForFirebaseApiKey() {
     // In a real app, this would get and store the Firebase API key
-    // For now, show a success message
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Firebase API key would be configured here'),
         backgroundColor: Colors.blue,
         duration: Duration(seconds: 3),
       ),
+    );
+  }
+}
+
+// Model class for activity records
+class ActivityRecord {
+  final String name;
+  final int calories;
+  final int duration;
+  final IconData iconData;
+  final Color color;
+  final DateTime date;
+  
+  ActivityRecord({
+    required this.name, 
+    required this.calories, 
+    required this.duration, 
+    required this.iconData,
+    required this.color,
+    required this.date,
+  });
+}
+
+// Dialog for logging new activities
+class ActivityLogDialog extends StatefulWidget {
+  final Function(ActivityRecord) onSave;
+  
+  const ActivityLogDialog({
+    Key? key,
+    required this.onSave,
+  }) : super(key: key);
+
+  @override
+  State<ActivityLogDialog> createState() => _ActivityLogDialogState();
+}
+
+class _ActivityLogDialogState extends State<ActivityLogDialog> {
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _caloriesController = TextEditingController();
+  final TextEditingController _durationController = TextEditingController();
+  
+  IconData _selectedIcon = Icons.directions_run;
+  Color _selectedColor = Colors.blue;
+  
+  final List<MapEntry<IconData, String>> _availableIcons = [
+    MapEntry(Icons.directions_run, 'Running'),
+    MapEntry(Icons.directions_bike, 'Cycling'),
+    MapEntry(Icons.fitness_center, 'Weights'),
+    MapEntry(Icons.pool, 'Swimming'),
+    MapEntry(Icons.sports_tennis, 'Tennis'),
+    MapEntry(Icons.sports_basketball, 'Basketball'),
+  ];
+  
+  final List<Color> _availableColors = [
+    Colors.blue,
+    Colors.red,
+    Colors.green,
+    Colors.orange,
+    Colors.purple,
+    Colors.teal,
+  ];
+  
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Log New Activity'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                labelText: 'Activity Name',
+                hintText: 'e.g. Running, Cycling',
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _caloriesController,
+              decoration: const InputDecoration(
+                labelText: 'Calories Burned',
+                hintText: 'e.g. 200',
+              ),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _durationController,
+              decoration: const InputDecoration(
+                labelText: 'Duration (minutes)',
+                hintText: 'e.g. 30',
+              ),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 16),
+            const Text('Select Icon:'),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 60,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: _availableIcons.map((iconEntry) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: InkWell(
+                      onTap: () {
+                        setState(() {
+                          _selectedIcon = iconEntry.key;
+                        });
+                      },
+                      child: CircleAvatar(
+                        backgroundColor: _selectedIcon == iconEntry.key
+                            ? Colors.grey.shade300
+                            : Colors.transparent,
+                        child: Icon(iconEntry.key),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text('Select Color:'),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 50,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: _availableColors.map((color) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: InkWell(
+                      onTap: () {
+                        setState(() {
+                          _selectedColor = color;
+                        });
+                      },
+                      child: CircleAvatar(
+                        backgroundColor: color,
+                        child: _selectedColor == color
+                            ? const Icon(Icons.check, color: Colors.white)
+                            : null,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            // Validate inputs
+            if (_nameController.text.isEmpty ||
+                _caloriesController.text.isEmpty ||
+                _durationController.text.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Please fill in all fields'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+              return;
+            }
+            
+            // Create activity record
+            final activity = ActivityRecord(
+              name: _nameController.text,
+              calories: int.tryParse(_caloriesController.text) ?? 0,
+              duration: int.tryParse(_durationController.text) ?? 0,
+              iconData: _selectedIcon,
+              color: _selectedColor,
+              date: DateTime.now(),
+            );
+            
+            // Pass to parent widget
+            widget.onSave(activity);
+            Navigator.pop(context);
+          },
+          child: const Text('Save'),
+        ),
+      ],
     );
   }
 }
