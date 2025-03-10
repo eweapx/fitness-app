@@ -2,47 +2,55 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Fuel Fitness</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     body {
       background-color: #f8f9fa;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      overflow-x: hidden;
+      padding-bottom: 60px; /* Space for bottom nav on mobile */
     }
     .app-container {
       max-width: 800px;
       margin: 0 auto;
-      padding: 20px;
+      padding: 15px;
+      overflow-x: hidden;
     }
     .stats-card {
       border-radius: 15px;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      margin-bottom: 25px;
-      padding: 20px;
+      margin-bottom: 20px;
+      padding: 15px;
       background-color: white;
     }
     .stat-icon {
-      font-size: 2rem;
+      font-size: 1.8rem;
       margin-bottom: 10px;
     }
     .stat-value {
-      font-size: 1.8rem;
+      font-size: 1.6rem;
       font-weight: bold;
     }
     .stat-label {
-      font-size: 0.9rem;
+      font-size: 0.8rem;
       color: #6c757d;
     }
     .activity-icon {
-      width: 50px;
-      height: 50px;
+      width: 45px;
+      height: 45px;
       border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
       margin-right: 15px;
-      font-size: 1.5rem;
+      font-size: 1.3rem;
+      flex-shrink: 0;
     }
     .activity-time {
       font-size: 0.8rem;
@@ -58,6 +66,66 @@
     .firebase-status {
       color: #fd7e14;
       font-weight: bold;
+    }
+    
+    /* iOS-specific mobile styles */
+    @media (max-width: 767px) {
+      .navbar-collapse {
+        max-height: 85vh;
+        overflow-y: auto;
+      }
+      
+      .stats-card {
+        padding: 12px;
+        border-radius: 12px;
+      }
+      
+      /* Make buttons and interactive elements larger for touch */
+      .btn {
+        padding: 0.5rem 1rem;
+        font-size: 1rem;
+      }
+      
+      .form-control {
+        height: calc(2.5rem + 2px);
+        font-size: 1rem;
+      }
+      
+      /* Bottom tab navigation for mobile */
+      .mobile-tab-nav {
+        display: none;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: white;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        z-index: 1000;
+        padding: 10px 0 5px;
+      }
+      
+      @media (max-width: 576px) {
+        .mobile-tab-nav {
+          display: flex;
+        }
+        
+        .navbar-collapse .navbar-nav {
+          display: none;
+        }
+      }
+      
+      /* iOS-style form fields */
+      .form-control, .form-select {
+        border-radius: 8px;
+        background-color: #f1f2f3;
+        border: none;
+        padding: 12px 15px;
+      }
+      
+      /* Extra bottom padding for iOS Safari */
+      .ios-padding-bottom {
+        padding-bottom: env(safe-area-inset-bottom, 20px);
+      }
     }
   </style>
 </head>
@@ -178,6 +246,44 @@
     <button class="btn btn-primary rounded-circle p-3 shadow" data-bs-toggle="modal" data-bs-target="#logActivityModal">
       <i class="bi bi-plus-lg fs-5"></i>
     </button>
+  </div>
+  
+  <!-- Mobile Tab Navigation -->
+  <div class="mobile-tab-nav ios-padding-bottom">
+    <div class="container">
+      <div class="row text-center">
+        <div class="col">
+          <a href="#" class="d-flex flex-column align-items-center text-decoration-none active" id="mobile-dashboard">
+            <i class="bi bi-speedometer2 mb-1"></i>
+            <span class="small">Dashboard</span>
+          </a>
+        </div>
+        <div class="col">
+          <a href="#" class="d-flex flex-column align-items-center text-decoration-none" id="mobile-workouts">
+            <i class="bi bi-calendar-check mb-1"></i>
+            <span class="small">Workouts</span>
+          </a>
+        </div>
+        <div class="col">
+          <a href="#" class="d-flex flex-column align-items-center text-decoration-none" id="mobile-nutrition">
+            <i class="bi bi-egg-fried mb-1"></i>
+            <span class="small">Nutrition</span>
+          </a>
+        </div>
+        <div class="col">
+          <a href="#" class="d-flex flex-column align-items-center text-decoration-none" id="mobile-quit">
+            <i class="bi bi-x-circle mb-1"></i>
+            <span class="small">Quit</span>
+          </a>
+        </div>
+        <div class="col">
+          <a href="#" class="d-flex flex-column align-items-center text-decoration-none" id="mobile-profile">
+            <i class="bi bi-person mb-1"></i>
+            <span class="small">Profile</span>
+          </a>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- About Modal -->
