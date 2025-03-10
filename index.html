@@ -69,6 +69,28 @@
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav">
+          <li class="nav-item">
+            <a class="nav-link active" href="#" id="dashboard-tab">
+              <i class="bi bi-speedometer2"></i> Dashboard
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#" id="workouts-tab">
+              <i class="bi bi-calendar-check"></i> Workouts
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#" id="stats-tab">
+              <i class="bi bi-graph-up"></i> Statistics
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#" id="profile-tab">
+              <i class="bi bi-person"></i> Profile
+            </a>
+          </li>
+        </ul>
         <ul class="navbar-nav ms-auto">
           <li class="nav-item">
             <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal">
@@ -357,6 +379,199 @@
       }, 3000);
     }
 
+    // Handle tab navigation
+    function setupTabNavigation() {
+      const dashboardTab = document.getElementById('dashboard-tab');
+      const workoutsTab = document.getElementById('workouts-tab');
+      const statsTab = document.getElementById('stats-tab');
+      const profileTab = document.getElementById('profile-tab');
+      const appContainer = document.querySelector('.app-container');
+      
+      // Store current content
+      const dashboardContent = appContainer.innerHTML;
+      
+      // Content for other tabs
+      const workoutsContent = `
+        <div class="stats-card">
+          <h4 class="mb-4">Your Workout Plans</h4>
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            This section will contain your workout plans and routines.
+          </div>
+          
+          <div class="card mb-3">
+            <div class="card-body">
+              <h5 class="card-title">Morning Cardio</h5>
+              <p class="card-text text-muted">30 min · 250 calories · Moderate intensity</p>
+              <div class="progress mb-3" style="height: 6px;">
+                <div class="progress-bar bg-success" role="progressbar" style="width: 75%"></div>
+              </div>
+              <div class="d-flex justify-content-between">
+                <span class="badge bg-primary">3x per week</span>
+                <button class="btn btn-sm btn-outline-primary">View Details</button>
+              </div>
+            </div>
+          </div>
+          
+          <div class="card mb-3">
+            <div class="card-body">
+              <h5 class="card-title">Full Body Strength</h5>
+              <p class="card-text text-muted">45 min · 350 calories · High intensity</p>
+              <div class="progress mb-3" style="height: 6px;">
+                <div class="progress-bar bg-warning" role="progressbar" style="width: 40%"></div>
+              </div>
+              <div class="d-flex justify-content-between">
+                <span class="badge bg-primary">2x per week</span>
+                <button class="btn btn-sm btn-outline-primary">View Details</button>
+              </div>
+            </div>
+          </div>
+          
+          <button class="btn btn-primary w-100 mt-3">
+            <i class="bi bi-plus-circle me-2"></i> Create New Workout Plan
+          </button>
+        </div>
+      `;
+      
+      const statsContent = `
+        <div class="stats-card">
+          <h4 class="mb-4">Your Progress</h4>
+          
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            This section will show detailed statistics and charts of your progress.
+          </div>
+          
+          <div class="mb-4">
+            <h5 class="mb-3">Weekly Activity Summary</h5>
+            <div class="progress mb-3" style="height: 25px;">
+              <div class="progress-bar bg-success" role="progressbar" style="width: 30%" 
+                   aria-valuenow="30" aria-valuemin="0" aria-valuemax="100">Running</div>
+              <div class="progress-bar bg-warning" role="progressbar" style="width: 15%" 
+                   aria-valuenow="15" aria-valuemin="0" aria-valuemax="100">Cycling</div>
+              <div class="progress-bar bg-danger" role="progressbar" style="width: 20%" 
+                   aria-valuenow="20" aria-valuemin="0" aria-valuemax="100">Weights</div>
+              <div class="progress-bar bg-info" role="progressbar" style="width: 10%" 
+                   aria-valuenow="10" aria-valuemin="0" aria-valuemax="100">Swimming</div>
+            </div>
+            
+            <div class="row mt-4">
+              <div class="col-md-6">
+                <div class="card mb-3">
+                  <div class="card-body">
+                    <h6 class="card-title">Total Minutes This Week</h6>
+                    <div class="d-flex align-items-end">
+                      <h2 class="mb-0 me-2">250</h2>
+                      <span class="text-success"><i class="bi bi-arrow-up-short"></i>15%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="card mb-3">
+                  <div class="card-body">
+                    <h6 class="card-title">Calories Burned This Week</h6>
+                    <div class="d-flex align-items-end">
+                      <h2 class="mb-0 me-2">1,450</h2>
+                      <span class="text-success"><i class="bi bi-arrow-up-short"></i>8%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      const profileContent = `
+        <div class="stats-card">
+          <h4 class="mb-4">Your Profile</h4>
+          
+          <div class="d-flex align-items-center mb-4">
+            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" 
+                 style="width: 80px; height: 80px; font-size: 2rem;">
+              <i class="bi bi-person"></i>
+            </div>
+            <div class="ms-3">
+              <h5 class="mb-1">User Profile</h5>
+              <p class="text-muted mb-0">Fitness Enthusiast</p>
+            </div>
+          </div>
+          
+          <form>
+            <div class="mb-3">
+              <label for="display-name" class="form-label">Display Name</label>
+              <input type="text" class="form-control" id="display-name" value="Fitness User">
+            </div>
+            
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label for="weight" class="form-label">Weight (kg)</label>
+                <input type="number" class="form-control" id="weight" value="70">
+              </div>
+              <div class="col-md-6">
+                <label for="height" class="form-label">Height (cm)</label>
+                <input type="number" class="form-control" id="height" value="175">
+              </div>
+            </div>
+            
+            <div class="mb-3">
+              <label for="fitness-goal" class="form-label">Fitness Goal</label>
+              <select class="form-select" id="fitness-goal">
+                <option value="weight-loss">Weight Loss</option>
+                <option value="muscle-gain" selected>Muscle Gain</option>
+                <option value="endurance">Endurance</option>
+                <option value="general">General Fitness</option>
+              </select>
+            </div>
+            
+            <button type="button" class="btn btn-primary">
+              <i class="bi bi-save me-1"></i> Save Profile
+            </button>
+          </form>
+        </div>
+      `;
+      
+      // Setup tab click handlers
+      dashboardTab.addEventListener('click', (e) => {
+        e.preventDefault();
+        setActiveTab(dashboardTab);
+        appContainer.innerHTML = dashboardContent;
+        // Reinitialize the dashboard state
+        updateStats();
+        renderActivities();
+      });
+      
+      workoutsTab.addEventListener('click', (e) => {
+        e.preventDefault();
+        setActiveTab(workoutsTab);
+        appContainer.innerHTML = workoutsContent;
+      });
+      
+      statsTab.addEventListener('click', (e) => {
+        e.preventDefault();
+        setActiveTab(statsTab);
+        appContainer.innerHTML = statsContent;
+      });
+      
+      profileTab.addEventListener('click', (e) => {
+        e.preventDefault();
+        setActiveTab(profileTab);
+        appContainer.innerHTML = profileContent;
+      });
+      
+      // Helper function to set active tab
+      function setActiveTab(activeTab) {
+        // Remove active class from all tabs
+        [dashboardTab, workoutsTab, statsTab, profileTab].forEach(tab => {
+          tab.classList.remove('active');
+        });
+        
+        // Add active class to clicked tab
+        activeTab.classList.add('active');
+      }
+    }
+    
     // Initialize the app
     function initApp() {
       // Add sample activities
@@ -367,6 +582,9 @@
       state.caloriesBurned = 400;
       state.stepsCount = 5000;
       state.activitiesLogged = 2;
+      
+      // Set up tab navigation
+      setupTabNavigation();
       
       // Update UI
       updateStats();
