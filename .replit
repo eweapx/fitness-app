@@ -11,5 +11,28 @@ name = "Project"
 mode = "parallel"
 author = "agent"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Flutter Web Server"
+
+[[workflows.workflow]]
+name = "Flutter Web Server"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd /home/runner/workspace && flutter run -d web-server --web-port 5000 --web-hostname 0.0.0.0"
+waitForPort = 5000
+
 [deployment]
-run = ["sh", "-c", "flutter run -d web-server --web-port 5000 --web-hostname 0.0.0.0"]
+run = ["sh", "-c", "cd /home/runner/workspace && flutter run -d web-server --web-port 5000 --web-hostname 0.0.0.0"]
+
+[[ports]]
+localPort = 5000
+externalPort = 80
