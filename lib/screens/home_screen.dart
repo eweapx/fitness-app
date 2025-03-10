@@ -127,7 +127,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       await _loadUserProfile();
       
       // Check health permissions
-      _isHealthPermissionGranted = await _healthService.requestPermissions(context);
+      _isHealthPermissionGranted = await _healthService.requestPermissions();
       
       // Load today's stats
       await _loadTodayStats();
@@ -229,8 +229,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             _isListening = false;
           });
           
-          // Process the voice command
-          _voiceService.processActivityCommand(result, context);
+          // No need to process the command here as it's already 
+          // processed in the voice service during _onSpeechResult
         }
       });
     } catch (e, stack) {
@@ -456,7 +456,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     const SizedBox(height: 8),
                     ElevatedButton(
                       onPressed: () async {
-                        bool granted = await _healthService.requestPermissions(context);
+                        bool granted = await _healthService.requestPermissions();
                         if (mounted) {
                           setState(() {
                             _isHealthPermissionGranted = granted;
@@ -510,7 +510,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     const SizedBox(height: 16),
                     SizedBox(
                       height: 200,
-                      child: ActivityChart(),
+                      child: ActivityChart(activityData: []),
                     ),
                   ],
                 ),

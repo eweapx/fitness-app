@@ -49,7 +49,7 @@ class VoiceService {
   }
   
   /// Start listening for voice commands
-  Future<bool> startListening() async {
+  Future<bool> startListening(Function(String) onResult) async {
     if (!_isInitialized) {
       if (!await initialize()) {
         return false;
@@ -72,7 +72,9 @@ class VoiceService {
       // Simulate a voice command after a delay for testing
       Future.delayed(const Duration(seconds: 2), () {
         if (_isListening) {
-          _onSpeechResult('log running 30 minutes');
+          String result = 'log running 30 minutes';
+          _onSpeechResult(result);
+          onResult(result);
         }
       });
       
@@ -211,15 +213,11 @@ class VoiceService {
     }
     
     // Log the activity
-    final activityData = {
-      'type': activityType,
-      'duration': duration,
-      'calories': calories,
-      'timestamp': DateTime.now().millisecondsSinceEpoch,
-      'auto': false,
-    };
-    
-    final success = await _healthService.logManualActivity(activityData);
+    final success = await _healthService.logManualActivity(
+      activityType: activityType,
+      calories: calories,
+      duration: duration,
+    );
     
     if (success) {
       await _notifySuccess('Logged $activityType for $duration minutes');

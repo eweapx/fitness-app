@@ -140,8 +140,8 @@ class HealthService {
     }
   }
   
-  /// Log a manual activity to the user's health data
-  Future<bool> logManualActivity(Map<String, dynamic> activityData) async {
+  /// Log a manual activity to the user's health data using a map
+  Future<bool> _logActivity(Map<String, dynamic> activityData) async {
     try {
       // In a real app, we would save this to Firestore and local health data
       Logger.logEvent('Manual activity logged', activityData);
@@ -176,6 +176,43 @@ class HealthService {
       return true;
     } catch (e, stack) {
       Logger.logError('Error stopping auto tracking', e, stack);
+      return false;
+    }
+  }
+  
+  /// Request notification permissions
+  Future<bool> requestNotificationPermissions() async {
+    try {
+      // In a real app, this would request notification permissions on the device
+      Logger.logEvent('Notification permissions requested');
+      return true;
+    } catch (e, stack) {
+      Logger.logError('Error requesting notification permissions', e, stack);
+      return false;
+    }
+  }
+  
+  /// Log a manual activity with specific details
+  Future<bool> logManualActivity({
+    required String activityType,
+    required int calories,
+    required int duration,
+    double? distance,
+  }) async {
+    try {
+      final activityData = {
+        'activityType': activityType,
+        'calories': calories,
+        'duration': duration,
+        'distance': distance,
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+      
+      // In a real app, we would save this to Firestore and local health data
+      Logger.logEvent('Manual activity logged', activityData);
+      return true;
+    } catch (e, stack) {
+      Logger.logError('Error logging manual activity', e, stack);
       return false;
     }
   }
