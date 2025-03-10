@@ -54,19 +54,3 @@ run = ["sh", "-c", "cd /home/runner/workspace && flutter run -d web-server --web
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 33325
-externalPort = 3003
-
-[[ports]]
-localPort = 34677
-externalPort = 3002
-
-[[ports]]
-localPort = 42559
-externalPort = 3000
-
-[[ports]]
-localPort = 42565
-externalPort = 3001

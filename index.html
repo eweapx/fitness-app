@@ -81,6 +81,16 @@
             </a>
           </li>
           <li class="nav-item">
+            <a class="nav-link" href="#" id="nutrition-tab">
+              <i class="bi bi-egg-fried"></i> Nutrition
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#" id="habits-tab">
+              <i class="bi bi-check2-circle"></i> Habits
+            </a>
+          </li>
+          <li class="nav-item">
             <a class="nav-link" href="#" id="stats-tab">
               <i class="bi bi-graph-up"></i> Statistics
             </a>
@@ -383,6 +393,8 @@
     function setupTabNavigation() {
       const dashboardTab = document.getElementById('dashboard-tab');
       const workoutsTab = document.getElementById('workouts-tab');
+      const nutritionTab = document.getElementById('nutrition-tab');
+      const habitsTab = document.getElementById('habits-tab');
       const statsTab = document.getElementById('stats-tab');
       const profileTab = document.getElementById('profile-tab');
       const appContainer = document.querySelector('.app-container');
@@ -483,6 +495,231 @@
         </div>
       `;
       
+      const nutritionContent = `
+        <div class="stats-card">
+          <h4 class="mb-4">Nutrition Logs</h4>
+          
+          <div class="alert alert-info mb-4">
+            <i class="bi bi-info-circle me-2"></i>
+            Track your daily nutrition intake and monitor macronutrients.
+          </div>
+          
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Today's Intake</h5>
+            <button class="btn btn-sm btn-primary">
+              <i class="bi bi-plus-lg me-1"></i> Log Meal
+            </button>
+          </div>
+          
+          <div class="row mb-4">
+            <div class="col-6 col-md-3 mb-3">
+              <div class="card h-100">
+                <div class="card-body text-center">
+                  <h6 class="card-title text-muted">Calories</h6>
+                  <div class="d-flex align-items-center justify-content-center">
+                    <h3 class="mb-0 me-2">1,240</h3>
+                    <span class="text-muted small">/ 2,000</span>
+                  </div>
+                  <div class="progress mt-2" style="height: 6px;">
+                    <div class="progress-bar bg-primary" role="progressbar" style="width: 62%"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3 mb-3">
+              <div class="card h-100">
+                <div class="card-body text-center">
+                  <h6 class="card-title text-muted">Protein</h6>
+                  <div class="d-flex align-items-center justify-content-center">
+                    <h3 class="mb-0 me-2">82g</h3>
+                    <span class="text-muted small">/ 120g</span>
+                  </div>
+                  <div class="progress mt-2" style="height: 6px;">
+                    <div class="progress-bar bg-success" role="progressbar" style="width: 68%"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3 mb-3">
+              <div class="card h-100">
+                <div class="card-body text-center">
+                  <h6 class="card-title text-muted">Carbs</h6>
+                  <div class="d-flex align-items-center justify-content-center">
+                    <h3 class="mb-0 me-2">140g</h3>
+                    <span class="text-muted small">/ 250g</span>
+                  </div>
+                  <div class="progress mt-2" style="height: 6px;">
+                    <div class="progress-bar bg-warning" role="progressbar" style="width: 56%"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3 mb-3">
+              <div class="card h-100">
+                <div class="card-body text-center">
+                  <h6 class="card-title text-muted">Fat</h6>
+                  <div class="d-flex align-items-center justify-content-center">
+                    <h3 class="mb-0 me-2">45g</h3>
+                    <span class="text-muted small">/ 65g</span>
+                  </div>
+                  <div class="progress mt-2" style="height: 6px;">
+                    <div class="progress-bar bg-danger" role="progressbar" style="width: 69%"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <h5 class="mb-3">Recent Meals</h5>
+          <div class="list-group mb-4">
+            <div class="list-group-item">
+              <div class="d-flex w-100 justify-content-between">
+                <h6 class="mb-1">Breakfast: Oatmeal with Berries</h6>
+                <small class="text-muted">2 hours ago</small>
+              </div>
+              <p class="mb-1 text-muted small">320 calories · 8g protein · 54g carbs · 9g fat</p>
+            </div>
+            <div class="list-group-item">
+              <div class="d-flex w-100 justify-content-between">
+                <h6 class="mb-1">Lunch: Grilled Chicken Salad</h6>
+                <small class="text-muted">30 minutes ago</small>
+              </div>
+              <p class="mb-1 text-muted small">420 calories · 35g protein · 15g carbs · 22g fat</p>
+            </div>
+            <div class="list-group-item">
+              <div class="d-flex w-100 justify-content-between">
+                <h6 class="mb-1">Snack: Protein Shake</h6>
+                <small class="text-muted">Just now</small>
+              </div>
+              <p class="mb-1 text-muted small">180 calories · 24g protein · 5g carbs · 4g fat</p>
+            </div>
+          </div>
+          
+          <button class="btn btn-outline-primary w-100">
+            <i class="bi bi-calendar me-1"></i> View Nutrition History
+          </button>
+        </div>
+      `;
+      
+      const habitsContent = `
+        <div class="stats-card">
+          <h4 class="mb-4">Habit Tracker</h4>
+          
+          <div class="alert alert-info mb-4">
+            <i class="bi bi-info-circle me-2"></i>
+            Build consistent healthy habits by tracking daily activities.
+          </div>
+          
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Today's Habits</h5>
+            <button class="btn btn-sm btn-primary">
+              <i class="bi bi-plus-lg me-1"></i> Add New Habit
+            </button>
+          </div>
+          
+          <div class="card mb-4">
+            <div class="card-body">
+              <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="habit1" checked>
+                <label class="form-check-label d-flex justify-content-between" for="habit1">
+                  <div>
+                    <span class="fw-bold">Morning Workout</span>
+                    <div class="text-muted small">Complete at least 30 minutes of exercise</div>
+                  </div>
+                  <div class="ms-auto badge bg-success">5 day streak</div>
+                </label>
+              </div>
+              
+              <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="habit2" checked>
+                <label class="form-check-label d-flex justify-content-between" for="habit2">
+                  <div>
+                    <span class="fw-bold">Drink Water</span>
+                    <div class="text-muted small">Drink at least 2 liters of water</div>
+                  </div>
+                  <div class="ms-auto badge bg-primary">12 day streak</div>
+                </label>
+              </div>
+              
+              <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="habit3">
+                <label class="form-check-label d-flex justify-content-between" for="habit3">
+                  <div>
+                    <span class="fw-bold">Meditate</span>
+                    <div class="text-muted small">10 minutes of meditation</div>
+                  </div>
+                  <div class="ms-auto badge bg-warning">1 day streak</div>
+                </label>
+              </div>
+              
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="habit4">
+                <label class="form-check-label d-flex justify-content-between" for="habit4">
+                  <div>
+                    <span class="fw-bold">Track Nutrition</span>
+                    <div class="text-muted small">Log all meals for the day</div>
+                  </div>
+                  <div class="ms-auto badge bg-secondary">0 day streak</div>
+                </label>
+              </div>
+            </div>
+          </div>
+          
+          <h5 class="mb-3">Weekly Streak Calendar</h5>
+          <div class="d-flex justify-content-between text-center mb-2">
+            <div class="px-1">
+              <div class="small text-muted">Mon</div>
+              <div class="rounded-circle bg-success d-flex align-items-center justify-content-center mx-auto" 
+                   style="width: 35px; height: 35px; color: white">
+                <i class="bi bi-check-lg"></i>
+              </div>
+            </div>
+            <div class="px-1">
+              <div class="small text-muted">Tue</div>
+              <div class="rounded-circle bg-success d-flex align-items-center justify-content-center mx-auto" 
+                   style="width: 35px; height: 35px; color: white">
+                <i class="bi bi-check-lg"></i>
+              </div>
+            </div>
+            <div class="px-1">
+              <div class="small text-muted">Wed</div>
+              <div class="rounded-circle bg-success d-flex align-items-center justify-content-center mx-auto" 
+                   style="width: 35px; height: 35px; color: white">
+                <i class="bi bi-check-lg"></i>
+              </div>
+            </div>
+            <div class="px-1">
+              <div class="small text-muted">Thu</div>
+              <div class="rounded-circle bg-warning d-flex align-items-center justify-content-center mx-auto" 
+                   style="width: 35px; height: 35px; color: white">
+                <i class="bi bi-dash-lg"></i>
+              </div>
+            </div>
+            <div class="px-1">
+              <div class="small text-muted">Fri</div>
+              <div class="rounded-circle bg-success d-flex align-items-center justify-content-center mx-auto" 
+                   style="width: 35px; height: 35px; color: white">
+                <i class="bi bi-check-lg"></i>
+              </div>
+            </div>
+            <div class="px-1">
+              <div class="small text-muted">Sat</div>
+              <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center mx-auto" 
+                   style="width: 35px; height: 35px; color: white">
+                <i class="bi bi-dot"></i>
+              </div>
+            </div>
+            <div class="px-1">
+              <div class="small text-muted">Sun</div>
+              <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center mx-auto" 
+                   style="width: 35px; height: 35px; color: white">
+                <i class="bi bi-dot"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      
       const profileContent = `
         <div class="stats-card">
           <h4 class="mb-4">Your Profile</h4>
@@ -548,6 +785,18 @@
         appContainer.innerHTML = workoutsContent;
       });
       
+      nutritionTab.addEventListener('click', (e) => {
+        e.preventDefault();
+        setActiveTab(nutritionTab);
+        appContainer.innerHTML = nutritionContent;
+      });
+      
+      habitsTab.addEventListener('click', (e) => {
+        e.preventDefault();
+        setActiveTab(habitsTab);
+        appContainer.innerHTML = habitsContent;
+      });
+      
       statsTab.addEventListener('click', (e) => {
         e.preventDefault();
         setActiveTab(statsTab);
@@ -563,7 +812,7 @@
       // Helper function to set active tab
       function setActiveTab(activeTab) {
         // Remove active class from all tabs
-        [dashboardTab, workoutsTab, statsTab, profileTab].forEach(tab => {
+        [dashboardTab, workoutsTab, nutritionTab, habitsTab, statsTab, profileTab].forEach(tab => {
           tab.classList.remove('active');
         });
         
