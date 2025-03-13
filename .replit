@@ -13,26 +13,11 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Node Express Server"
+args = "Run Tests"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Run Tests"
-
-[[workflows.workflow]]
-name = "Node Express Server"
-author = "agent"
-
-[workflows.workflow.metadata]
-agentRequireRestartOnSave = false
-
-[[workflows.workflow.tasks]]
-task = "packager.installForAll"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "node server.js"
-waitForPort = 5000
+args = "Flutter Web Server"
 
 [[workflows.workflow]]
 name = "Run Tests"
@@ -48,6 +33,21 @@ task = "packager.installForAll"
 task = "shell.exec"
 args = "npx jest"
 
+[[workflows.workflow]]
+name = "Flutter Web Server"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd fitness_tracker && flutter run -d web-server --web-port=5000 --web-hostname=0.0.0.0"
+waitForPort = 5000
+
 [deployment]
 run = ["sh", "-c", "cd /home/runner/workspace && flutter run -d web-server --web-port 5000 --web-hostname 0.0.0.0"]
 
@@ -56,17 +56,17 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 32869
-externalPort = 3001
-
-[[ports]]
-localPort = 36907
+localPort = 33053
 externalPort = 3002
 
 [[ports]]
-localPort = 43295
+localPort = 36621
 externalPort = 3000
 
 [[ports]]
-localPort = 46309
+localPort = 41601
+externalPort = 3001
+
+[[ports]]
+localPort = 44465
 externalPort = 3003
