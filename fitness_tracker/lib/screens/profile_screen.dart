@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import '../models/user_model.dart';
-import '../services/firebase_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+
+import '../providers/user_provider.dart';
+import '../providers/settings_provider.dart';
 import '../utils/constants.dart';
 import '../widgets/common_widgets.dart';
 
@@ -12,587 +17,522 @@ class ProfileScreen extends StatefulWidget {
   _ProfileScreenState createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderStateMixin {
-  final FirebaseService _firebaseService = FirebaseService();
-  late TabController _tabController;
-  bool _isLoading = true;
-  UserModel? _user;
+class _ProfileScreenState extends State<ProfileScreen> {
+  bool _isLoading = false;
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  String _gender = '';
+  DateTime? _dateOfBirth;
+  final _heightController = TextEditingController();
+  final _weightController = TextEditingController();
+  String _activityLevel = 'moderate';
+  final _bioController = TextEditingController();
+  File? _profileImage;
   
-  // Demo user data (in a real app, this would come from Firebase)
-  final Map<String, dynamic> _demoUserData = {
-    'id': 'demo_user',
-    'email': 'user@example.com',
-    'name': 'John Doe',
-    'photoUrl': null,
-    'age': 30,
-    'weight': 75.0, // kg
-    'height': 175.0, // cm
-    'gender': 'male',
-    'birthDate': DateTime(1993, 5, 15),
-    'goals': {
-      'dailyCalories': 2200,
-      'dailySteps': 10000,
-      'dailyWater': 2500, // ml
-      'weeklyWorkouts': 4,
-      'targetWeight': 70.0, // kg
-    },
-    'settings': {
-      'useDarkMode': false,
-      'useMetricSystem': true,
-      'enableNotifications': true,
-      'notificationTimes': [
-        '08:00', // morning
-        '12:00', // lunch
-        '18:00', // dinner
-      ],
-    },
-    'createdAt': DateTime.now().subtract(const Duration(days: 90)),
+  final Map<String, String> _activityLevelLabels = {
+    'sedentary': 'Sedentary (little or no exercise)',
+    'light': 'Lightly active (light exercise 1-3 days/week)',
+    'moderate': 'Moderately active (moderate exercise 3-5 days/week)',
+    'active': 'Very active (hard exercise 6-7 days/week)',
+    'very_active': 'Extra active (very hard exercise, physical job, or training 2x/day)',
   };
-
+  
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-    _tabController.addListener(_handleTabChange);
     _loadUserProfile();
   }
-
+  
   @override
   void dispose() {
-    _tabController.dispose();
+    _nameController.dispose();
+    _emailController.dispose();
+    _heightController.dispose();
+    _weightController.dispose();
+    _bioController.dispose();
     super.dispose();
   }
-
-  void _handleTabChange() {
-    if (!_tabController.indexIsChanging) {
-      setState(() {});
-    }
-  }
-
+  
   Future<void> _loadUserProfile() async {
     setState(() => _isLoading = true);
     
     try {
-      // In a real app, we'd get the current user profile from Firebase
-      // For now, we'll use the demo user data
-      await Future.delayed(const Duration(milliseconds: 500)); // Simulate network request
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final user = userProvider.user;
+      final userProfile = userProvider.userProfile;
       
-      // Create a UserModel from the demo data
-      final user = UserModel(
-        id: _demoUserData['id'],
-        email: _demoUserData['email'],
-        name: _demoUserData['name'],
-        photoUrl: _demoUserData['photoUrl'],
-        age: _demoUserData['age'],
-        weight: _demoUserData['weight'],
-        height: _demoUserData['height'],
-        gender: _demoUserData['gender'],
-        birthDate: _demoUserData['birthDate'],
-        goals: _demoUserData['goals'],
-        settings: _demoUserData['settings'],
-        createdAt: _demoUserData['createdAt'],
-        updatedAt: DateTime.now(),
-      );
-      
-      setState(() {
-        _user = user;
-        _isLoading = false;
-      });
+      if (user != null) {
+        _nameController.text = user.displayName ?? '';
+        _emailController.text = user.email ?? '';
+        
+        if (userProfile != null) {
+          _gender = userProfile['gender'] ?? '';
+          
+          if (userProfile['dateOfBirth'] != null) {
+            _dateOfBirth = userProfile['dateOfBirth'].toDate();
+          }
+          
+          if (userProfile['height'] != null) {
+            final isMetric = Provider.of<SettingsProvider>(context, listen: false).useMetricSystem;
+            final height = userProfile['height'] as num;
+            
+            if (isMetric) {
+              _heightController.text = height.toString();
+            } else {
+              // Convert cm to feet and inches
+              final feetAndInches = AppHelpers.cmToFtIn(height.toDouble());
+              final feet = feetAndInches['feet'] ?? 0;
+              final inches = feetAndInches['inches'] ?? 0;
+              _heightController.text = '$feet\'$inches"';
+            }
+          }
+          
+          if (userProfile['weight'] != null) {
+            final isMetric = Provider.of<SettingsProvider>(context, listen: false).useMetricSystem;
+            final weight = userProfile['weight'] as num;
+            
+            if (isMetric) {
+              _weightController.text = weight.toString();
+            } else {
+              // Convert kg to lbs
+              final weightLbs = AppHelpers.kgToLbs(weight.toDouble());
+              _weightController.text = weightLbs.toStringAsFixed(1);
+            }
+          }
+          
+          _activityLevel = userProfile['activityLevel'] ?? 'moderate';
+          _bioController.text = userProfile['bio'] ?? '';
+        }
+      }
     } catch (e) {
       print('Error loading user profile: $e');
-      setState(() => _isLoading = false);
       
-      // Show error message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading profile: ${e.toString()}')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading profile: ${e.toString()}')),
+        );
+      }
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
-
-  void _signOut() {
-    // In a real app, we would sign out the user
-    // For now, just show a snackbar
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Sign out feature coming soon!')),
-    );
+  
+  Future<void> _saveProfile() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+    
+    setState(() => _isLoading = true);
+    
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final user = userProvider.user;
+      
+      if (user != null) {
+        // Prepare data
+        final Map<String, dynamic> data = {};
+        
+        // Basic info
+        if (_nameController.text.isNotEmpty && _nameController.text != user.displayName) {
+          // Update display name in Firebase Auth
+          await user.updateDisplayName(_nameController.text);
+          data['displayName'] = _nameController.text;
+        }
+        
+        // Other profile data
+        data['gender'] = _gender;
+        data['dateOfBirth'] = _dateOfBirth;
+        data['bio'] = _bioController.text;
+        data['activityLevel'] = _activityLevel;
+        
+        // Height
+        if (_heightController.text.isNotEmpty) {
+          final isMetric = Provider.of<SettingsProvider>(context, listen: false).useMetricSystem;
+          if (isMetric) {
+            // Metric: value is already in cm
+            data['height'] = double.parse(_heightController.text);
+          } else {
+            // Imperial: convert from feet'inches" to cm
+            final heightText = _heightController.text;
+            if (heightText.contains('\'')) {
+              final parts = heightText.split('\'');
+              final feet = int.parse(parts[0]);
+              int inches = 0;
+              
+              if (parts.length > 1 && parts[1].isNotEmpty) {
+                // Remove the trailing " if present
+                final inchesText = parts[1].replaceAll('"', '');
+                inches = int.parse(inchesText);
+              }
+              
+              data['height'] = AppHelpers.ftInToCm(feet, inches);
+            }
+          }
+        }
+        
+        // Weight
+        if (_weightController.text.isNotEmpty) {
+          final isMetric = Provider.of<SettingsProvider>(context, listen: false).useMetricSystem;
+          if (isMetric) {
+            // Metric: value is already in kg
+            data['weight'] = double.parse(_weightController.text);
+          } else {
+            // Imperial: convert from lbs to kg
+            data['weight'] = AppHelpers.lbsToKg(double.parse(_weightController.text));
+          }
+        }
+        
+        // Update profile
+        await userProvider.updateUserProfile(data);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Profile updated successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          
+          Navigator.pop(context);
+        }
+      }
+    } catch (e) {
+      print('Error saving profile: $e');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving profile: ${e.toString()}')),
+        );
+      }
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
-
+  
+  Future<void> _selectDate() async {
+    final initialDate = _dateOfBirth ?? DateTime(2000);
+    final firstDate = DateTime(1900);
+    final lastDate = DateTime.now();
+    
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
+    );
+    
+    if (pickedDate != null) {
+      setState(() => _dateOfBirth = pickedDate);
+    }
+  }
+  
+  Future<void> _selectProfilePicture() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    
+    if (pickedFile != null) {
+      setState(() => _profileImage = File(pickedFile.path));
+      
+      // TODO: Implement image upload to Firebase Storage
+      // This would be handled in a real app
+    }
+  }
+  
+  String _formatDate(DateTime? date) {
+    if (date == null) return 'Not set';
+    
+    return DateFormat('MMMM d, yyyy').format(date);
+  }
+  
   @override
   Widget build(BuildContext context) {
+    final isMetric = Provider.of<SettingsProvider>(context).useMetricSystem;
+    final user = Provider.of<UserProvider>(context).user;
+    
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile'),
+        title: const Text('Edit Profile'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _signOut,
+          TextButton(
+            onPressed: _saveProfile,
+            child: const Text(
+              'Save',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
       body: _isLoading
           ? const LoadingIndicator(message: 'Loading profile...')
-          : _user == null
-              ? const Center(child: Text('User profile not found'))
-              : DefaultTabController(
-                  length: 3,
-                  child: Column(
-                    children: [
-                      // Profile header
-                      _buildProfileHeader(),
-                      
-                      // Tab bar
-                      TabBar(
-                        controller: _tabController,
-                        tabs: const [
-                          Tab(text: 'Profile'),
-                          Tab(text: 'Goals'),
-                          Tab(text: 'Settings'),
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Profile picture
+                    Center(
+                      child: Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: 60,
+                            backgroundColor: AppColors.primary.withOpacity(0.1),
+                            backgroundImage: _profileImage != null
+                                ? FileImage(_profileImage!)
+                                : (user?.photoURL != null ? NetworkImage(user!.photoURL!) : null),
+                            child: user?.photoURL == null && _profileImage == null
+                                ? Text(
+                                    (_nameController.text.isNotEmpty ? _nameController.text[0] : 'U').toUpperCase(),
+                                    style: const TextStyle(
+                                      fontSize: 40,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.primary,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: CircleAvatar(
+                              backgroundColor: AppColors.primary,
+                              radius: 20,
+                              child: IconButton(
+                                icon: const Icon(
+                                  Icons.camera_alt,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                                onPressed: _selectProfilePicture,
+                                tooltip: 'Change profile picture',
+                              ),
+                            ),
+                          ),
                         ],
                       ),
-                      
-                      // Tab views
-                      Expanded(
-                        child: TabBarView(
-                          controller: _tabController,
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    // Basic information section
+                    const Text(
+                      'Basic Information',
+                      style: AppTextStyles.heading3,
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Name
+                    TextFormField(
+                      controller: _nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Name',
+                        hintText: 'Enter your full name',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.person),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your name';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Email (read-only)
+                    TextFormField(
+                      controller: _emailController,
+                      readOnly: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Email',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.email),
+                        hintText: 'Your email address',
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Gender
+                    DropdownButtonFormField<String>(
+                      value: _gender.isNotEmpty ? _gender : null,
+                      decoration: const InputDecoration(
+                        labelText: 'Gender',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.people),
+                      ),
+                      hint: const Text('Select your gender'),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'male',
+                          child: Text('Male'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'female',
+                          child: Text('Female'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'other',
+                          child: Text('Other'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'prefer_not_to_say',
+                          child: Text('Prefer not to say'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        setState(() => _gender = value ?? '');
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Date of birth
+                    InkWell(
+                      onTap: _selectDate,
+                      borderRadius: BorderRadius.circular(8),
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Date of Birth',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.calendar_today),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            _buildProfileTab(),
-                            _buildGoalsTab(),
-                            _buildSettingsTab(),
+                            Text(_formatDate(_dateOfBirth)),
+                            const Icon(Icons.arrow_drop_down),
                           ],
                         ),
                       ),
-                    ],
-                  ),
-                ),
-    );
-  }
-
-  Widget _buildProfileHeader() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 24.0),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.1),
-      ),
-      child: Column(
-        children: [
-          // Profile avatar
-          CircleAvatar(
-            radius: 50,
-            backgroundColor: AppColors.primary.withOpacity(0.2),
-            child: _user!.photoUrl != null
-                ? ClipOval(
-                    child: Image.network(
-                      _user!.photoUrl!,
-                      width: 100,
-                      height: 100,
-                      fit: BoxFit.cover,
                     ),
-                  )
-                : Text(
-                    _user!.name?.isNotEmpty == true
-                        ? _user!.name!.substring(0, 1).toUpperCase()
-                        : _user!.email.substring(0, 1).toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 40,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
+                    const SizedBox(height: 24),
+                    
+                    // Body measurements section
+                    const Text(
+                      'Body Measurements',
+                      style: AppTextStyles.heading3,
                     ),
-                  ),
-          ),
-          const SizedBox(height: 16),
-          
-          // User name
-          Text(
-            _user!.name ?? 'No name',
-            style: AppTextStyles.heading2,
-          ),
-          const SizedBox(height: 4),
-          
-          // User email
-          Text(
-            _user!.email,
-            style: AppTextStyles.bodySmall,
-          ),
-          
-          // Edit profile button
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: () {
-              // Navigate to edit profile screen
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Edit profile feature coming soon!')),
-              );
-            },
-            icon: const Icon(Icons.edit),
-            label: const Text('Edit Profile'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProfileTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Personal information
-          SectionCard(
-            title: 'Personal Information',
-            children: [
-              _buildInfoRow('Email', _user!.email),
-              _buildInfoRow(
-                'Age', 
-                _user!.age != null ? '${_user!.age} years' : 'Not set',
-              ),
-              _buildInfoRow(
-                'Gender', 
-                _user!.gender != null ? _capitalizeFirst(_user!.gender!) : 'Not set',
-              ),
-              _buildInfoRow(
-                'Birth Date',
-                _user!.birthDate != null 
-                    ? DateFormat.yMMMMd().format(_user!.birthDate!) 
-                    : 'Not set',
-              ),
-              _buildInfoRow(
-                'Member Since',
-                _user!.createdAt != null 
-                    ? DateFormat.yMMMMd().format(_user!.createdAt!) 
-                    : 'Unknown',
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          
-          // Physical metrics
-          SectionCard(
-            title: 'Physical Metrics',
-            children: [
-              _buildInfoRow(
-                'Height', 
-                _user!.height != null ? '${_user!.height!.toStringAsFixed(1)} cm' : 'Not set',
-              ),
-              _buildInfoRow(
-                'Weight', 
-                _user!.weight != null ? '${_user!.weight!.toStringAsFixed(1)} kg' : 'Not set',
-              ),
-              _buildInfoRow(
-                'BMI',
-                _user!.bmi != null 
-                    ? '${_user!.bmi!.toStringAsFixed(1)} (${_user!.bmiCategory})' 
-                    : 'Not available',
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          
-          // Actions
-          SectionCard(
-            title: 'Account Actions',
-            children: [
-              ListTile(
-                leading: const Icon(Icons.security, color: AppColors.primary),
-                title: const Text('Change Password'),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Change password feature coming soon!')),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.download, color: AppColors.primary),
-                title: const Text('Export Data'),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Export data feature coming soon!')),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text('Delete Account', style: TextStyle(color: Colors.red)),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Delete Account'),
-                      content: const Text('Are you sure you want to delete your account? This action cannot be undone.'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Cancel'),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Account deletion feature coming soon!')),
-                            );
-                          },
-                          child: const Text('Delete', style: TextStyle(color: Colors.red)),
-                        ),
-                      ],
+                    const SizedBox(height: 16),
+                    
+                    // Height
+                    TextFormField(
+                      controller: _heightController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Height',
+                        hintText: isMetric ? 'Enter your height in cm' : 'Enter your height (e.g. 5\'10")',
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.height),
+                        suffixText: isMetric ? 'cm' : '',
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your height';
+                        }
+                        
+                        if (isMetric) {
+                          // For metric, validate the number
+                          final height = double.tryParse(value);
+                          if (height == null || height <= 0 || height > 300) {
+                            return 'Please enter a valid height';
+                          }
+                        } else {
+                          // For imperial, validate the format (e.g., 5'10")
+                          if (!value.contains('\'')) {
+                            return 'Please use the format: feet\'inches" (e.g., 5\'10")';
+                          }
+                        }
+                        
+                        return null;
+                      },
                     ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGoalsTab() {
-    // Get user goals
-    final goals = _user!.goals ?? {};
-    final dailyCalories = goals['dailyCalories'] ?? 2000;
-    final dailySteps = goals['dailySteps'] ?? 10000;
-    final dailyWater = goals['dailyWater'] ?? 2000;
-    final weeklyWorkouts = goals['weeklyWorkouts'] ?? 3;
-    final targetWeight = goals['targetWeight'];
-    
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SectionCard(
-            title: 'Your Fitness Goals',
-            trailing: IconButton(
-              icon: const Icon(Icons.edit, color: AppColors.primary),
-              onPressed: () {
-                // Navigate to edit goals screen
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Edit goals feature coming soon!')),
-                );
-              },
-            ),
-            children: [
-              // Nutrition goals
-              Text('Nutrition', style: AppTextStyles.heading4),
-              const SizedBox(height: 8),
-              _buildGoalItem(Icons.local_fire_department, 'Daily Calories', '$dailyCalories calories'),
-              _buildGoalItem(Icons.water_drop, 'Daily Water', '$dailyWater ml'),
-              
-              const SizedBox(height: 16),
-              
-              // Activity goals
-              Text('Activity', style: AppTextStyles.heading4),
-              const SizedBox(height: 8),
-              _buildGoalItem(Icons.directions_walk, 'Daily Steps', '$dailySteps steps'),
-              _buildGoalItem(Icons.fitness_center, 'Weekly Workouts', '$weeklyWorkouts workouts'),
-              
-              if (targetWeight != null) ...[
-                const SizedBox(height: 16),
-                
-                // Weight goal
-                Text('Weight', style: AppTextStyles.heading4),
-                const SizedBox(height: 8),
-                _buildGoalItem(
-                  Icons.monitor_weight, 
-                  'Target Weight', 
-                  '${targetWeight.toStringAsFixed(1)} kg',
-                  subtitle: _user!.weight != null 
-                      ? '${(targetWeight - _user!.weight!).abs().toStringAsFixed(1)} kg ${targetWeight < _user!.weight! ? 'to lose' : 'to gain'}' 
-                      : null,
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 16),
-          
-          // Progress visualization
-          SectionCard(
-            title: 'Goal Progress',
-            children: [
-              const Text('Visualized progress toward your goals will be shown here.'),
-              const SizedBox(height: 16),
-              AspectRatio(
-                aspectRatio: 16/9,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Center(
-                    child: Text('Goal progress charts coming soon!'),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSettingsTab() {
-    // Get user settings
-    final settings = _user!.settings ?? {};
-    final useDarkMode = settings['useDarkMode'] ?? false;
-    final useMetricSystem = settings['useMetricSystem'] ?? true;
-    final enableNotifications = settings['enableNotifications'] ?? true;
-    final notificationTimes = settings['notificationTimes'] as List<dynamic>? ?? [];
-    
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // App settings
-          SectionCard(
-            title: 'App Settings',
-            children: [
-              SwitchListTile(
-                title: const Text('Dark Mode'),
-                subtitle: const Text('Switch between light and dark theme'),
-                value: useDarkMode,
-                onChanged: (value) {
-                  // In a real app, update user settings
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Theme toggle feature coming soon!')),
-                  );
-                },
-              ),
-              SwitchListTile(
-                title: const Text('Use Metric System'),
-                subtitle: const Text('Switch between metric and imperial units'),
-                value: useMetricSystem,
-                onChanged: (value) {
-                  // In a real app, update user settings
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Unit system toggle feature coming soon!')),
-                  );
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          
-          // Notification settings
-          SectionCard(
-            title: 'Notification Settings',
-            children: [
-              SwitchListTile(
-                title: const Text('Enable Notifications'),
-                subtitle: const Text('Receive reminders and updates'),
-                value: enableNotifications,
-                onChanged: (value) {
-                  // In a real app, update user settings
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Notification toggle feature coming soon!')),
-                  );
-                },
-              ),
-              if (enableNotifications && notificationTimes.isNotEmpty) ...[
-                const Padding(
-                  padding: EdgeInsets.only(left: 16, top: 16, bottom: 8),
-                  child: Text('Notification Times'),
-                ),
-                ...notificationTimes.map((time) => ListTile(
-                  leading: const Icon(Icons.access_time),
-                  title: Text(time),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.edit),
-                    onPressed: () {
-                      // Edit notification time
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Edit notification time feature coming soon!')),
+                    const SizedBox(height: 16),
+                    
+                    // Weight
+                    TextFormField(
+                      controller: _weightController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Weight',
+                        hintText: isMetric ? 'Enter your weight in kg' : 'Enter your weight in lbs',
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.monitor_weight),
+                        suffixText: isMetric ? 'kg' : 'lbs',
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your weight';
+                        }
+                        
+                        final weight = double.tryParse(value);
+                        if (weight == null || weight <= 0 || weight > 500) {
+                          return 'Please enter a valid weight';
+                        }
+                        
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    // Activity level section
+                    const Text(
+                      'Activity Level',
+                      style: AppTextStyles.heading3,
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Activity level radio buttons
+                    ...['sedentary', 'light', 'moderate', 'active', 'very_active'].map((level) {
+                      return RadioListTile<String>(
+                        title: Text(_activityLevelLabels[level]!),
+                        value: level,
+                        groupValue: _activityLevel,
+                        onChanged: (value) {
+                          setState(() => _activityLevel = value ?? 'moderate');
+                        },
                       );
-                    },
-                  ),
-                )),
-                TextButton.icon(
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add Notification Time'),
-                  onPressed: () {
-                    // Add notification time
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Add notification time feature coming soon!')),
-                    );
-                  },
+                    }).toList(),
+                    const SizedBox(height: 24),
+                    
+                    // Bio section
+                    const Text(
+                      'About You',
+                      style: AppTextStyles.heading3,
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Bio
+                    TextFormField(
+                      controller: _bioController,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        labelText: 'Bio',
+                        hintText: 'Tell us a bit about yourself and your fitness goals',
+                        border: OutlineInputBorder(),
+                        alignLabelWithHint: true,
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    
+                    // Save button
+                    SizedBox(
+                      width: double.infinity,
+                      child: AppButton(
+                        label: 'Save Profile',
+                        icon: Icons.save,
+                        onPressed: _saveProfile,
+                        isFullWidth: true,
+                        isLoading: _isLoading,
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                  ],
                 ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 16),
-          
-          // About app
-          SectionCard(
-            title: 'About',
-            children: [
-              ListTile(
-                title: const Text('App Version'),
-                trailing: const Text('1.0.0'),
               ),
-              ListTile(
-                title: const Text('Terms of Service'),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () {
-                  // Navigate to terms of service
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Terms of service feature coming soon!')),
-                  );
-                },
-              ),
-              ListTile(
-                title: const Text('Privacy Policy'),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () {
-                  // Navigate to privacy policy
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Privacy policy feature coming soon!')),
-                  );
-                },
-              ),
-              ListTile(
-                title: const Text('Licenses'),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () {
-                  // Show licenses
-                  showLicensePage(context: context);
-                },
-              ),
-            ],
-          ),
-        ],
-      ),
+            ),
     );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold)),
-          Text(value, style: AppTextStyles.body),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGoalItem(IconData icon, String title, String value, {String? subtitle}) {
-    return ListTile(
-      leading: Icon(icon, color: AppColors.primary),
-      title: Text(title),
-      subtitle: subtitle != null ? Text(subtitle) : null,
-      trailing: Text(
-        value,
-        style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold),
-      ),
-    );
-  }
-
-  String _capitalizeFirst(String text) {
-    if (text.isEmpty) return '';
-    return text[0].toUpperCase() + text.substring(1);
   }
 }
