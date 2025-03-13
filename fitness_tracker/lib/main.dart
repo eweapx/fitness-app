@@ -6,6 +6,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
+// Import Firebase options
+import 'firebase_options.dart';
+
 // Import screens
 import 'screens/dashboard.dart';
 import 'screens/activity_screen.dart';
@@ -41,13 +44,16 @@ Future<void> main() async {
     },
   );
   
-  // Firebase will be initialized with real API keys later
+  // Initialize Firebase with configuration
   try {
-    await Firebase.initializeApp();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
     FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: true);
+    print('Firebase initialized successfully');
   } catch (e) {
     print('Firebase initialization error: $e');
-    // We'll continue without Firebase for now
+    // We'll continue without Firebase for now, but features requiring Firebase will not work
   }
   
   runApp(const FitnessApp());
@@ -81,7 +87,12 @@ class FitnessApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const AuthGate(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const AuthGate(),
+        '/home': (context) => const HomeScreen(),
+        '/login': (context) => const LoginScreen(),
+      },
     );
   }
 }
@@ -101,8 +112,10 @@ class AuthGate extends StatelessWidget {
           );
         }
         
-        // For development, we'll bypass authentication and go straight to the home screen
-        // In production, we would use: return snapshot.hasData ? const HomeScreen() : const LoginScreen();
+        // In a production app, we would uncomment this line to implement real authentication
+        // return snapshot.hasData ? const HomeScreen() : const LoginScreen();
+        
+        // For development and testing, we'll bypass authentication
         return const HomeScreen();
       },
     );
