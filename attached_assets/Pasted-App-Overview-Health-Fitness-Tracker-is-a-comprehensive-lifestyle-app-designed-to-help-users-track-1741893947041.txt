@@ -1,0 +1,87 @@
+App Overview
+
+Health & Fitness Tracker is a comprehensive lifestyle app designed to help users track, manage, and improve their overall health, fitness, nutrition, sleep, and habits. The app provides real-time data tracking, goal setting, AI insights, and user customization to ensure a personalized experience.
+
+⸻
+
+🚀 Core Features & Functionality
+
+1️⃣ Authentication & User Management
+	•	Sign-in & Sign-up: Secure authentication via Firebase.
+	•	Password Reset: Users can reset forgotten passwords.
+	•	User Profiles: Track weight, height, age, and gender.
+	•	Persistent Data Storage: Stores user data securely in Firestore.
+
+2️⃣ Dashboard & Customization
+	•	Customizable Dashboard: Drag-and-drop widgets with resize options.
+	•	Daily/Weekly/Monthly Overviews: Summarizes logged activities.
+	•	Snapshot of Key Health Metrics: Steps, calories, sleep trends, habits, and goals.
+
+3️⃣ Activity & Fitness Tracking
+	•	Live Workout Tracking: Logs steps, heart rate, and calories burned in real-time.
+	•	Auto Activity Sync: Fetches step count & workout data from wearables.
+	•	Strength Training Progression: Tracks 1RM calculations & progress graphs.
+	•	Cardio Progression Tracking: Suggests pace/distance increases.
+	•	Workout Suggestions: AI-generated workouts based on previous logs.
+	•	Custom Workouts: Users can log or create their own workout plans.
+
+4️⃣ Food & Nutrition Tracking
+	•	Preloaded Food Database: Offline food searching.
+	•	Meal Logging: Tracks calories, macros, and meal timing.
+	•	AI Meal Suggestions: Adjusts based on logged intake & goals.
+	•	Dietary Preferences: Supports vegan, keto, vegetarian, pescatarian, etc..
+	•	Meal Plan Scheduling: Users can create structured meal plans.
+	•	Flexible Macro Adjustments: Portions adjust based on nutrition targets.
+
+5️⃣ Sleep Tracking
+	•	Sync with Wearables: Pulls sleep data from devices.
+	•	Manual Sleep Logging: Users can enter sleep duration & quality.
+	•	Sleep Trend Graphs: Displays weekly, monthly, and yearly trends.
+	•	External Factor Tagging: Users can note caffeine intake, late workouts, etc.
+	•	Sleep Insights: AI highlights sleep patterns and suggests optimizations.
+
+6️⃣ Habit & Lifestyle Tracking
+	•	Bad Habit Tracker: Logs smoking, alcohol, screen time, etc.
+	•	Streak-Based Rewards: Users earn badges for consistency.
+	•	Goal-Based Achievements: Users receive rewards for milestones.
+	•	Trend-Based AI Insights: Highlights habit risks & improvements.
+	•	Meditation Timer: Includes guided sessions with session history tracking.
+
+7️⃣ Goal Setting & AI Insights
+	•	Set & Track Goals: Weight loss, step count, calorie intake, etc.
+	•	Progress Visualization: Graphs display goal achievements.
+	•	Auto Progression Suggestions: Adjusts workouts & meals based on performance.
+	•	Trend-Based Insights: AI detects user behavior and provides suggestions.
+
+8️⃣ Data Management & Export
+	•	Auto-Generated Weekly/Monthly Reports: Summarizes trends.
+	•	User-Editable Reports: Can add custom notes before exporting.
+	•	PDF & CSV Export: Allows users to download raw health data.
+	•	Sync & Offline Support: Data is stored locally and syncs with Firebase.
+
+9️⃣ Notifications & Reminders
+	•	Smart Goal Reminders: Local notifications for workouts, meals, and habits.
+	•	Daily AI Summaries: Users receive personalized insights.
+	•	Customizable Alerts: Users can adjust frequency (daily/weekly).
+	•	Connectivity Indicator: Alerts when offline & ensures data sync.
+
+🔹 Extra Enhancements & Fixes
+	•	Improved UI/UX: Optimized for responsiveness & accessibility.
+	•	Dark Mode Support: Users can switch between light and dark themes.
+	•	Performance Optimizations: Reduces unnecessary widget rebuilds.
+	•	Error Handling & Validation: Ensures smooth user experience.
+	•	Bug Fixes: Fixed issues with Firebase, health permissions, and navigation.
+
+⸻
+
+💡 App Purpose & Intention
+
+This app is designed to be an all-in-one health and fitness lifestyle tracker that combines:
+	•	Real-time activity tracking
+	•	AI-driven meal & workout recommendations
+	•	Customizable dashboards
+	•	Goal setting and streak-based motivation
+	•	Seamless integration with wearables
+	•	Smart insights to improve habits over time
+
+The goal is to help users build healthier habits, track progress efficiently, and receive personalized insights to optimize fitness, nutrition, and lifestyle.

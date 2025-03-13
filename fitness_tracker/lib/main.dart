@@ -14,17 +14,20 @@ import 'screens/dashboard.dart';
 import 'screens/activity_screen.dart';
 import 'screens/nutrition_screen.dart';
 import 'screens/profile_screen.dart';
-import 'screens/auth/login.dart';
+import 'screens/auth/login_screen.dart';
+import 'screens/auth/registration_screen.dart';
 import 'screens/activity_tab_screen.dart';
 import 'screens/nutrition_tab_screen.dart';
 import 'screens/workout_screen.dart';
 import 'screens/meal_planner_screen.dart';
 import 'screens/water_tracking_screen.dart';
 import 'screens/progress_screen.dart';
+import 'screens/settings_screen.dart';
 
 // Import services and utils
 import 'services/firebase_service.dart';
 import 'services/step_tracking_service.dart';
+import 'services/notification_service.dart';
 import 'utils/constants.dart';
 import 'widgets/common_widgets.dart';
 
@@ -99,12 +102,17 @@ class FitnessApp extends StatelessWidget {
         '/': (context) => const AuthGate(),
         '/home': (context) => const HomeScreen(),
         '/login': (context) => const LoginScreen(),
+        '/register': (context) => const RegistrationScreen(),
         '/activity': (context) => const ActivityScreen(),
+        '/activity_tab': (context) => const ActivityTabScreen(),
         '/nutrition': (context) => const NutritionScreen(),
+        '/nutrition_tab': (context) => const NutritionTabScreen(),
         '/workout': (context) => const WorkoutScreen(),
         '/meal_planner': (context) => const MealPlannerScreen(),
         '/water_tracker': (context) => const WaterTrackingScreen(),
         '/progress': (context) => const ProgressScreen(),
+        '/settings': (context) => const SettingsScreen(),
+        '/profile': (context) => const ProfileScreen(),
       },
     );
   }
@@ -125,11 +133,8 @@ class AuthGate extends StatelessWidget {
           );
         }
         
-        // In a production app, we would uncomment this line to implement real authentication
-        // return snapshot.hasData ? const HomeScreen() : const LoginScreen();
-        
-        // For development and testing, we'll bypass authentication
-        return const HomeScreen();
+        // Using Firebase Authentication to determine user state
+        return snapshot.hasData ? const HomeScreen() : const LoginScreen();
       },
     );
   }
