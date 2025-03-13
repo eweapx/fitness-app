@@ -6,9 +6,40 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
+// Import screens
+import 'screens/dashboard.dart';
+import 'screens/activity_screen.dart';
+import 'screens/nutrition_screen.dart';
+import 'screens/profile_screen.dart';
+import 'screens/auth/login.dart';
+
+// Import services and utils
+import 'services/firebase_service.dart';
+import 'utils/constants.dart';
+import 'widgets/common_widgets.dart';
+
+// Initialize local notifications
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
+
 /// Initialize Firebase & Local Notifications
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize local notifications
+  const AndroidInitializationSettings initializationSettingsAndroid =
+      AndroidInitializationSettings('@mipmap/ic_launcher');
+  
+  const InitializationSettings initializationSettings = InitializationSettings(
+    android: initializationSettingsAndroid,
+  );
+  
+  await flutterLocalNotificationsPlugin.initialize(
+    initializationSettings,
+    onDidReceiveNotificationResponse: (details) {
+      // Handle notification tap
+    },
+  );
   
   // Firebase will be initialized with real API keys later
   try {
@@ -31,14 +62,24 @@ class FitnessApp extends StatelessWidget {
       title: 'Health & Fitness Tracker',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.lightBlue,
-        scaffoldBackgroundColor: Colors.grey[100],
+        primarySwatch: Colors.blue,
+        scaffoldBackgroundColor: AppColors.background,
         visualDensity: VisualDensity.adaptivePlatformDensity,
         appBarTheme: const AppBarTheme(elevation: 2),
+        cardTheme: CardTheme(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
       ),
       darkTheme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: Colors.grey[900],
         appBarTheme: const AppBarTheme(elevation: 2),
+        cardTheme: CardTheme(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
       ),
       home: const AuthGate(),
     );
@@ -55,7 +96,9 @@ class AuthGate extends StatelessWidget {
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+            body: LoadingIndicator(message: 'Loading your fitness data...'),
+          );
         }
         
         // For development, we'll bypass authentication and go straight to the home screen
@@ -66,99 +109,74 @@ class AuthGate extends StatelessWidget {
   }
 }
 
-/// Login & Signup
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+/// Home Screen with Dashboard
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
 
   @override
-  _LoginScreenState createState() => _LoginScreenState();
+  _HomeScreenState createState() => _HomeScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
-  bool _isLoading = false;
+class _HomeScreenState extends State<HomeScreen> {
+  int _selectedIndex = 0;
+  bool _isConnected = true;
+  late StreamSubscription<ConnectivityResult> _connectivitySubscription;
+  
+  final List<Widget> _pages = [
+    const DashboardScreen(),
+    const ActivityScreen(),
+    const NutritionScreen(),
+    const ProfileScreen(),
+  ];
 
-  Future<void> _handleAuth(Future<void> Function() authFunction) async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
-      try {
-        await authFunction();
-      } on FirebaseAuthException catch (e) {
-        String message = _getFirebaseErrorMessage(e.code);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
-      } finally {
-        setState(() => _isLoading = false);
-      }
-    }
+  @override
+  void initState() {
+    super.initState();
+    _checkConnectivity();
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
+      setState(() => _isConnected = result != ConnectivityResult.none);
+    });
   }
 
-  String _getFirebaseErrorMessage(String code) {
-    switch (code) {
-      case 'user-not-found': return 'No user found with this email.';
-      case 'wrong-password': return 'Incorrect password.';
-      case 'email-already-in-use': return 'This email is already registered.';
-      default: return 'An error occurred. Please try again.';
-    }
+  @override
+  void dispose() {
+    _connectivitySubscription.cancel();
+    super.dispose();
+  }
+
+  Future<void> _checkConnectivity() async {
+    final result = await Connectivity().checkConnectivity();
+    setState(() => _isConnected = result != ConnectivityResult.none);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Login or Sign Up')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              TextFormField(
-                controller: emailController,
-                decoration: const InputDecoration(labelText: 'Email'),
-                validator: (value) => value!.contains('@') ? null : 'Enter a valid email',
-              ),
-              TextFormField(
-                controller: passwordController,
-                decoration: const InputDecoration(labelText: 'Password'),
-                obscureText: true,
-                validator: (value) => value!.length >= 6 ? null : 'Password must be 6+ characters',
-              ),
-              const SizedBox(height: 20),
-              if (_isLoading)
-                const CircularProgressIndicator()
-              else ...[
-                ElevatedButton(
-                  onPressed: () => _handleAuth(() async {
-                    await FirebaseAuth.instance.signInWithEmailAndPassword(
-                      email: emailController.text.trim(),
-                      password: passwordController.text.trim(),
-                    );
-                  }),
-                  child: const Text('Sign In'),
-                ),
-                TextButton(
-                  onPressed: () => _handleAuth(() async {
-                    final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-                      email: emailController.text.trim(),
-                      password: passwordController.text.trim(),
-                    );
-                    await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
-                      'email': emailController.text.trim(),
-                      'created_at': FieldValue.serverTimestamp(),
-                      'weight': 70.0,
-                      'height': 170.0,
-                      'age': 25,
-                      'gender': 'unknown',
-                    });
-                  }),
-                  child: const Text('Sign Up'),
-                ),
-              ],
-            ],
-          ),
-        ),
+      body: _pages[_selectedIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        currentIndex: _selectedIndex,
+        onTap: (index) => setState(() => _selectedIndex = index),
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
+          BottomNavigationBarItem(icon: Icon(Icons.directions_run), label: 'Activity'),
+          BottomNavigationBarItem(icon: Icon(Icons.restaurant_menu), label: 'Nutrition'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+        ],
       ),
+      // Show connectivity indicator
+      bottomSheet: !_isConnected
+          ? Container(
+              color: Colors.red,
+              height: 24,
+              child: const Center(
+                child: Text(
+                  'You are offline. Some features may be unavailable.',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            )
+          : null,
     );
   }
 }
