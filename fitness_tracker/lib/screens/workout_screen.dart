@@ -1,15 +1,12 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import '../models/activity_model.dart';
 import '../services/firebase_service.dart';
+import '../models/workout_model.dart';
 import '../utils/constants.dart';
 import '../widgets/common_widgets.dart';
+import 'dart:async';
 
 class WorkoutScreen extends StatefulWidget {
-  final String? activityId;
-  
-  const WorkoutScreen({super.key, this.activityId});
+  const WorkoutScreen({super.key});
 
   @override
   _WorkoutScreenState createState() => _WorkoutScreenState();
@@ -17,701 +14,460 @@ class WorkoutScreen extends StatefulWidget {
 
 class _WorkoutScreenState extends State<WorkoutScreen> {
   final FirebaseService _firebaseService = FirebaseService();
-  final _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
+  bool _isWorkoutActive = false;
+  String _selectedWorkoutType = 'Cardio';
+  final List<String> _workoutTypes = [
+    'Cardio',
+    'Strength',
+    'Flexibility',
+    'Sports',
+    'HIIT',
+    'Other',
+  ];
   
-  // Workout state
-  bool _isLoading = true;
-  bool _isEditing = false;
-  bool _isWorkoutInProgress = false;
-  ActivityModel? _existingActivity;
-  Timer? _workoutTimer;
-  DateTime? _workoutStartTime;
-  Duration _elapsedTime = Duration.zero;
+  // Workout timer
+  int _elapsedSeconds = 0;
+  Timer? _timer;
   
-  // Form fields
-  final TextEditingController _nameController = TextEditingController();
-  String _workoutType = ActivityTypes.gymWorkout;
-  int _caloriesBurned = 0;
-  int _durationMinutes = 0;
-  final List<ExerciseSet> _exerciseSets = [];
-  final TextEditingController _notesController = TextEditingController();
-
+  // Form controllers
+  final _workoutNameController = TextEditingController();
+  final _caloriesController = TextEditingController();
+  final _notesController = TextEditingController();
+  
   @override
   void initState() {
     super.initState();
-    _loadActivity();
+    _workoutNameController.text = 'Quick Workout';
   }
-
+  
   @override
   void dispose() {
-    _workoutTimer?.cancel();
-    _nameController.dispose();
+    _timer?.cancel();
+    _workoutNameController.dispose();
+    _caloriesController.dispose();
     _notesController.dispose();
     super.dispose();
   }
-
-  Future<void> _loadActivity() async {
-    setState(() => _isLoading = true);
-    
-    try {
-      // Check if we're editing an existing activity
-      if (widget.activityId != null) {
-        // In a real app, we'd use the current user's ID
-        const String demoUserId = 'demo_user';
-        
-        // Get activity from Firebase
-        final activities = await _firebaseService.getUserActivities(demoUserId);
-        _existingActivity = activities.firstWhere(
-          (a) => a.id == widget.activityId,
-          orElse: () => ActivityModel(
-            userId: demoUserId,
-            name: '',
-            type: ActivityTypes.gymWorkout,
-            duration: 0,
-            caloriesBurned: 0,
-            date: DateTime.now(),
-          ),
-        );
-        
-        // Populate form fields
-        _nameController.text = _existingActivity!.name;
-        _workoutType = _existingActivity!.type;
-        _caloriesBurned = _existingActivity!.caloriesBurned;
-        _durationMinutes = _existingActivity!.duration;
-        _notesController.text = _existingActivity!.notes ?? '';
-        
-        // Get exercise sets from additional data if available
-        if (_existingActivity!.additionalData != null && 
-            _existingActivity!.additionalData!.containsKey('exercises')) {
-          final exercises = _existingActivity!.additionalData!['exercises'] as List;
-          for (var exercise in exercises) {
-            _exerciseSets.add(ExerciseSet.fromMap(exercise));
-          }
-        }
-        
-        _isEditing = true;
-      } else {
-        // New workout - set defaults
-        _nameController.text = 'Workout';
-        _workoutType = ActivityTypes.gymWorkout;
-      }
-    } catch (e) {
-      print('Error loading activity: $e');
-      // Show error message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading workout: ${e.toString()}')),
-      );
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
+  
   void _startWorkout() {
     setState(() {
-      _isWorkoutInProgress = true;
-      _workoutStartTime = DateTime.now();
-      _elapsedTime = Duration.zero;
+      _isWorkoutActive = true;
+      _elapsedSeconds = 0;
     });
     
-    // Start timer
-    _workoutTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {
-        _elapsedTime = DateTime.now().difference(_workoutStartTime!);
-        _durationMinutes = _elapsedTime.inMinutes;
+        _elapsedSeconds++;
       });
     });
   }
-
+  
   void _pauseWorkout() {
-    _workoutTimer?.cancel();
-    setState(() => _isWorkoutInProgress = false);
+    _timer?.cancel();
+    setState(() {});
   }
-
+  
   void _resumeWorkout() {
-    _startWorkout();
-  }
-
-  void _endWorkout() {
-    _workoutTimer?.cancel();
-    
-    // Calculate calories if not manually entered
-    if (_caloriesBurned == 0) {
-      _caloriesBurned = _calculateEstimatedCalories();
-    }
-    
-    setState(() {
-      _isWorkoutInProgress = false;
-      _durationMinutes = _elapsedTime.inMinutes;
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        _elapsedSeconds++;
+      });
     });
-    
-    // Show save dialog
-    _showSaveWorkoutDialog();
+    setState(() {});
   }
   
-  int _calculateEstimatedCalories() {
-    // Simple estimation: ~5-10 calories per minute depending on intensity
-    final totalMinutes = _elapsedTime.inMinutes;
+  Future<void> _finishWorkout() async {
+    _timer?.cancel();
     
-    // Estimate based on workout type
-    int caloriesPerMinute = 5; // Default moderate intensity
+    // Show completion dialog
+    bool saveWorkout = await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _buildCompletionDialog(),
+    ) ?? false;
     
-    switch (_workoutType) {
-      case ActivityTypes.hiit:
-        caloriesPerMinute = 12; // High intensity
-        break;
-      case ActivityTypes.running:
-        caloriesPerMinute = 10; // High intensity
-        break;
-      case ActivityTypes.gymWorkout:
-        caloriesPerMinute = 8; // Moderate-high intensity
-        break;
-      case ActivityTypes.cycling:
-        caloriesPerMinute = 7; // Moderate intensity
-        break;
-      case ActivityTypes.walking:
-        caloriesPerMinute = 4; // Low intensity
-        break;
-      default:
-        caloriesPerMinute = 6; // Moderate intensity
-    }
-    
-    return totalMinutes * caloriesPerMinute;
-  }
-
-  void _addExerciseSet() {
-    setState(() {
-      _exerciseSets.add(ExerciseSet(
-        name: '',
-        sets: 3,
-        reps: 10,
-        weight: 0,
-      ));
-    });
-  }
-
-  void _removeExerciseSet(int index) {
-    setState(() {
-      _exerciseSets.removeAt(index);
-    });
-  }
-
-  void _updateExerciseSet(int index, ExerciseSet updatedSet) {
-    setState(() {
-      _exerciseSets[index] = updatedSet;
-    });
-  }
-  
-  Future<void> _saveWorkout() async {
-    if (!_formKey.currentState!.validate()) return;
-    
-    setState(() => _isLoading = true);
-    
-    try {
-      // In a real app, we'd use the current user's ID
-      const String demoUserId = 'demo_user';
+    if (saveWorkout) {
+      setState(() => _isLoading = true);
       
-      // Prepare exercise data
-      final List<Map<String, dynamic>> exerciseData = _exerciseSets
-          .where((set) => set.name.isNotEmpty)
-          .map((set) => set.toMap())
-          .toList();
-      
-      // Create activity model
-      final activity = ActivityModel(
-        id: _existingActivity?.id,
-        userId: demoUserId,
-        name: _nameController.text,
-        type: _workoutType,
-        duration: _durationMinutes,
-        caloriesBurned: _caloriesBurned,
-        date: _existingActivity?.date ?? DateTime.now(),
-        notes: _notesController.text,
-        additionalData: {
-          'exercises': exerciseData,
-        },
-      );
-      
-      // Save to Firebase
-      if (_isEditing) {
-        await _firebaseService.updateActivity(activity);
-      } else {
-        await _firebaseService.addActivity(activity);
+      try {
+        // In a real app, we'd use the current user's ID
+        const String demoUserId = 'demo_user';
+        
+        // Calculate calories if not provided
+        int calories = 0;
+        if (_caloriesController.text.isNotEmpty) {
+          calories = int.tryParse(_caloriesController.text) ?? 0;
+        } else {
+          // Simple estimation based on workout type and duration
+          calories = (_elapsedSeconds / 60).round() * 5;
+        }
+        
+        // Create workout object
+        final workout = Workout(
+          id: null, // Firebase will generate an ID
+          userId: demoUserId,
+          name: _workoutNameController.text,
+          type: _selectedWorkoutType,
+          duration: _elapsedSeconds,
+          caloriesBurned: calories,
+          date: DateTime.now(),
+          notes: _notesController.text,
+        );
+        
+        // Save to Firebase
+        await _firebaseService.addWorkout(workout);
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Workout saved successfully!')),
+        );
+        
+        // Reset state
+        setState(() {
+          _isWorkoutActive = false;
+          _elapsedSeconds = 0;
+          _workoutNameController.text = 'Quick Workout';
+          _caloriesController.clear();
+          _notesController.clear();
+        });
+      } catch (e) {
+        print('Error saving workout: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving workout: ${e.toString()}')),
+        );
+      } finally {
+        setState(() => _isLoading = false);
       }
-      
-      // Show success message and navigate back
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Workout saved successfully')),
-      );
-      
-      Navigator.pop(context, true); // Pass true to indicate successful save
-    } catch (e) {
-      print('Error saving workout: $e');
-      // Show error message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error saving workout: ${e.toString()}')),
-      );
-      setState(() => _isLoading = false);
+    } else {
+      // Just reset the state without saving
+      setState(() {
+        _isWorkoutActive = false;
+        _elapsedSeconds = 0;
+      });
     }
   }
   
-  void _showSaveWorkoutDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Save Workout'),
-        content: const Text('Do you want to save this workout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _saveWorkout();
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  void _showExerciseDialog(ExerciseSet exerciseSet, int index) {
-    final nameController = TextEditingController(text: exerciseSet.name);
-    final setsController = TextEditingController(text: exerciseSet.sets.toString());
-    final repsController = TextEditingController(text: exerciseSet.reps.toString());
-    final weightController = TextEditingController(text: exerciseSet.weight.toString());
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(exerciseSet.name.isEmpty ? 'Add Exercise' : 'Edit Exercise'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Exercise Name',
-                  hintText: 'e.g., Bench Press',
-                ),
-              ),
-              TextField(
-                controller: setsController,
-                decoration: const InputDecoration(labelText: 'Sets'),
-                keyboardType: TextInputType.number,
-              ),
-              TextField(
-                controller: repsController,
-                decoration: const InputDecoration(labelText: 'Reps'),
-                keyboardType: TextInputType.number,
-              ),
-              TextField(
-                controller: weightController,
-                decoration: const InputDecoration(
-                  labelText: 'Weight (kg)',
-                  hintText: '0 for bodyweight',
-                ),
-                keyboardType: TextInputType.number,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              final updatedSet = ExerciseSet(
-                name: nameController.text,
-                sets: int.tryParse(setsController.text) ?? 0,
-                reps: int.tryParse(repsController.text) ?? 0,
-                weight: double.tryParse(weightController.text) ?? 0,
-              );
-              
-              _updateExerciseSet(index, updatedSet);
-              Navigator.pop(context);
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing ? 'Edit Workout' : 'New Workout'),
-        actions: [
-          if (!_isWorkoutInProgress && !_isLoading)
-            IconButton(
-              icon: const Icon(Icons.save),
-              onPressed: _saveWorkout,
-            ),
-        ],
+        title: const Text('Workout Tracking'),
       ),
       body: _isLoading
-          ? const LoadingIndicator(message: 'Loading workout...')
-          : _buildWorkoutForm(),
+          ? const LoadingIndicator(message: 'Saving workout...')
+          : _isWorkoutActive
+              ? _buildActiveWorkoutView()
+              : _buildWorkoutSetupView(),
     );
   }
-
-  Widget _buildWorkoutForm() {
-    return Form(
-      key: _formKey,
-      child: ListView(
-        padding: const EdgeInsets.all(16.0),
+  
+  Widget _buildWorkoutSetupView() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Workout timer section
-          if (!_isEditing) _buildWorkoutTimerSection(),
-          
-          // Workout details section
-          _buildWorkoutDetailsSection(),
-          
-          // Exercises section
-          _buildExercisesSection(),
-          
-          // Notes section
-          _buildNotesSection(),
-          
-          const SizedBox(height: 32),
-          
-          // Save button
-          if (!_isWorkoutInProgress)
-            AppButton(
-              label: 'Save Workout',
-              icon: Icons.save,
-              onPressed: _saveWorkout,
-              isFullWidth: true,
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWorkoutTimerSection() {
-    final formattedTime = _formatDuration(_elapsedTime);
-    
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Text(
-              formattedTime,
-              style: const TextStyle(
-                fontSize: 48,
-                fontWeight: FontWeight.bold,
+          // Workout type selection
+          Card(
+            elevation: 2,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Select Workout Type',
+                    style: AppTextStyles.heading3,
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _workoutTypes.map((type) {
+                      final isSelected = type == _selectedWorkoutType;
+                      return ChoiceChip(
+                        label: Text(type),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          if (selected) {
+                            setState(() => _selectedWorkoutType = type);
+                          }
+                        },
+                        backgroundColor: Colors.grey[200],
+                        selectedColor: AppColors.primary.withOpacity(0.2),
+                        labelStyle: TextStyle(
+                          color: isSelected ? AppColors.primary : Colors.black87,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                if (!_isWorkoutInProgress)
-                  Expanded(
-                    child: AppButton(
-                      label: _workoutStartTime == null ? 'Start' : 'Resume',
-                      icon: Icons.play_arrow,
-                      backgroundColor: AppColors.success,
-                      onPressed: _workoutStartTime == null ? _startWorkout : _resumeWorkout,
-                      isFullWidth: true,
-                    ),
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // Workout name
+          Card(
+            elevation: 2,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Workout Name',
+                    style: AppTextStyles.heading3,
                   ),
-                if (_isWorkoutInProgress)
-                  Expanded(
-                    child: AppButton(
-                      label: 'Pause',
-                      icon: Icons.pause,
-                      backgroundColor: AppColors.warning,
-                      onPressed: _pauseWorkout,
-                      isFullWidth: true,
-                    ),
-                  ),
-                if (_workoutStartTime != null) ...[
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: AppButton(
-                      label: 'End',
-                      icon: Icons.stop,
-                      backgroundColor: AppColors.error,
-                      onPressed: _endWorkout,
-                      isFullWidth: true,
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _workoutNameController,
+                    decoration: const InputDecoration(
+                      hintText: 'Enter workout name',
+                      border: OutlineInputBorder(),
                     ),
                   ),
                 ],
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildWorkoutDetailsSection() {
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Workout Details',
-              style: AppTextStyles.heading3,
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Workout Name',
-                border: OutlineInputBorder(),
               ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Please enter a workout name';
-                }
-                return null;
-              },
             ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              value: _workoutType,
-              decoration: const InputDecoration(
-                labelText: 'Workout Type',
-                border: OutlineInputBorder(),
-              ),
-              items: ActivityTypes.all.map((type) {
-                return DropdownMenuItem<String>(
-                  value: type,
-                  child: Text(ActivityTypes.getDisplayName(type)),
-                );
-              }).toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() => _workoutType = value);
-                }
-              },
-            ),
-            const SizedBox(height: 16),
-            Row(
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // Start button
+          Center(
+            child: Column(
               children: [
-                Expanded(
-                  child: TextFormField(
-                    initialValue: _durationMinutes.toString(),
-                    decoration: const InputDecoration(
-                      labelText: 'Duration (minutes)',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.number,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Required';
-                      }
-                      if (int.tryParse(value) == null) {
-                        return 'Invalid number';
-                      }
-                      return null;
-                    },
-                    onChanged: (value) {
-                      setState(() {
-                        _durationMinutes = int.tryParse(value) ?? 0;
-                      });
-                    },
-                    enabled: !_isWorkoutInProgress,
+                ElevatedButton.icon(
+                  onPressed: _startWorkout,
+                  icon: const Icon(Icons.play_arrow),
+                  label: const Text('Start Workout'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    textStyle: const TextStyle(fontSize: 18),
+                    backgroundColor: AppColors.success,
                   ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: TextFormField(
-                    initialValue: _caloriesBurned.toString(),
-                    decoration: const InputDecoration(
-                      labelText: 'Calories Burned',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.number,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Required';
-                      }
-                      if (int.tryParse(value) == null) {
-                        return 'Invalid number';
-                      }
-                      return null;
-                    },
-                    onChanged: (value) {
-                      setState(() {
-                        _caloriesBurned = int.tryParse(value) ?? 0;
-                      });
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildExercisesSection() {
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
+                const SizedBox(height: 8),
                 const Text(
-                  'Exercises',
-                  style: AppTextStyles.heading3,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.add_circle),
-                  color: AppColors.primary,
-                  onPressed: _addExerciseSet,
+                  'Press to begin tracking your workout',
+                  style: AppTextStyles.caption,
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            if (_exerciseSets.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 16.0),
-                child: Center(
-                  child: Text(
-                    'No exercises added yet. Tap + to add exercises.',
-                    style: AppTextStyles.bodySmall,
-                  ),
-                ),
-              )
-            else
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _exerciseSets.length,
-                itemBuilder: (context, index) {
-                  final exercise = _exerciseSets[index];
-                  return ListTile(
-                    title: Text(
-                      exercise.name.isEmpty ? 'Untitled Exercise' : exercise.name,
-                      style: exercise.name.isEmpty
-                          ? AppTextStyles.body.copyWith(color: AppColors.textLight)
-                          : AppTextStyles.body,
-                    ),
-                    subtitle: Text(
-                      '${exercise.sets} sets × ${exercise.reps} reps ${exercise.weight > 0 ? '× ${exercise.weight}kg' : ''}',
-                      style: AppTextStyles.caption,
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit, size: 20),
-                          onPressed: () => _showExerciseDialog(exercise, index),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete, size: 20),
-                          onPressed: () => _removeExerciseSet(index),
-                        ),
-                      ],
-                    ),
-                    onTap: () => _showExerciseDialog(exercise, index),
-                  );
-                },
-              ),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              icon: const Icon(Icons.add),
-              label: const Text('Add Exercise'),
-              onPressed: _addExerciseSet,
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 44),
-              ),
-            ),
-          ],
-        ),
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // Quick workout suggestions
+          const Text(
+            'Quick Start Workouts',
+            style: AppTextStyles.heading3,
+          ),
+          const SizedBox(height: 8),
+          _buildQuickWorkoutGrid(),
+        ],
       ),
     );
   }
-
-  Widget _buildNotesSection() {
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
+  
+  Widget _buildQuickWorkoutGrid() {
+    final quickWorkouts = [
+      {'name': '30-Min HIIT', 'type': 'HIIT', 'icon': Icons.flash_on, 'color': Colors.orange},
+      {'name': 'Full Body Strength', 'type': 'Strength', 'icon': Icons.fitness_center, 'color': Colors.blue},
+      {'name': 'Morning Yoga', 'type': 'Flexibility', 'icon': Icons.self_improvement, 'color': Colors.purple},
+      {'name': '5K Run', 'type': 'Cardio', 'icon': Icons.directions_run, 'color': Colors.green},
+    ];
+    
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      children: quickWorkouts.map((workout) {
+        return Card(
+          elevation: 2,
+          child: InkWell(
+            onTap: () {
+              setState(() {
+                _workoutNameController.text = workout['name'] as String;
+                _selectedWorkoutType = workout['type'] as String;
+              });
+              _startWorkout();
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    workout['icon'] as IconData,
+                    color: workout['color'] as Color,
+                    size: 36,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    workout['name'] as String,
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.body.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    workout['type'] as String,
+                    style: AppTextStyles.caption,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+  
+  Widget _buildActiveWorkoutView() {
+    final hours = _elapsedSeconds ~/ 3600;
+    final minutes = (_elapsedSeconds % 3600) ~/ 60;
+    final seconds = _elapsedSeconds % 60;
+    
+    final formattedTime = 
+        '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    
+    // Estimate calories burned (very simple estimate)
+    final estimatedCalories = (_elapsedSeconds / 60).round() * 5;
+    
+    return Column(
+      children: [
+        // Timer display
+        Expanded(
+          child: Container(
+            color: AppColors.primary.withOpacity(0.1),
+            width: double.infinity,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  _workoutNameController.text,
+                  style: AppTextStyles.heading2,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _selectedWorkoutType,
+                  style: AppTextStyles.body,
+                ),
+                const SizedBox(height: 32),
+                Text(
+                  formattedTime,
+                  style: const TextStyle(
+                    fontSize: 64,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.local_fire_department, color: Colors.orange),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Est. Calories: $estimatedCalories',
+                      style: AppTextStyles.body,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        
+        // Controls
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              if (_timer?.isActive ?? false)
+                IconButton(
+                  onPressed: _pauseWorkout,
+                  icon: const Icon(Icons.pause_circle_outline),
+                  iconSize: 64,
+                  color: AppColors.warning,
+                )
+              else
+                IconButton(
+                  onPressed: _resumeWorkout,
+                  icon: const Icon(Icons.play_circle_outline),
+                  iconSize: 64,
+                  color: AppColors.success,
+                ),
+              IconButton(
+                onPressed: _finishWorkout,
+                icon: const Icon(Icons.stop_circle_outlined),
+                iconSize: 64,
+                color: AppColors.error,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildCompletionDialog() {
+    final hours = _elapsedSeconds ~/ 3600;
+    final minutes = (_elapsedSeconds % 3600) ~/ 60;
+    final seconds = _elapsedSeconds % 60;
+    
+    final formattedTime = 
+        '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    
+    return AlertDialog(
+      title: const Text('Workout Complete'),
+      content: SingleChildScrollView(
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Notes',
-              style: AppTextStyles.heading3,
+            Text('Duration: $formattedTime'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _caloriesController,
+              decoration: const InputDecoration(
+                labelText: 'Calories Burned (optional)',
+                border: OutlineInputBorder(),
+                hintText: 'Enter calories burned',
+              ),
+              keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 16),
-            TextFormField(
+            TextField(
               controller: _notesController,
               decoration: const InputDecoration(
-                hintText: 'Add notes about your workout...',
+                labelText: 'Notes (optional)',
                 border: OutlineInputBorder(),
+                hintText: 'Enter workout notes',
               ),
-              maxLines: 4,
+              maxLines: 3,
             ),
           ],
         ),
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Discard'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Save Workout'),
+        ),
+      ],
     );
-  }
-
-  String _formatDuration(Duration duration) {
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    final hours = twoDigits(duration.inHours);
-    final minutes = twoDigits(duration.inMinutes.remainder(60));
-    final seconds = twoDigits(duration.inSeconds.remainder(60));
-    return '$hours:$minutes:$seconds';
-  }
-}
-
-class ExerciseSet {
-  String name;
-  int sets;
-  int reps;
-  double weight;
-  
-  ExerciseSet({
-    required this.name,
-    required this.sets,
-    required this.reps,
-    required this.weight,
-  });
-  
-  factory ExerciseSet.fromMap(Map<String, dynamic> map) {
-    return ExerciseSet(
-      name: map['name'] ?? '',
-      sets: map['sets'] ?? 0,
-      reps: map['reps'] ?? 0,
-      weight: (map['weight'] ?? 0).toDouble(),
-    );
-  }
-  
-  Map<String, dynamic> toMap() {
-    return {
-      'name': name,
-      'sets': sets,
-      'reps': reps,
-      'weight': weight,
-    };
   }
 }

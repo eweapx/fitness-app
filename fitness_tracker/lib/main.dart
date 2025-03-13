@@ -15,9 +15,16 @@ import 'screens/activity_screen.dart';
 import 'screens/nutrition_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/auth/login.dart';
+import 'screens/activity_tab_screen.dart';
+import 'screens/nutrition_tab_screen.dart';
+import 'screens/workout_screen.dart';
+import 'screens/meal_planner_screen.dart';
+import 'screens/water_tracking_screen.dart';
+import 'screens/progress_screen.dart';
 
 // Import services and utils
 import 'services/firebase_service.dart';
+import 'services/step_tracking_service.dart';
 import 'utils/constants.dart';
 import 'widgets/common_widgets.dart';
 
@@ -92,6 +99,12 @@ class FitnessApp extends StatelessWidget {
         '/': (context) => const AuthGate(),
         '/home': (context) => const HomeScreen(),
         '/login': (context) => const LoginScreen(),
+        '/activity': (context) => const ActivityScreen(),
+        '/nutrition': (context) => const NutritionScreen(),
+        '/workout': (context) => const WorkoutScreen(),
+        '/meal_planner': (context) => const MealPlannerScreen(),
+        '/water_tracker': (context) => const WaterTrackingScreen(),
+        '/progress': (context) => const ProgressScreen(),
       },
     );
   }
@@ -135,10 +148,12 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isConnected = true;
   late StreamSubscription<ConnectivityResult> _connectivitySubscription;
   
+  // Import our new screens
   final List<Widget> _pages = [
     const DashboardScreen(),
-    const ActivityScreen(),
-    const NutritionScreen(),
+    const ActivityTabScreen(),
+    const NutritionTabScreen(),
+    const ProgressScreen(),
     const ProfileScreen(),
   ];
 
@@ -174,6 +189,7 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
           BottomNavigationBarItem(icon: Icon(Icons.directions_run), label: 'Activity'),
           BottomNavigationBarItem(icon: Icon(Icons.restaurant_menu), label: 'Nutrition'),
+          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Progress'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
@@ -190,6 +206,17 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             )
           : null,
+      // Add a floating action button for quick access to workout tracking
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const WorkoutScreen()),
+          );
+        },
+        backgroundColor: AppColors.primary,
+        child: const Icon(Icons.fitness_center),
+      ),
     );
   }
 }

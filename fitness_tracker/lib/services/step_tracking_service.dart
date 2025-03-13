@@ -1,267 +1,160 @@
-import 'package:health/health.dart';
+import 'package:flutter/material.dart';
+import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/activity_model.dart';
-import '../utils/constants.dart';
 
-/// Service for tracking steps and other health metrics
+/// Service for tracking steps using the device's pedometer sensor
 class StepTrackingService {
-  final HealthFactory _health = HealthFactory();
+  static const String _stepsKey = 'steps_data';
+  static const String _lastResetDateKey = 'last_reset_date';
   
-  /// Request permissions for health data
-  Future<bool> requestPermissions() async {
-    // Request permission for fitness tracking
-    final permissionStatus = await Permission.activityRecognition.request();
-    if (permissionStatus.isGranted) {
-      // Request Health permissions
-      final types = [
-        HealthDataType.STEPS, 
-        HealthDataType.DISTANCE_WALKING_RUNNING,
-        HealthDataType.ACTIVE_ENERGY_BURNED,
-        HealthDataType.HEART_RATE
-      ];
-      
-      try {
-        final granted = await _health.requestAuthorization(types);
-        return granted;
-      } catch (e) {
-        print('Error requesting health authorization: $e');
-        return false;
-      }
-    }
-    return false;
-  }
+  Stream<StepCount>? _stepCountStream;
+  StreamSubscription<StepCount>? _stepCountSubscription;
+  int _todaySteps = 0;
+  int _totalSteps = 0;
+  bool _isInitialized = false;
   
-  /// Check if health permissions are granted
+  /// Check if the app has permission to track steps
   Future<bool> checkPermissions() async {
-    final permissionStatus = await Permission.activityRecognition.status;
-    if (permissionStatus.isGranted) {
-      // Check Health permissions
-      final types = [HealthDataType.STEPS];
-      try {
-        final granted = await _health.hasPermissions(types);
-        return granted ?? false;
-      } catch (e) {
-        print('Error checking health permissions: $e');
-        return false;
-      }
+    if (await Permission.activityRecognition.isGranted) {
+      _initializePedometer();
+      return true;
     }
     return false;
   }
   
-  /// Fetch step count for a specific date
-  Future<int?> getStepCount(DateTime date) async {
-    try {
-      final hasPermissions = await checkPermissions();
-      if (!hasPermissions) {
-        final granted = await requestPermissions();
-        if (!granted) {
-          return null;
-        }
-      }
-      
-      final midnight = DateTime(date.year, date.month, date.day);
-      final now = DateTime.now();
-      final endTime = date.day == now.day && date.month == now.month && date.year == now.year
-          ? now
-          : DateTime(date.year, date.month, date.day, 23, 59, 59);
-      
-      final steps = await _health.getTotalStepsInInterval(midnight, endTime);
-      return steps;
-    } catch (e) {
-      print('Error fetching step count: $e');
-      return null;
+  /// Request permission to track steps
+  Future<bool> requestPermissions() async {
+    final status = await Permission.activityRecognition.request();
+    if (status.isGranted) {
+      _initializePedometer();
+      return true;
     }
+    return false;
   }
   
-  /// Fetch step counts for a date range
-  Future<Map<DateTime, int>> getStepCountsForRange(DateTime startDate, DateTime endDate) async {
-    final result = <DateTime, int>{};
+  /// Initialize the pedometer
+  void _initializePedometer() {
+    if (_isInitialized) return;
     
-    try {
-      final hasPermissions = await checkPermissions();
-      if (!hasPermissions) {
-        final granted = await requestPermissions();
-        if (!granted) {
-          return result;
+    _stepCountStream = Pedometer.stepCountStream;
+    _stepCountSubscription = _stepCountStream?.listen(
+      _onStepCount,
+      onError: _onStepCountError,
+      cancelOnError: true,
+    );
+    
+    _isInitialized = true;
+  }
+  
+  /// Handle step count updates
+  void _onStepCount(StepCount event) {
+    _totalSteps = event.steps;
+    _updateTodaySteps();
+  }
+  
+  /// Handle step count errors
+  void _onStepCountError(error) {
+    print('Step count error: $error');
+  }
+  
+  /// Update today's step count
+  Future<void> _updateTodaySteps() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastResetDate = prefs.getString(_lastResetDateKey) ?? '';
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    
+    // Check if we need to reset step count for a new day
+    if (lastResetDate != today) {
+      // Save yesterday's step count
+      final stepsData = prefs.getStringList(_stepsKey) ?? [];
+      if (lastResetDate.isNotEmpty) {
+        stepsData.add('$lastResetDate:$_todaySteps');
+        
+        // Keep only the last 30 days of data
+        if (stepsData.length > 30) {
+          stepsData.removeAt(0);
         }
+        
+        await prefs.setStringList(_stepsKey, stepsData);
       }
       
-      // Get steps for each day in the range
-      for (var i = 0; i <= endDate.difference(startDate).inDays; i++) {
-        final date = startDate.add(Duration(days: i));
-        final day = DateTime(date.year, date.month, date.day);
-        
-        final steps = await getStepCount(day);
-        if (steps != null) {
-          result[day] = steps;
+      // Reset for today
+      _todaySteps = 0;
+      await prefs.setString(_lastResetDateKey, today);
+    }
+    
+    // Update today's steps
+    _todaySteps = _totalSteps;
+  }
+  
+  /// Get step count for a specific date
+  Future<int?> getStepCount(DateTime date) async {
+    final dateString = date.toIso8601String().split('T')[0];
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    
+    // If requesting today's step count, return the current count
+    if (dateString == today) {
+      return _todaySteps;
+    }
+    
+    // Otherwise, retrieve from storage
+    final prefs = await SharedPreferences.getInstance();
+    final stepsData = prefs.getStringList(_stepsKey) ?? [];
+    
+    for (final data in stepsData) {
+      final parts = data.split(':');
+      if (parts.length == 2 && parts[0] == dateString) {
+        return int.tryParse(parts[1]);
+      }
+    }
+    
+    return null;
+  }
+  
+  /// Get step counts for a date range
+  Future<Map<DateTime, int>> getStepCountRange(DateTime start, DateTime end) async {
+    final Map<DateTime, int> result = {};
+    final prefs = await SharedPreferences.getInstance();
+    final stepsData = prefs.getStringList(_stepsKey) ?? [];
+    
+    // Process stored data
+    for (final data in stepsData) {
+      final parts = data.split(':');
+      if (parts.length == 2) {
+        try {
+          final date = DateTime.parse(parts[0]);
+          final steps = int.parse(parts[1]);
+          
+          if (date.isAfter(start.subtract(const Duration(days: 1))) && 
+              date.isBefore(end.add(const Duration(days: 1)))) {
+            result[date] = steps;
+          }
+        } catch (e) {
+          print('Error parsing step data: $e');
         }
       }
-    } catch (e) {
-      print('Error fetching step counts for range: $e');
+    }
+    
+    // Add today's steps if within range
+    final today = DateTime.now();
+    if (today.isAfter(start.subtract(const Duration(days: 1))) && 
+        today.isBefore(end.add(const Duration(days: 1)))) {
+      result[today] = _todaySteps;
     }
     
     return result;
   }
   
-  /// Get active calories burned for a date
-  Future<double?> getActiveCalories(DateTime date) async {
-    try {
-      final hasPermissions = await checkPermissions();
-      if (!hasPermissions) {
-        final granted = await requestPermissions();
-        if (!granted) {
-          return null;
-        }
-      }
-      
-      final midnight = DateTime(date.year, date.month, date.day);
-      final now = DateTime.now();
-      final endTime = date.day == now.day && date.month == now.month && date.year == now.year
-          ? now
-          : DateTime(date.year, date.month, date.day, 23, 59, 59);
-      
-      final results = await _health.getHealthDataFromTypes(
-        midnight, 
-        endTime, 
-        [HealthDataType.ACTIVE_ENERGY_BURNED]
-      );
-      
-      if (results.isEmpty) return 0;
-      
-      // Sum up all active energy records
-      double totalCalories = 0;
-      for (var result in results) {
-        totalCalories += double.tryParse(result.value.toString()) ?? 0;
-      }
-      
-      return totalCalories;
-    } catch (e) {
-      print('Error fetching active calories: $e');
-      return null;
-    }
+  /// Get total step count for a date range
+  Future<int> getTotalStepsForRange(DateTime start, DateTime end) async {
+    final stepCounts = await getStepCountRange(start, end);
+    return stepCounts.values.fold(0, (sum, steps) => sum + steps);
   }
   
-  /// Get heart rate data for a date
-  Future<List<HeartRateReading>> getHeartRateData(DateTime date) async {
-    final results = <HeartRateReading>[];
-    
-    try {
-      final hasPermissions = await checkPermissions();
-      if (!hasPermissions) {
-        final granted = await requestPermissions();
-        if (!granted) {
-          return results;
-        }
-      }
-      
-      final midnight = DateTime(date.year, date.month, date.day);
-      final now = DateTime.now();
-      final endTime = date.day == now.day && date.month == now.month && date.year == now.year
-          ? now
-          : DateTime(date.year, date.month, date.day, 23, 59, 59);
-      
-      final readings = await _health.getHealthDataFromTypes(
-        midnight, 
-        endTime, 
-        [HealthDataType.HEART_RATE]
-      );
-      
-      for (var reading in readings) {
-        final value = double.tryParse(reading.value.toString());
-        if (value != null) {
-          results.add(HeartRateReading(
-            timestamp: reading.dateFrom,
-            bpm: value.toInt(),
-          ));
-        }
-      }
-      
-      // Sort by timestamp
-      results.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-    } catch (e) {
-      print('Error fetching heart rate data: $e');
-    }
-    
-    return results;
+  /// Dispose of the subscription
+  void dispose() {
+    _stepCountSubscription?.cancel();
   }
-  
-  /// Generate an activity from step data
-  Future<ActivityModel?> generateStepActivity(String userId, DateTime date) async {
-    final steps = await getStepCount(date);
-    if (steps == null || steps <= 0) return null;
-    
-    final calories = await getActiveCalories(date) ?? (steps * 0.04).round(); // Estimate calories if not available
-    
-    // Estimate distance based on step count (average stride length)
-    final distance = steps * 0.0007; // Approximately 0.7m per step
-    
-    return ActivityModel(
-      userId: userId,
-      name: 'Daily Steps',
-      type: ActivityTypes.walking,
-      duration: (steps ~/ 100) * 1, // Estimate: ~100 steps per minute
-      caloriesBurned: calories.round(),
-      steps: steps,
-      distance: distance,
-      date: date,
-    );
-  }
-  
-  /// Save current step count to preferences for tracking
-  Future<void> saveCurrentStepCount() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-      
-      final steps = await getStepCount(today);
-      if (steps != null) {
-        await prefs.setInt('current_step_count', steps);
-        await prefs.setString('step_count_timestamp', now.toIso8601String());
-      }
-    } catch (e) {
-      print('Error saving current step count: $e');
-    }
-  }
-  
-  /// Get additional steps since last save
-  Future<int> getAdditionalStepsSinceLastSave() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final lastStepCount = prefs.getInt('current_step_count') ?? 0;
-      final lastTimestampStr = prefs.getString('step_count_timestamp');
-      
-      if (lastTimestampStr == null) return 0;
-      
-      final lastTimestamp = DateTime.parse(lastTimestampStr);
-      final now = DateTime.now();
-      
-      // If last save was on a different day, return 0
-      if (lastTimestamp.day != now.day || 
-          lastTimestamp.month != now.month || 
-          lastTimestamp.year != now.year) {
-        return 0;
-      }
-      
-      final today = DateTime(now.year, now.month, now.day);
-      final currentSteps = await getStepCount(today) ?? 0;
-      
-      return currentSteps - lastStepCount;
-    } catch (e) {
-      print('Error getting additional steps: $e');
-      return 0;
-    }
-  }
-}
-
-/// Heart rate reading with timestamp and BPM value
-class HeartRateReading {
-  final DateTime timestamp;
-  final int bpm;
-  
-  HeartRateReading({
-    required this.timestamp,
-    required this.bpm,
-  });
 }
