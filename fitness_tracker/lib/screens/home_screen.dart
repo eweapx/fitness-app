@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fl_chart/fl_chart.dart';
 
-import '../services/firebase_service.dart';
+import '../models/habit.dart';
+import '../providers/settings_provider.dart';
 import '../providers/user_provider.dart';
+import '../services/firebase_service.dart';
 import '../utils/constants.dart';
 import '../widgets/common_widgets.dart';
-
-// Feature screens
 import 'activity_tracking_screen.dart';
-import 'nutrition_screen.dart';
-import 'sleep_tracking_screen.dart';
 import 'habit_tracking_screen.dart';
-import 'settings_screen.dart';
+import 'nutrition_screen.dart';
+import 'profile_screen.dart';
+import 'sleep_tracking_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -23,21 +23,21 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _currentIndex = 0;
+  int _selectedIndex = 0;
   bool _isLoading = true;
   final FirebaseService _firebaseService = FirebaseService();
   
-  Map<String, dynamic> _statsData = {
-    'steps': 0,
-    'calories': 0,
-    'distance': 0.0,
-    'activities': 0,
-    'sleep': 0.0,
-    'water': 0,
-    'streaks': 0,
-  };
+  // Dashboard stats
+  int _totalActivities = 0;
+  int _totalHabits = 0;
+  int _totalSleepHours = 0;
+  int _totalSteps = 0;
+  int _totalCalories = 0;
+  double _todayNutritionCalories = 0;
   
-  List<FlSpot> _weeklyActivityData = [];
+  // Lists for charts
+  List<Map<String, dynamic>> _weeklyActivities = [];
+  List<Habit> _habits = [];
   
   @override
   void initState() {
@@ -49,108 +49,75 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _isLoading = true);
     
     try {
-      final user = Provider.of<UserProvider>(context, listen: false).user;
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final userId = userProvider.user?.uid ?? 'demo_user';
       
-      if (user == null) {
-        setState(() => _isLoading = false);
-        return;
+      // Load user profile if not already loaded
+      if (userProvider.userProfile == null) {
+        await userProvider.loadUserProfile();
       }
       
-      // Get data for today's summary
+      // Get activity stats
       final now = DateTime.now();
-      final startOfDay = DateTime(now.year, now.month, now.day);
-      final endOfDay = startOfDay.add(const Duration(days: 1));
+      final today = DateTime(now.year, now.month, now.day);
+      final weekAgo = today.subtract(const Duration(days: 7));
       
-      // Get today's activities
-      final todayActivities = await _firebaseService.getActivitiesForDateRange(
-        user.uid,
-        startOfDay,
-        endOfDay,
-      );
-      
-      // Get weekly activity data
-      final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-      final endOfWeek = startOfWeek.add(const Duration(days: 7));
-      
-      final weeklyActivities = await _firebaseService.getActivitiesForDateRange(
-        user.uid,
-        startOfWeek,
-        endOfWeek,
-      );
-      
-      // Get sleep data for the past week
-      final startOfPastWeek = now.subtract(const Duration(days: 7));
-      final sleepEntries = await _firebaseService.getSleepEntriesForDateRange(
-        user.uid,
-        startOfPastWeek,
+      // Get activities
+      final activities = await _firebaseService.getActivitiesForDateRange(
+        userId,
+        weekAgo,
         now,
       );
       
-      // Get user habits
-      final habits = await _firebaseService.getUserHabits(user.uid);
+      // Get habits
+      final habits = await _firebaseService.getHabits(userId);
       
-      // Calculate today's stats
-      int todaySteps = 0;
-      int todayCalories = 0;
-      double todayDistance = 0.0;
+      // Get nutrition stats
+      final todayMeals = await _firebaseService.getMealEntriesForDate(
+        userId,
+        today,
+      );
       
-      for (final activity in todayActivities) {
-        todaySteps += activity['steps'] ?? 0;
-        todayCalories += activity['calories'] ?? 0;
-        todayDistance += activity['distance'] ?? 0.0;
+      double todayCalories = 0;
+      for (final meal in todayMeals) {
+        final calories = meal['calories'] as int? ?? 0;
+        todayCalories += calories;
       }
       
-      // Calculate average sleep for the past week
-      double avgSleep = 0.0;
-      if (sleepEntries.isNotEmpty) {
-        final totalSleepMinutes = sleepEntries.fold<int>(
-          0, (sum, entry) => sum + entry.duration);
-        avgSleep = totalSleepMinutes / sleepEntries.length / 60; // Convert to hours
+      // Get sleep stats
+      final sleepEntries = await _firebaseService.getSleepEntriesForDateRange(
+        userId,
+        weekAgo,
+        now,
+      );
+      
+      int totalSleepMinutes = 0;
+      for (final entry in sleepEntries) {
+        final duration = entry['durationMinutes'] as int? ?? 0;
+        totalSleepMinutes += duration;
       }
       
-      // Calculate streak
-      int highestStreak = 0;
-      for (final habit in habits) {
-        if (habit.streak > highestStreak) {
-          highestStreak = habit.streak;
-        }
-      }
+      // Calculate activity stats
+      int totalSteps = 0;
+      int totalCalories = 0;
       
-      // Process weekly activity data for chart
-      final Map<DateTime, int> dailyCalories = {};
-      
-      // Initialize all days of the week with 0 calories
-      for (int i = 0; i < 7; i++) {
-        final date = startOfWeek.add(Duration(days: i));
-        dailyCalories[date] = 0;
-      }
-      
-      // Sum up calories by day
-      for (final activity in weeklyActivities) {
-        final date = (activity['date'] as DateTime);
-        final dayDate = DateTime(date.year, date.month, date.day);
-        final calories = activity['calories'] ?? 0;
+      for (final activity in activities) {
+        final steps = activity['steps'] as int? ?? 0;
+        final calories = activity['calories'] as int? ?? 0;
         
-        dailyCalories[dayDate] = (dailyCalories[dayDate] ?? 0) + calories;
+        totalSteps += steps;
+        totalCalories += calories;
       }
-      
-      final sortedDates = dailyCalories.keys.toList()..sort();
-      _weeklyActivityData = sortedDates.map((date) {
-        // Get the day of week (0-6, where 0 is Monday)
-        final dayOfWeek = date.weekday - 1;
-        return FlSpot(dayOfWeek.toDouble(), dailyCalories[date]!.toDouble());
-      }).toList();
       
       setState(() {
-        _statsData = {
-          'steps': todaySteps,
-          'calories': todayCalories,
-          'distance': todayDistance,
-          'activities': todayActivities.length,
-          'sleep': avgSleep,
-          'water': 0, // This would come from a water tracking feature
-          'streaks': highestStreak,
-        };
+        _totalActivities = activities.length;
+        _totalHabits = habits.length;
+        _totalSleepHours = (totalSleepMinutes / 60).round();
+        _totalSteps = totalSteps;
+        _totalCalories = totalCalories;
+        _todayNutritionCalories = todayCalories;
+        _weeklyActivities = activities;
+        _habits = habits;
         _isLoading = false;
       });
     } catch (e) {
@@ -159,7 +126,27 @@ class _HomeScreenState extends State<HomeScreen> {
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading data: ${e.toString()}')),
+          SnackBar(content: Text('Error loading dashboard data: ${e.toString()}')),
+        );
+      }
+    }
+  }
+  
+  // Sign out
+  Future<void> _signOut() async {
+    try {
+      await FirebaseAuth.instance.signOut();
+      
+      // Clear user provider data
+      if (mounted) {
+        Provider.of<UserProvider>(context, listen: false).clearUser();
+      }
+    } catch (e) {
+      print('Error signing out: $e');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error signing out: ${e.toString()}')),
         );
       }
     }
@@ -167,32 +154,35 @@ class _HomeScreenState extends State<HomeScreen> {
   
   @override
   Widget build(BuildContext context) {
-    final List<Widget> screens = [
-      _buildDashboard(),
-      const ActivityTrackingScreen(),
-      const NutritionScreen(),
-      const SleepTrackingScreen(),
-      const HabitTrackingScreen(),
-      const SettingsScreen(),
-    ];
-    
     return Scaffold(
-      body: screens[_currentIndex],
+      appBar: _selectedIndex == 0
+          ? AppBar(
+              title: const Text('Health & Fitness Tracker'),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  tooltip: 'Refresh Data',
+                  onPressed: _loadDashboardData,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.logout),
+                  tooltip: 'Sign Out',
+                  onPressed: _signOut,
+                ),
+              ],
+            )
+          : null,
+      body: _getSelectedScreen(),
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
+        currentIndex: _selectedIndex,
         onTap: (index) {
-          setState(() => _currentIndex = index);
-          
-          // Refresh dashboard data when returning to dashboard
-          if (index == 0) {
-            _loadDashboardData();
-          }
+          setState(() => _selectedIndex = index);
         },
         type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: 'Dashboard',
+            icon: Icon(Icons.home),
+            label: 'Home',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.directions_run),
@@ -203,353 +193,507 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Nutrition',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.nightlight),
+            icon: Icon(Icons.bedtime),
             label: 'Sleep',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.repeat),
             label: 'Habits',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
         ],
       ),
     );
   }
   
-  Widget _buildDashboard() {
-    final user = Provider.of<UserProvider>(context).user;
-    final today = DateTime.now();
-    final dateFormat = DateFormat('EEEE, MMMM d');
+  Widget _getSelectedScreen() {
+    switch (_selectedIndex) {
+      case 0:
+        return _buildDashboardScreen();
+      case 1:
+        return const ActivityTrackingScreen();
+      case 2:
+        return const NutritionScreen();
+      case 3:
+        return const SleepTrackingScreen();
+      case 4:
+        return const HabitTrackingScreen();
+      default:
+        return _buildDashboardScreen();
+    }
+  }
+  
+  Widget _buildDashboardScreen() {
+    if (_isLoading) {
+      return const LoadingIndicator(message: 'Loading dashboard data...');
+    }
     
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dashboard'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadDashboardData,
-            tooltip: 'Refresh',
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? const LoadingIndicator(message: 'Loading dashboard data...')
-          : RefreshIndicator(
-              onRefresh: _loadDashboardData,
-              child: SingleChildScrollView(
+    // Get settings
+    final settingsProvider = Provider.of<SettingsProvider>(context);
+    final isMetric = settingsProvider.useMetricSystem;
+    final distanceUnit = isMetric ? AppConstants.unitKm : AppConstants.unitMi;
+    
+    // Get user data
+    final userProvider = Provider.of<UserProvider>(context);
+    final userName = userProvider.userProfile != null
+        ? userProvider.userProfile!['name'] ?? 'User'
+        : 'User';
+    
+    // Calculate calorie goal progress
+    int calorieGoal = settingsProvider.caloriesGoal;
+    final dailyNeeds = userProvider.getUserDailyCalorieNeeds();
+    if (dailyNeeds != null) {
+      calorieGoal = dailyNeeds;
+    }
+    
+    final calorieProgress = _todayNutritionCalories / calorieGoal;
+    
+    return RefreshIndicator(
+      onRefresh: _loadDashboardData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // User greeting
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                );
+              },
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 30,
+                        backgroundColor: AppColors.primary.withOpacity(0.2),
+                        child: Text(
+                          userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
+                          style: const TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Hello, $userName',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              'Tap to view your profile',
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.arrow_forward_ios, size: 16),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            
+            // Quick stats
+            const Text(
+              'Today\'s Statistics',
+              style: AppTextStyles.heading3,
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatCard(
+                    'Steps',
+                    _totalSteps.toString(),
+                    Icons.directions_walk,
+                    Colors.blue,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildStatCard(
+                    'Calories',
+                    '$_totalCalories kcal',
+                    Icons.local_fire_department,
+                    Colors.orange,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatCard(
+                    'Sleep',
+                    '$_totalSleepHours hrs',
+                    Icons.bedtime,
+                    Colors.indigo,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildStatCard(
+                    'Activities',
+                    _totalActivities.toString(),
+                    Icons.fitness_center,
+                    Colors.green,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            
+            // Nutrition progress
+            const Text(
+              'Nutrition Progress',
+              style: AppTextStyles.heading3,
+            ),
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Greeting section
-                    Text(
-                      'Hello, ${user?.displayName ?? 'there'}!',
-                      style: AppTextStyles.heading1,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Calories Consumed',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            Text(
+                              '${_todayNutritionCalories.toInt()} / $calorieGoal kcal',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.green.shade50,
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${(calorieProgress * 100).round()}%',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: calorieProgress > 1 ? Colors.red : Colors.green,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      dateFormat.format(today),
-                      style: AppTextStyles.body.copyWith(
-                        color: AppColors.textSecondary,
+                    const SizedBox(height: 12),
+                    LinearProgressIndicator(
+                      value: calorieProgress.clamp(0.0, 1.0),
+                      backgroundColor: Colors.grey.shade200,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        calorieProgress > 1 ? Colors.red : Colors.green,
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    
-                    // Today's summary
-                    const SectionHeader(title: "Today's Summary"),
-                    const SizedBox(height: 8),
-                    _buildSummaryCards(),
-                    const SizedBox(height: 24),
-                    
-                    // Weekly activity chart
-                    const SectionHeader(title: 'Weekly Activity'),
-                    const SizedBox(height: 8),
-                    _buildWeeklyActivityChart(),
-                    const SizedBox(height: 24),
-                    
-                    // Quick access
-                    const SectionHeader(title: 'Quick Access'),
-                    const SizedBox(height: 8),
-                    _buildQuickAccessGrid(),
-                    const SizedBox(height: 24),
-                    
-                    // Progress cards
-                    const SectionHeader(title: 'Your Progress'),
-                    const SizedBox(height: 8),
-                    _buildProgressCards(),
-                    const SizedBox(height: 40),
                   ],
                 ),
               ),
             ),
-    );
-  }
-  
-  Widget _buildSummaryCards() {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: MetricCard(
-                title: 'Steps',
-                value: '${_statsData['steps']}',
-                subtitle: '${(_statsData['steps'] / AppConstants.defaultStepsGoal * 100).toInt()}% of goal',
-                icon: Icons.directions_walk,
-                color: AppColors.primary,
-                onTap: () => _navigateToScreen(1), // Activity screen
-              ),
+            const SizedBox(height: 24),
+            
+            // Habit tracking
+            const Text(
+              'Habit Tracking',
+              style: AppTextStyles.heading3,
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: MetricCard(
-                title: 'Calories',
-                value: '${_statsData['calories']}',
-                subtitle: 'kcal burned today',
-                icon: Icons.local_fire_department,
-                color: Colors.orange,
-                onTap: () => _navigateToScreen(1), // Activity screen
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: MetricCard(
-                title: 'Sleep',
-                value: '${_statsData['sleep'].toStringAsFixed(1)}h',
-                subtitle: 'avg. last 7 days',
-                icon: Icons.nightlight,
-                color: Colors.indigo,
-                onTap: () => _navigateToScreen(3), // Sleep screen
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: MetricCard(
-                title: 'Habits',
-                value: '${_statsData['streaks']}',
-                subtitle: 'days longest streak',
-                icon: Icons.repeat,
-                color: AppColors.tertiary,
-                onTap: () => _navigateToScreen(4), // Habits screen
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-  
-  Widget _buildWeeklyActivityChart() {
-    final daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    
-    return AspectRatio(
-      aspectRatio: 1.7,
-      child: Card(
-        elevation: 2,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Icon(
-                    Icons.whatshot,
-                    color: Colors.orange,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Calories Burned',
-                    style: AppTextStyles.heading4,
-                  ),
-                  const Spacer(),
-                  ChartLegendItem(
-                    label: 'Current Week',
-                    color: Colors.orange.shade300,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: _weeklyActivityData.isEmpty
-                    ? const Center(
-                        child: Text('No activity data available'),
-                      )
-                    : BarChart(
-                        BarChartData(
-                          alignment: BarChartAlignment.spaceAround,
-                          maxY: (_weeklyActivityData.map((spot) => spot.y).reduce((a, b) => a > b ? a : b) * 1.2)
-                              .ceilToDouble(),
-                          barTouchData: BarTouchData(
-                            enabled: true,
-                            touchTooltipData: BarTouchTooltipData(
-                              tooltipBgColor: Colors.blueGrey.shade800,
-                              getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                                return BarTooltipItem(
-                                  '${rod.toY.round()} kcal',
-                                  const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          titlesData: FlTitlesData(
-                            show: true,
-                            bottomTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                getTitlesWidget: (value, meta) {
-                                  final index = value.toInt();
-                                  if (index >= 0 && index < daysOfWeek.length) {
-                                    return Padding(
-                                      padding: const EdgeInsets.only(top: 8),
-                                      child: Text(
-                                        daysOfWeek[index],
-                                        style: AppTextStyles.caption,
-                                      ),
-                                    );
-                                  }
-                                  return const SizedBox.shrink();
-                                },
-                                reservedSize: 30,
-                              ),
-                            ),
-                            leftTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                getTitlesWidget: (value, meta) {
-                                  if (value % 100 == 0) {
-                                    return Text(
-                                      '${value.toInt()}',
-                                      style: AppTextStyles.caption,
-                                    );
-                                  }
-                                  return const SizedBox.shrink();
-                                },
-                                reservedSize: 40,
-                              ),
-                            ),
-                            topTitles: AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                            rightTitles: AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                          ),
-                          borderData: FlBorderData(
-                            show: false,
-                          ),
-                          barGroups: _weeklyActivityData.map((spot) {
-                            return BarChartGroupData(
-                              x: spot.x.toInt(),
-                              barRods: [
-                                BarChartRodData(
-                                  toY: spot.y,
-                                  color: Colors.orange.shade300,
-                                  width: 22,
-                                  borderRadius: const BorderRadius.only(
-                                    topLeft: Radius.circular(4),
-                                    topRight: Radius.circular(4),
-                                  ),
-                                ),
-                              ],
-                            );
-                          }).toList(),
+            const SizedBox(height: 16),
+            if (_habits.isEmpty) ...[
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      const Icon(
+                        Icons.loop,
+                        size: 48,
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'No habits created yet',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Create habits to track your progress',
+                        style: TextStyle(
+                          color: Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      AppButton(
+                        label: 'Create a Habit',
+                        icon: Icons.add,
+                        onPressed: () {
+                          setState(() => _selectedIndex = 4);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ] else ...[
+              SizedBox(
+                height: 150,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _habits.length > 5 ? 5 : _habits.length,
+                  itemBuilder: (context, index) {
+                    final habit = _habits[index];
+                    final isGoodHabit = habit.type == 'good';
+                    final color = isGoodHabit ? AppColors.good : AppColors.bad;
+                    
+                    return Container(
+                      width: 150,
+                      margin: const EdgeInsets.only(right: 16),
+                      child: Card(
+                        color: color.withOpacity(0.1),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(color: color.withOpacity(0.3)),
+                        ),
+                        child: InkWell(
+                          onTap: () {
+                            setState(() => _selectedIndex = 4);
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: color.withOpacity(0.2),
+                                      ),
+                                      child: Text(
+                                        isGoodHabit ? '✅' : '❌',
+                                        style: const TextStyle(fontSize: 12),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      isGoodHabit ? 'Good' : 'Bad',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: color,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  habit.name,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: color,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const Spacer(),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.local_fire_department,
+                                      size: 16,
+                                      color: Colors.orange,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${habit.streak} day streak',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () {
+                  setState(() => _selectedIndex = 4);
+                },
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('View All Habits'),
+                    SizedBox(width: 4),
+                    Icon(Icons.arrow_forward, size: 16),
+                  ],
+                ),
               ),
             ],
-          ),
+            const SizedBox(height: 24),
+            
+            // Quick Actions
+            const Text(
+              'Quick Actions',
+              style: AppTextStyles.heading3,
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildActionButton(
+                    'Log Activity',
+                    Icons.directions_run,
+                    Colors.blue,
+                    () {
+                      setState(() => _selectedIndex = 1);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildActionButton(
+                    'Log Meal',
+                    Icons.restaurant_menu,
+                    Colors.green,
+                    () {
+                      setState(() => _selectedIndex = 2);
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildActionButton(
+                    'Log Sleep',
+                    Icons.bedtime,
+                    Colors.indigo,
+                    () {
+                      setState(() => _selectedIndex = 3);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildActionButton(
+                    'Track Habit',
+                    Icons.repeat,
+                    Colors.purple,
+                    () {
+                      setState(() => _selectedIndex = 4);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
   
-  Widget _buildQuickAccessGrid() {
-    return GridView.count(
-      physics: const NeverScrollableScrollPhysics(),
-      shrinkWrap: true,
-      crossAxisCount: 2,
-      crossAxisSpacing: 16,
-      mainAxisSpacing: 16,
-      childAspectRatio: 1.25,
-      children: [
-        FeatureCard(
-          title: 'Track Activity',
-          icon: Icons.directions_run,
-          description: 'Log your workouts and activities',
-          onTap: () => _navigateToScreen(1),
-          color: AppColors.running,
+  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              color: color,
+              size: 28,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              title,
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 14,
+              ),
+            ),
+          ],
         ),
-        FeatureCard(
-          title: 'Log Meals',
-          icon: Icons.restaurant,
-          description: 'Track your meals and nutrition',
-          onTap: () => _navigateToScreen(2),
-          color: AppColors.carbs,
-        ),
-        FeatureCard(
-          title: 'Track Sleep',
-          icon: Icons.nightlight,
-          description: 'Log your sleep and quality',
-          onTap: () => _navigateToScreen(3),
-          color: Colors.indigo,
-        ),
-        FeatureCard(
-          title: 'My Habits',
-          icon: Icons.repeat,
-          description: 'Build good habits, break bad ones',
-          onTap: () => _navigateToScreen(4),
-          color: AppColors.tertiary,
-        ),
-      ],
+      ),
     );
   }
   
-  Widget _buildProgressCards() {
-    return Column(
-      children: [
-        ProgressCard(
-          title: 'Steps',
-          progress: _statsData['steps'] / AppConstants.defaultStepsGoal,
-          metric: '${_statsData['steps']}',
-          goal: '${AppConstants.defaultStepsGoal}',
-          color: AppColors.primary,
-          icon: Icons.directions_walk,
+  Widget _buildActionButton(
+    String label,
+    IconData icon,
+    Color color,
+    VoidCallback onPressed,
+  ) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
         ),
-        const SizedBox(height: 16),
-        ProgressCard(
-          title: 'Sleep',
-          progress: _statsData['sleep'] / AppConstants.defaultSleepGoal,
-          metric: '${_statsData['sleep'].toStringAsFixed(1)}h',
-          goal: '${AppConstants.defaultSleepGoal}h',
-          color: Colors.indigo,
-          icon: Icons.nightlight,
-        ),
-        const SizedBox(height: 16),
-        ProgressCard(
-          title: 'Activity',
-          progress: _statsData['activities'] / 3, // Assuming a goal of 3 activities per day
-          metric: '${_statsData['activities']}',
-          goal: '3',
-          color: Colors.orange,
-          icon: Icons.fitness_center,
-        ),
-      ],
+      ),
+      child: Column(
+        children: [
+          Icon(icon),
+          const SizedBox(height: 8),
+          Text(label),
+        ],
+      ),
     );
-  }
-  
-  void _navigateToScreen(int index) {
-    setState(() => _currentIndex = index);
   }
 }

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
+
+import '../models/habit.dart';
+import '../providers/user_provider.dart';
 import '../services/firebase_service.dart';
-import '../services/notification_service.dart';
-import '../models/habit_model.dart';
 import '../utils/constants.dart';
 import '../widgets/common_widgets.dart';
+import '../utils/helpers.dart';
 
 class HabitTrackingScreen extends StatefulWidget {
   const HabitTrackingScreen({super.key});
@@ -15,20 +18,23 @@ class HabitTrackingScreen extends StatefulWidget {
 }
 
 class _HabitTrackingScreenState extends State<HabitTrackingScreen> with SingleTickerProviderStateMixin {
+  bool _isLoading = false;
   final FirebaseService _firebaseService = FirebaseService();
-  final NotificationService _notificationService = NotificationService();
-  bool _isLoading = true;
+  DateTime _selectedDate = DateTime.now();
+  List<Habit> _habits = [];
   late TabController _tabController;
   
-  // Lists of habits
-  List<Habit> _goodHabits = [];
-  List<Habit> _badHabits = [];
-  
-  // For adding new habits
+  // Form controllers
+  final _formKey = GlobalKey<FormState>();
   final _habitNameController = TextEditingController();
   HabitType _selectedHabitType = HabitType.good;
   HabitFrequency _selectedFrequency = HabitFrequency.daily;
-  int _selectedGoal = 1;
+  List<bool> _selectedDays = List.filled(7, true);
+  final _reminderTimeController = TextEditingController();
+  TimeOfDay? _reminderTime;
+  bool _setReminder = false;
+  final _targetNumberController = TextEditingController();
+  final _notesController = TextEditingController();
   
   @override
   void initState() {
@@ -41,6 +47,9 @@ class _HabitTrackingScreenState extends State<HabitTrackingScreen> with SingleTi
   void dispose() {
     _tabController.dispose();
     _habitNameController.dispose();
+    _reminderTimeController.dispose();
+    _targetNumberController.dispose();
+    _notesController.dispose();
     super.dispose();
   }
   
@@ -48,23 +57,14 @@ class _HabitTrackingScreenState extends State<HabitTrackingScreen> with SingleTi
     setState(() => _isLoading = true);
     
     try {
-      // In a real app, we'd use the current user's ID
-      const String demoUserId = 'demo_user';
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final userId = userProvider.user?.uid ?? 'demo_user';
       
-      // Get habits from Firebase
-      final habits = await _firebaseService.getUserHabits(demoUserId);
-      
-      // Separate into good and bad habits
-      final goodHabits = habits.where((h) => h.type == HabitType.good).toList();
-      final badHabits = habits.where((h) => h.type == HabitType.bad).toList();
-      
-      // Sort by creation date (newest first)
-      goodHabits.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      badHabits.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      // Get habits
+      final habits = await _firebaseService.getHabits(userId);
       
       setState(() {
-        _goodHabits = goodHabits;
-        _badHabits = badHabits;
+        _habits = habits;
         _isLoading = false;
       });
     } catch (e) {
@@ -80,58 +80,56 @@ class _HabitTrackingScreenState extends State<HabitTrackingScreen> with SingleTi
   }
   
   Future<void> _addHabit() async {
-    if (_habitNameController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a habit name')),
-      );
+    if (!_formKey.currentState!.validate()) {
       return;
     }
     
     setState(() => _isLoading = true);
     
     try {
-      // In a real app, we'd use the current user's ID
-      const String demoUserId = 'demo_user';
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final userId = userProvider.user?.uid ?? 'demo_user';
       
-      // Create a new habit
-      final habit = Habit(
-        id: null,
-        userId: demoUserId,
-        name: _habitNameController.text.trim(),
-        type: _selectedHabitType,
-        frequency: _selectedFrequency,
-        goal: _selectedGoal,
+      // Parse form values
+      final name = _habitNameController.text.trim();
+      final type = _selectedHabitType.toString().split('.').last;
+      final frequency = _selectedFrequency.toString().split('.').last;
+      int? targetNumber;
+      
+      if (_targetNumberController.text.isNotEmpty) {
+        targetNumber = int.parse(_targetNumberController.text);
+      }
+      
+      // Create habit data
+      final habitData = Habit(
+        id: '', // Will be set by Firebase
+        userId: userId,
+        name: name,
+        type: type,
+        frequency: frequency,
+        selectedDays: _selectedDays,
+        createdAt: DateTime.now(),
         streak: 0,
         longestStreak: 0,
-        completedDates: [],
-        reminderEnabled: true,
-        reminderTime: const TimeOfDay(hour: 9, minute: 0), // Default reminder at 9 AM
-        createdAt: DateTime.now(),
+        lastCompletedDate: null,
+        targetNumber: targetNumber,
+        notes: _notesController.text,
+        reminderTime: _reminderTime != null 
+            ? '${_reminderTime!.hour}:${_reminderTime!.minute}'
+            : null,
       );
       
       // Save to Firebase
-      await _firebaseService.addHabit(habit);
-      
-      // Schedule a notification for this habit
-      if (habit.reminderEnabled) {
-        await _notificationService.scheduleHabitReminderNotification(
-          habit.id ?? '',
-          habit.name,
-          habit.type == HabitType.good ? 'Time to maintain your good habit!' : 'Time to avoid your bad habit!',
-          habit.reminderTime,
-        );
-      }
+      await _firebaseService.addHabit(habitData);
       
       // Reset form
-      _habitNameController.clear();
-      setState(() {
-        _selectedHabitType = HabitType.good;
-        _selectedFrequency = HabitFrequency.daily;
-        _selectedGoal = 1;
-      });
+      _resetHabitForm();
       
       // Reload habits
       await _loadHabits();
+      
+      // Navigate back to the habits tab
+      _tabController.animateTo(0);
       
       // Show success message
       if (mounted) {
@@ -154,13 +152,24 @@ class _HabitTrackingScreenState extends State<HabitTrackingScreen> with SingleTi
     }
   }
   
-  Future<void> _deleteHabit(Habit habit) async {
-    // Show confirmation dialog
+  void _resetHabitForm() {
+    _habitNameController.clear();
+    _selectedHabitType = HabitType.good;
+    _selectedFrequency = HabitFrequency.daily;
+    _selectedDays = List.filled(7, true);
+    _reminderTimeController.clear();
+    _reminderTime = null;
+    _setReminder = false;
+    _targetNumberController.clear();
+    _notesController.clear();
+  }
+  
+  Future<void> _deleteHabit(String habitId) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Habit'),
-        content: Text('Are you sure you want to delete "${habit.name}"?'),
+        content: const Text('Are you sure you want to delete this habit? This will remove all tracking history.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -179,11 +188,7 @@ class _HabitTrackingScreenState extends State<HabitTrackingScreen> with SingleTi
       setState(() => _isLoading = true);
       
       try {
-        // Delete from Firebase
-        await _firebaseService.deleteHabit(habit.id!);
-        
-        // Cancel any scheduled notifications
-        await _notificationService.cancelHabitReminderNotification(habit.id!);
+        await _firebaseService.deleteHabit(habitId);
         
         // Reload habits
         await _loadHabits();
@@ -211,97 +216,82 @@ class _HabitTrackingScreenState extends State<HabitTrackingScreen> with SingleTi
   }
   
   Future<void> _toggleHabitCompletion(Habit habit) async {
-    setState(() => _isLoading = true);
-    
     try {
       final today = DateTime.now();
-      final todayString = DateFormat('yyyy-MM-dd').format(today);
+      final todayFormatted = DateFormat('yyyy-MM-dd').format(today);
       
-      // Check if already completed today
-      final isCompletedToday = habit.completedDates.any((date) => 
-        DateFormat('yyyy-MM-dd').format(date) == todayString
-      );
-      
-      List<DateTime> updatedCompletedDates = [...habit.completedDates];
-      int updatedStreak = habit.streak;
-      int updatedLongestStreak = habit.longestStreak;
-      
-      if (isCompletedToday) {
-        // Remove today's completion
-        updatedCompletedDates.removeWhere((date) => 
-          DateFormat('yyyy-MM-dd').format(date) == todayString
+      // Check if habit should be performed today
+      if (!_shouldPerformHabitToday(habit)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('This habit is not scheduled for today.'),
+            backgroundColor: Colors.orange,
+          ),
         );
-        
-        // Adjust streak
-        updatedStreak = updatedStreak > 0 ? updatedStreak - 1 : 0;
-      } else {
-        // Add today's completion
-        updatedCompletedDates.add(today);
-        
-        // Check if streak should be incremented
-        final yesterday = today.subtract(const Duration(days: 1));
-        final yesterdayString = DateFormat('yyyy-MM-dd').format(yesterday);
-        
-        final isCompletedYesterday = habit.completedDates.any((date) => 
-          DateFormat('yyyy-MM-dd').format(date) == yesterdayString
-        );
-        
-        // For daily habits, increment streak if completed yesterday or this is the first completion
-        if (habit.frequency == HabitFrequency.daily) {
-          if (isCompletedYesterday || habit.streak == 0) {
-            updatedStreak = habit.streak + 1;
-          } else {
-            // Streak broken, start over
-            updatedStreak = 1;
-          }
-        } 
-        // For weekly habits, need to check if completed in the last 7 days
-        else if (habit.frequency == HabitFrequency.weekly) {
-          final oneWeekAgo = today.subtract(const Duration(days: 7));
-          
-          final completionsLastWeek = habit.completedDates.where((date) => 
-            date.isAfter(oneWeekAgo) && date.isBefore(today)
-          ).length;
-          
-          // If there are completions in the last week and the goal is met, increment streak
-          if (completionsLastWeek >= habit.goal) {
-            updatedStreak = habit.streak + 1;
-          } else {
-            // Not enough completions last week, start over
-            updatedStreak = 1;
-          }
-        }
-        
-        // Update longest streak if needed
-        if (updatedStreak > updatedLongestStreak) {
-          updatedLongestStreak = updatedStreak;
-          
-          // If this is a milestone (every 7 days), show a celebration
-          if (updatedStreak % 7 == 0) {
-            // Show a streak milestone notification
-            await _notificationService.showStreakNotification(
-              habit.name,
-              updatedStreak,
-            );
-          }
-        }
+        return;
       }
       
-      // Update the habit
-      final updatedHabit = habit.copyWith(
-        completedDates: updatedCompletedDates,
-        streak: updatedStreak,
-        longestStreak: updatedLongestStreak,
-      );
-      
-      // Save to Firebase
-      await _firebaseService.updateHabit(updatedHabit);
+      // If already completed today, uncomplete it
+      if (habit.lastCompletedDate == todayFormatted) {
+        final habitData = {
+          'lastCompletedDate': null,
+          'streak': habit.streak > 0 ? habit.streak - 1 : 0,
+        };
+        
+        await _firebaseService.updateHabit(habit.id, habitData);
+        
+        // Show success message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Habit marked as not completed.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      } else {
+        // Calculate streak
+        int newStreak = habit.streak;
+        DateTime yesterday = DateTime.now().subtract(const Duration(days: 1));
+        String yesterdayFormatted = DateFormat('yyyy-MM-dd').format(yesterday);
+        
+        // If completed yesterday, increment streak. Otherwise reset.
+        if (habit.lastCompletedDate == yesterdayFormatted || 
+            habit.lastCompletedDate == null) {
+          newStreak += 1;
+        } else {
+          // Streak broken
+          newStreak = 1;
+        }
+        
+        // Update habit data
+        final habitData = {
+          'lastCompletedDate': todayFormatted,
+          'streak': newStreak,
+          'longestStreak': newStreak > habit.longestStreak ? newStreak : habit.longestStreak,
+        };
+        
+        await _firebaseService.updateHabit(habit.id, habitData);
+        
+        // Show success message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                newStreak > 1 
+                    ? 'Habit completed! 🔥 Streak: $newStreak days' 
+                    : 'Habit completed! Streak started!',
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
       
       // Reload habits
       await _loadHabits();
     } catch (e) {
-      print('Error updating habit completion: $e');
-      setState(() => _isLoading = false);
+      print('Error updating habit: $e');
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -311,113 +301,78 @@ class _HabitTrackingScreenState extends State<HabitTrackingScreen> with SingleTi
     }
   }
   
-  Future<void> _editHabitReminder(Habit habit) async {
-    final initialTime = habit.reminderTime;
-    bool reminderEnabled = habit.reminderEnabled;
+  bool _shouldPerformHabitToday(Habit habit) {
+    if (habit.frequency == 'daily') {
+      return true;
+    }
     
-    final result = await showDialog<Map<String, dynamic>>(
+    if (habit.frequency == 'weekly' && habit.selectedDays != null) {
+      final today = DateTime.now().weekday - 1; // 0 = Monday, 6 = Sunday
+      return habit.selectedDays[today];
+    }
+    
+    return true;
+  }
+  
+  Future<void> _selectReminderTime(BuildContext context) async {
+    final TimeOfDay? time = await showTimePicker(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit Reminder'),
-        content: StatefulBuilder(
-          builder: (context, setState) {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SwitchListTile(
-                  title: const Text('Enable Reminder'),
-                  value: reminderEnabled,
-                  onChanged: (value) {
-                    setState(() => reminderEnabled = value);
-                  },
-                ),
-                if (reminderEnabled) ...[
-                  const SizedBox(height: 16),
-                  ListTile(
-                    title: const Text('Reminder Time'),
-                    subtitle: Text(
-                      '${initialTime.hour}:${initialTime.minute.toString().padLeft(2, '0')}',
-                    ),
-                    trailing: const Icon(Icons.access_time),
-                    onTap: () async {
-                      final pickedTime = await showTimePicker(
-                        context: context,
-                        initialTime: initialTime,
-                      );
-                      if (pickedTime != null) {
-                        setState(() => initialTime = pickedTime);
-                      }
-                    },
-                  ),
-                ],
-              ],
-            );
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, {
-              'enabled': reminderEnabled,
-              'time': initialTime,
-            }),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+      initialTime: _reminderTime ?? TimeOfDay.now(),
     );
     
-    if (result != null) {
-      setState(() => _isLoading = true);
+    if (time != null) {
+      setState(() {
+        _reminderTime = time;
+        _reminderTimeController.text = _formatTimeOfDay(time);
+      });
+    }
+  }
+  
+  String _formatTimeOfDay(TimeOfDay time) {
+    final hour = time.hour.toString().padLeft(2, '0');
+    final minute = time.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+  
+  Color _getHabitColor(String type) {
+    return type == 'good' ? AppColors.good : AppColors.bad;
+  }
+  
+  String _getHabitEmoji(String type) {
+    return type == 'good' ? '✅' : '❌';
+  }
+  
+  String _getHabitFrequencyText(Habit habit) {
+    if (habit.frequency == 'daily') {
+      return 'Every day';
+    } else if (habit.frequency == 'weekly' && habit.selectedDays != null) {
+      final days = <String>[];
+      const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
       
-      try {
-        // Update the habit
-        final updatedHabit = habit.copyWith(
-          reminderEnabled: result['enabled'],
-          reminderTime: result['time'],
-        );
-        
-        // Save to Firebase
-        await _firebaseService.updateHabit(updatedHabit);
-        
-        // Update notification
-        if (updatedHabit.reminderEnabled) {
-          await _notificationService.scheduleHabitReminderNotification(
-            updatedHabit.id ?? '',
-            updatedHabit.name,
-            updatedHabit.type == HabitType.good ? 'Time to maintain your good habit!' : 'Time to avoid your bad habit!',
-            updatedHabit.reminderTime,
-          );
-        } else {
-          await _notificationService.cancelHabitReminderNotification(updatedHabit.id!);
-        }
-        
-        // Reload habits
-        await _loadHabits();
-        
-        // Show success message
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Reminder updated successfully!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      } catch (e) {
-        print('Error updating habit reminder: $e');
-        setState(() => _isLoading = false);
-        
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error updating reminder: ${e.toString()}')),
-          );
+      for (int i = 0; i < habit.selectedDays.length; i++) {
+        if (habit.selectedDays[i]) {
+          days.add(dayNames[i]);
         }
       }
+      
+      if (days.length == 7) {
+        return 'Every day';
+      } else if (days.length == 0) {
+        return 'No days selected';
+      } else if (days.length == 5 && 
+                !habit.selectedDays[5] && 
+                !habit.selectedDays[6]) {
+        return 'Weekdays';
+      } else if (days.length == 2 && 
+                habit.selectedDays[5] && 
+                habit.selectedDays[6]) {
+        return 'Weekends';
+      } else {
+        return days.join(', ');
+      }
     }
+    
+    return 'Custom';
   }
   
   @override
@@ -428,8 +383,8 @@ class _HabitTrackingScreenState extends State<HabitTrackingScreen> with SingleTi
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
-            Tab(text: 'Good Habits'),
-            Tab(text: 'Bad Habits'),
+            Tab(text: 'My Habits'),
+            Tab(text: 'Add Habit'),
           ],
         ),
       ),
@@ -438,416 +393,408 @@ class _HabitTrackingScreenState extends State<HabitTrackingScreen> with SingleTi
           : TabBarView(
               controller: _tabController,
               children: [
-                _buildHabitList(_goodHabits, true),
-                _buildHabitList(_badHabits, false),
+                // Habits Tab
+                _buildHabitsTab(),
+                
+                // Add Habit Tab
+                _buildAddHabitTab(),
               ],
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddHabitDialog,
-        backgroundColor: AppColors.primary,
-        child: const Icon(Icons.add),
-        tooltip: 'Add Habit',
-      ),
     );
   }
   
-  void _showAddHabitDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) {
-          return AlertDialog(
-            title: const Text('Add New Habit'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildHabitsTab() {
+    // Filter habits by type
+    final goodHabits = _habits.where((h) => h.type == 'good').toList();
+    final badHabits = _habits.where((h) => h.type == 'bad').toList();
+    
+    return RefreshIndicator(
+      onRefresh: _loadHabits,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Date display
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  TextField(
-                    controller: _habitNameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Habit Name',
-                      border: OutlineInputBorder(),
-                      hintText: 'e.g. Drink water, Meditate, No smoking',
+                  const Icon(Icons.calendar_today, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  Text(
+                    DateFormat.yMMMMd().format(_selectedDate),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  const Text('Habit Type'),
-                  DropdownButton<HabitType>(
-                    value: _selectedHabitType,
-                    isExpanded: true,
-                    items: [
-                      DropdownMenuItem(
-                        value: HabitType.good,
-                        child: Row(
-                          children: [
-                            Icon(Icons.thumb_up, color: Colors.green.shade600),
-                            const SizedBox(width: 8),
-                            const Text('Good Habit (build)'),
-                          ],
-                        ),
-                      ),
-                      DropdownMenuItem(
-                        value: HabitType.bad,
-                        child: Row(
-                          children: [
-                            Icon(Icons.thumb_down, color: Colors.red.shade600),
-                            const SizedBox(width: 8),
-                            const Text('Bad Habit (break)'),
-                          ],
-                        ),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => _selectedHabitType = value);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  const Text('Frequency'),
-                  DropdownButton<HabitFrequency>(
-                    value: _selectedFrequency,
-                    isExpanded: true,
-                    items: [
-                      DropdownMenuItem(
-                        value: HabitFrequency.daily,
-                        child: Row(
-                          children: const [
-                            Icon(Icons.calendar_today, color: Colors.blue),
-                            SizedBox(width: 8),
-                            Text('Daily'),
-                          ],
-                        ),
-                      ),
-                      DropdownMenuItem(
-                        value: HabitFrequency.weekly,
-                        child: Row(
-                          children: const [
-                            Icon(Icons.calendar_view_week, color: Colors.purple),
-                            SizedBox(width: 8),
-                            Text('Weekly'),
-                          ],
-                        ),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => _selectedFrequency = value);
-                      }
-                    },
-                  ),
-                  if (_selectedFrequency == HabitFrequency.weekly) ...[
-                    const SizedBox(height: 16),
-                    const Text('Goal (times per week)'),
-                    DropdownButton<int>(
-                      value: _selectedGoal,
-                      isExpanded: true,
-                      items: List.generate(7, (index) => index + 1)
-                          .map((goal) => DropdownMenuItem(
-                            value: goal,
-                            child: Text('$goal ${goal == 1 ? 'time' : 'times'} / week'),
-                          ))
-                          .toList(),
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() => _selectedGoal = value);
-                        }
-                      },
-                    ),
-                  ],
                 ],
               ),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
+            const SizedBox(height: 24),
+            
+            // Habits status
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        children: [
+                          const Text(
+                            'Good Habits',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.good,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            goodHabits.length.toString(),
+                            style: const TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.good,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      width: 1,
+                      height: 60,
+                      color: Colors.grey.shade300,
+                    ),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          const Text(
+                            'Bad Habits',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.bad,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            badHabits.length.toString(),
+                            style: const TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.bad,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      width: 1,
+                      height: 60,
+                      color: Colors.grey.shade300,
+                    ),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          const Text(
+                            'Total',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _habits.length.toString(),
+                            style: const TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _addHabit();
-                },
-                child: const Text('Add Habit'),
+            ),
+            const SizedBox(height: 24),
+            
+            // Good habits
+            if (goodHabits.isNotEmpty) ...[
+              Row(
+                children: [
+                  const Icon(Icons.thumb_up, color: AppColors.good),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Good Habits (${goodHabits.length})',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.good,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ...goodHabits.map((habit) => _buildHabitItem(habit)),
+              const SizedBox(height: 24),
+            ],
+            
+            // Bad habits
+            if (badHabits.isNotEmpty) ...[
+              Row(
+                children: [
+                  const Icon(Icons.thumb_down, color: AppColors.bad),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Bad Habits (${badHabits.length})',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.bad,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ...badHabits.map((habit) => _buildHabitItem(habit)),
+              const SizedBox(height: 24),
+            ],
+            
+            // Empty state
+            if (_habits.isEmpty) ...[
+              SizedBox(
+                width: double.infinity,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.loop,
+                      size: 64,
+                      color: Colors.grey,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'No habits added yet',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Track your habits to build a healthier lifestyle',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    AppButton(
+                      label: 'Add Your First Habit',
+                      icon: Icons.add,
+                      onPressed: () => _tabController.animateTo(1),
+                    ),
+                  ],
+                ),
               ),
             ],
-          );
-        },
+          ],
+        ),
       ),
     );
   }
   
-  Widget _buildHabitList(List<Habit> habits, bool isGoodHabits) {
-    if (habits.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isGoodHabits ? Icons.thumb_up : Icons.thumb_down,
-              size: 64,
-              color: Colors.grey,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No ${isGoodHabits ? 'good' : 'bad'} habits yet',
-              style: const TextStyle(
-                fontSize: 18,
-                color: Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Tap + to add a ${isGoodHabits ? 'good' : 'bad'} habit',
-              style: const TextStyle(
-                color: Colors.grey,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+  Widget _buildHabitItem(Habit habit) {
+    final isCompletedToday = habit.lastCompletedDate == 
+        DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final shouldPerformToday = _shouldPerformHabitToday(habit);
     
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: habits.length,
-      itemBuilder: (context, index) {
-        final habit = habits[index];
-        return _buildHabitCard(habit, isGoodHabits);
-      },
-    );
-  }
-  
-  Widget _buildHabitCard(Habit habit, bool isGoodHabit) {
-    final today = DateTime.now();
-    final todayString = DateFormat('yyyy-MM-dd').format(today);
-    
-    final isCompletedToday = habit.completedDates.any((date) => 
-      DateFormat('yyyy-MM-dd').format(date) == todayString
-    );
-    
-    // Calculate completion rate
-    final last7Days = List.generate(7, (i) => 
-      today.subtract(Duration(days: i))
-    ).map((date) => 
-      DateFormat('yyyy-MM-dd').format(date)
-    ).toList();
-    
-    final completionsLast7Days = habit.completedDates.where((date) => 
-      last7Days.contains(DateFormat('yyyy-MM-dd').format(date))
-    ).length;
-    
-    final completionRate = completionsLast7Days / 7 * 100;
-    
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Column(
+    return Slidable(
+      endActionPane: ActionPane(
+        motion: const ScrollMotion(),
         children: [
-          ListTile(
-            leading: CircleAvatar(
-              backgroundColor: isGoodHabit ? Colors.green.shade100 : Colors.red.shade100,
-              child: Icon(
-                isGoodHabit ? Icons.thumb_up : Icons.thumb_down,
-                color: isGoodHabit ? Colors.green : Colors.red,
-              ),
-            ),
-            title: Text(
-              habit.name,
-              style: TextStyle(
-                fontWeight: isCompletedToday ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-            subtitle: Text(
-              _getHabitSubtitle(habit),
-              style: TextStyle(
-                color: habit.streak > 0 ? Colors.blue : Colors.grey,
-              ),
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.notifications),
-                  color: habit.reminderEnabled ? AppColors.primary : Colors.grey,
-                  tooltip: 'Set Reminder',
-                  onPressed: () => _editHabitReminder(habit),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete),
-                  color: Colors.red,
-                  tooltip: 'Delete Habit',
-                  onPressed: () => _deleteHabit(habit),
-                ),
-              ],
-            ),
+          SlidableAction(
+            onPressed: (_) => _deleteHabit(habit.id),
+            backgroundColor: Colors.red,
+            foregroundColor: Colors.white,
+            icon: Icons.delete,
+            label: 'Delete',
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                _buildStreakInfo(habit),
-                const Spacer(),
-                // Completion checkbox
-                InkWell(
-                  onTap: () => _toggleHabitCompletion(habit),
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 6,
-                      horizontal: 16,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isCompletedToday
-                          ? (isGoodHabit ? Colors.green : Colors.red)
-                          : Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          isCompletedToday ? Icons.check : Icons.circle_outlined,
-                          size: 18,
-                          color: isCompletedToday ? Colors.white : Colors.grey,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          isGoodHabit
-                              ? (isCompletedToday ? 'Done Today' : 'Mark as Done')
-                              : (isCompletedToday ? 'Avoided Today' : 'Mark as Avoided'),
-                          style: TextStyle(
-                            color: isCompletedToday ? Colors.white : Colors.grey,
-                            fontWeight: isCompletedToday ? FontWeight.bold : FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+        ],
+      ),
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: _getHabitColor(habit.type).withOpacity(0.3),
+            width: 1,
           ),
-          // Weekly progress
-          Padding(
+        ),
+        child: InkWell(
+          onTap: () => _toggleHabitCompletion(habit),
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Last 7 Days: $completionsLast7Days/7',
-                      style: AppTextStyles.caption,
+                    Container(
+                      decoration: BoxDecoration(
+                        color: _getHabitColor(habit.type).withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      padding: const EdgeInsets.all(10),
+                      child: Text(
+                        _getHabitEmoji(habit.type),
+                        style: const TextStyle(fontSize: 18),
+                      ),
                     ),
-                    Text(
-                      '${completionRate.toInt()}%',
-                      style: TextStyle(
-                        color: _getCompletionColor(completionRate),
-                        fontWeight: FontWeight.bold,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            habit.name,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: _getHabitColor(habit.type),
+                            ),
+                          ),
+                          Text(
+                            _getHabitFrequencyText(habit),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    shouldPerformToday
+                        ? Checkbox(
+                            value: isCompletedToday,
+                            onChanged: (_) => _toggleHabitCompletion(habit),
+                            activeColor: _getHabitColor(habit.type),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          )
+                        : const Icon(
+                            Icons.event_busy,
+                            color: Colors.grey,
+                            size: 24,
+                          ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildHabitStat(
+                        'Current Streak',
+                        '${habit.streak}',
+                        'days',
+                        Icons.local_fire_department,
+                        Colors.orange,
+                      ),
+                    ),
+                    Container(
+                      width: 1,
+                      height: 40,
+                      color: Colors.grey.shade200,
+                    ),
+                    Expanded(
+                      child: _buildHabitStat(
+                        'Longest Streak',
+                        '${habit.longestStreak}',
+                        'days',
+                        Icons.emoji_events,
+                        Colors.amber,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                LinearProgressIndicator(
-                  value: completionRate / 100,
-                  backgroundColor: Colors.grey.shade200,
-                  valueColor: AlwaysStoppedAnimation<Color>(_getCompletionColor(completionRate)),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: List.generate(7, (i) {
-                    final date = today.subtract(Duration(days: 6 - i));
-                    final dateString = DateFormat('yyyy-MM-dd').format(date);
-                    final isCompleted = habit.completedDates.any((d) => 
-                      DateFormat('yyyy-MM-dd').format(d) == dateString
-                    );
-                    
-                    return Column(
-                      children: [
-                        Container(
-                          width: 24,
-                          height: 24,
-                          decoration: BoxDecoration(
-                            color: isCompleted
-                                ? (isGoodHabit ? Colors.green : Colors.red)
-                                : Colors.grey.shade200,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: isCompleted
-                                  ? (isGoodHabit ? Colors.green.shade700 : Colors.red.shade700)
-                                  : Colors.grey.shade400,
-                              width: 1,
-                            ),
-                          ),
-                          child: isCompleted
-                              ? const Icon(Icons.check, size: 16, color: Colors.white)
-                              : null,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          DateFormat('E').format(date)[0], // First letter of weekday
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: i == 6 ? Colors.black87 : Colors.grey, // Today is brighter
-                          ),
-                        ),
-                      ],
-                    );
-                  }),
-                ),
+                if (habit.notes != null && habit.notes!.isNotEmpty) ...[
+                  const Divider(height: 24),
+                  Text(
+                    habit.notes!,
+                    style: const TextStyle(
+                      fontStyle: FontStyle.italic,
+                      fontSize: 14,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
   
-  Widget _buildStreakInfo(Habit habit) {
-    return Row(
+  Widget _buildHabitStat(
+    String title,
+    String value,
+    String unit,
+    IconData icon,
+    Color color,
+  ) {
+    return Column(
       children: [
-        Icon(
-          Icons.local_fire_department,
-          color: habit.streak > 0 ? Colors.orange : Colors.grey,
-          size: 20,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: color,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                color: color,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 4),
+        const SizedBox(height: 4),
         RichText(
           text: TextSpan(
-            text: 'Streak: ',
-            style: const TextStyle(color: Colors.grey),
             children: [
               TextSpan(
-                text: '${habit.streak} ${habit.streak == 1 ? 'day' : 'days'}',
+                text: value,
                 style: TextStyle(
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: habit.streak > 0 ? Colors.black87 : Colors.grey,
+                  color: color,
                 ),
               ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        Icon(
-          Icons.emoji_events,
-          color: habit.longestStreak > 0 ? Colors.amber : Colors.grey,
-          size: 20,
-        ),
-        const SizedBox(width: 4),
-        RichText(
-          text: TextSpan(
-            text: 'Best: ',
-            style: const TextStyle(color: Colors.grey),
-            children: [
               TextSpan(
-                text: '${habit.longestStreak} ${habit.longestStreak == 1 ? 'day' : 'days'}',
+                text: ' $unit',
                 style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: habit.longestStreak > 0 ? Colors.black87 : Colors.grey,
+                  fontSize: 12,
+                  color: Colors.grey.shade700,
                 ),
               ),
             ],
@@ -857,29 +804,339 @@ class _HabitTrackingScreenState extends State<HabitTrackingScreen> with SingleTi
     );
   }
   
-  String _getHabitSubtitle(Habit habit) {
-    final frequencyText = habit.frequency == HabitFrequency.daily
-        ? 'Daily'
-        : '${habit.goal} ${habit.goal == 1 ? 'time' : 'times'} / week';
-    
-    if (habit.streak > 0) {
-      return '$frequencyText • ${habit.streak} day streak 🔥';
-    }
-    
-    return frequencyText;
+  Widget _buildAddHabitTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Habit name
+            TextFormField(
+              controller: _habitNameController,
+              decoration: const InputDecoration(
+                labelText: 'Habit Name',
+                hintText: 'e.g. Morning Exercise, Quit Smoking',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.edit),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter a habit name';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 24),
+            
+            // Habit type
+            const Text(
+              'Habit Type',
+              style: AppTextStyles.heading3,
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildHabitTypeButton(
+                    'Good Habit',
+                    'Habits you want to build',
+                    Icons.thumb_up,
+                    AppColors.good,
+                    HabitType.good,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildHabitTypeButton(
+                    'Bad Habit',
+                    'Habits you want to break',
+                    Icons.thumb_down,
+                    AppColors.bad,
+                    HabitType.bad,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            
+            // Frequency
+            const Text(
+              'Frequency',
+              style: AppTextStyles.heading3,
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<HabitFrequency>(
+              value: _selectedFrequency,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.repeat),
+              ),
+              items: [
+                DropdownMenuItem(
+                  value: HabitFrequency.daily,
+                  child: const Text('Daily'),
+                ),
+                DropdownMenuItem(
+                  value: HabitFrequency.weekly,
+                  child: const Text('Weekly (Select Days)'),
+                ),
+              ],
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => _selectedFrequency = value);
+                }
+              },
+            ),
+            
+            // Show day selector for weekly frequency
+            if (_selectedFrequency == HabitFrequency.weekly) ...[
+              const SizedBox(height: 16),
+              _buildDaySelector(),
+            ],
+            const SizedBox(height: 24),
+            
+            // Reminder
+            const Text(
+              'Reminder (Optional)',
+              style: AppTextStyles.heading3,
+            ),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              title: const Text('Set a reminder'),
+              subtitle: const Text('Get notified at a specific time'),
+              value: _setReminder,
+              activeColor: AppColors.primary,
+              contentPadding: EdgeInsets.zero,
+              onChanged: (value) {
+                setState(() => _setReminder = value);
+                if (!value) {
+                  _reminderTime = null;
+                  _reminderTimeController.clear();
+                }
+              },
+            ),
+            if (_setReminder) ...[
+              GestureDetector(
+                onTap: () => _selectReminderTime(context),
+                child: AbsorbPointer(
+                  child: TextFormField(
+                    controller: _reminderTimeController,
+                    decoration: const InputDecoration(
+                      labelText: 'Reminder Time',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.access_time),
+                    ),
+                    validator: (value) {
+                      if (_setReminder && (value == null || value.isEmpty)) {
+                        return 'Please select a reminder time';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 24),
+            
+            // Target number (for countable habits)
+            const Text(
+              'Target (Optional)',
+              style: AppTextStyles.heading3,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Set a target number for countable habits like glasses of water, steps, etc.',
+              style: AppTextStyles.caption,
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _targetNumberController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Target Number',
+                hintText: 'e.g. 8 (glasses of water)',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.flag),
+              ),
+              validator: (value) {
+                if (value != null && value.isNotEmpty) {
+                  try {
+                    final number = int.parse(value);
+                    if (number <= 0) {
+                      return 'Target must be greater than 0';
+                    }
+                  } catch (e) {
+                    return 'Please enter a valid number';
+                  }
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 24),
+            
+            // Notes
+            TextFormField(
+              controller: _notesController,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Notes (optional)',
+                hintText: 'Add any notes about this habit',
+                border: OutlineInputBorder(),
+                alignLabelWithHint: true,
+              ),
+            ),
+            const SizedBox(height: 32),
+            
+            // Save button
+            SizedBox(
+              width: double.infinity,
+              child: AppButton(
+                label: 'Save Habit',
+                icon: Icons.check,
+                onPressed: _addHabit,
+                isLoading: _isLoading,
+                isFullWidth: true,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
   
-  Color _getCompletionColor(double rate) {
-    if (rate >= 80) {
-      return Colors.green;
-    } else if (rate >= 60) {
-      return Colors.lightGreen;
-    } else if (rate >= 40) {
-      return Colors.amber;
-    } else if (rate >= 20) {
-      return Colors.orange;
-    } else {
-      return Colors.red;
-    }
+  Widget _buildHabitTypeButton(
+    String title,
+    String subtitle,
+    IconData icon,
+    Color color,
+    HabitType type,
+  ) {
+    final isSelected = _selectedHabitType == type;
+    
+    return GestureDetector(
+      onTap: () {
+        setState(() => _selectedHabitType = type);
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? color : Colors.grey.shade300,
+            width: isSelected ? 2 : 1,
+          ),
+          color: isSelected ? color.withOpacity(0.1) : Colors.white,
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              color: color,
+              size: 32,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            Text(
+              subtitle,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildDaySelector() {
+    const dayNames = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    const fullDayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Select Days',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: List.generate(7, (index) {
+            return Tooltip(
+              message: fullDayNames[index],
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedDays[index] = !_selectedDays[index];
+                  });
+                },
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _selectedDays[index] 
+                        ? AppColors.primary 
+                        : Colors.grey.shade200,
+                  ),
+                  child: Center(
+                    child: Text(
+                      dayNames[index],
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: _selectedDays[index] 
+                            ? Colors.white 
+                            : Colors.grey.shade700,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _selectedDays = List.filled(7, true);
+                });
+              },
+              child: const Text('Select All'),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _selectedDays = [true, true, true, true, true, false, false];
+                });
+              },
+              child: const Text('Weekdays'),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _selectedDays = [false, false, false, false, false, true, true];
+                });
+              },
+              child: const Text('Weekends'),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 }

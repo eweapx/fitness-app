@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
 
 import '../providers/user_provider.dart';
 import '../providers/settings_provider.dart';
+import '../services/firebase_service.dart';
 import '../utils/constants.dart';
 import '../widgets/common_widgets.dart';
+import 'settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -18,24 +17,25 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  bool _isLoading = false;
+  bool _isLoading = true;
+  bool _isEditing = false;
+  final FirebaseService _firebaseService = FirebaseService();
+  
+  // Form controllers
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
-  String _gender = '';
-  DateTime? _dateOfBirth;
-  final _heightController = TextEditingController();
+  final _ageController = TextEditingController();
   final _weightController = TextEditingController();
-  String _activityLevel = 'moderate';
-  final _bioController = TextEditingController();
-  File? _profileImage;
-  
-  final Map<String, String> _activityLevelLabels = {
+  final _heightController = TextEditingController();
+  String _selectedGender = 'male';
+  final List<String> _genderOptions = ['male', 'female', 'other'];
+  String _selectedActivityLevel = 'moderate';
+  final Map<String, String> _activityLevelOptions = {
     'sedentary': 'Sedentary (little or no exercise)',
-    'light': 'Lightly active (light exercise 1-3 days/week)',
-    'moderate': 'Moderately active (moderate exercise 3-5 days/week)',
-    'active': 'Very active (hard exercise 6-7 days/week)',
-    'very_active': 'Extra active (very hard exercise, physical job, or training 2x/day)',
+    'light': 'Light (light exercise 1-3 days/week)',
+    'moderate': 'Moderate (moderate exercise 3-5 days/week)',
+    'active': 'Active (hard exercise 6-7 days/week)',
+    'very_active': 'Very Active (hard daily exercise & physical job)',
   };
   
   @override
@@ -47,10 +47,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _emailController.dispose();
-    _heightController.dispose();
+    _ageController.dispose();
     _weightController.dispose();
-    _bioController.dispose();
+    _heightController.dispose();
     super.dispose();
   }
   
@@ -59,66 +58,59 @@ class _ProfileScreenState extends State<ProfileScreen> {
     
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
-      final user = userProvider.user;
+      
+      // Load user profile if not already loaded
+      if (userProvider.userProfile == null) {
+        await userProvider.loadUserProfile();
+      }
+      
       final userProfile = userProvider.userProfile;
       
-      if (user != null) {
-        _nameController.text = user.displayName ?? '';
-        _emailController.text = user.email ?? '';
+      if (userProfile != null) {
+        _nameController.text = userProfile['name'] ?? '';
+        _ageController.text = userProfile['age']?.toString() ?? '';
         
-        if (userProfile != null) {
-          _gender = userProfile['gender'] ?? '';
-          
-          if (userProfile['dateOfBirth'] != null) {
-            _dateOfBirth = userProfile['dateOfBirth'].toDate();
+        final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+        final isMetric = settingsProvider.useMetricSystem;
+        
+        // Handle weight based on unit system
+        if (userProfile['weight'] != null) {
+          double weight = userProfile['weight'].toDouble();
+          if (!isMetric) {
+            // Convert kg to lbs for display
+            weight = AppHelpers.kgToLbs(weight);
           }
-          
-          if (userProfile['height'] != null) {
-            final isMetric = Provider.of<SettingsProvider>(context, listen: false).useMetricSystem;
-            final height = userProfile['height'] as num;
-            
-            if (isMetric) {
-              _heightController.text = height.toString();
-            } else {
-              // Convert cm to feet and inches
-              final feetAndInches = AppHelpers.cmToFtIn(height.toDouble());
-              final feet = feetAndInches['feet'] ?? 0;
-              final inches = feetAndInches['inches'] ?? 0;
-              _heightController.text = '$feet\'$inches"';
-            }
-          }
-          
-          if (userProfile['weight'] != null) {
-            final isMetric = Provider.of<SettingsProvider>(context, listen: false).useMetricSystem;
-            final weight = userProfile['weight'] as num;
-            
-            if (isMetric) {
-              _weightController.text = weight.toString();
-            } else {
-              // Convert kg to lbs
-              final weightLbs = AppHelpers.kgToLbs(weight.toDouble());
-              _weightController.text = weightLbs.toStringAsFixed(1);
-            }
-          }
-          
-          _activityLevel = userProfile['activityLevel'] ?? 'moderate';
-          _bioController.text = userProfile['bio'] ?? '';
+          _weightController.text = weight.toStringAsFixed(1);
         }
+        
+        // Handle height based on unit system
+        if (userProfile['height'] != null) {
+          double height = userProfile['height'].toDouble();
+          if (!isMetric) {
+            // Convert cm to in for display
+            height = AppHelpers.cmToIn(height);
+          }
+          _heightController.text = height.toStringAsFixed(1);
+        }
+        
+        _selectedGender = userProfile['gender'] ?? 'male';
+        _selectedActivityLevel = userProfile['activityLevel'] ?? 'moderate';
       }
+      
+      setState(() => _isLoading = false);
     } catch (e) {
       print('Error loading user profile: $e');
+      setState(() => _isLoading = false);
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading profile: ${e.toString()}')),
+          SnackBar(content: Text('Error loading user profile: ${e.toString()}')),
         );
       }
-    } finally {
-      setState(() => _isLoading = false);
     }
   }
   
-  Future<void> _saveProfile() async {
+  Future<void> _updateUserProfile() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -127,142 +119,119 @@ class _ProfileScreenState extends State<ProfileScreen> {
     
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
-      final user = userProvider.user;
+      final userId = userProvider.user?.uid;
       
-      if (user != null) {
-        // Prepare data
-        final Map<String, dynamic> data = {};
+      if (userId == null) {
+        throw Exception('User not authenticated');
+      }
+      
+      final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+      final isMetric = settingsProvider.useMetricSystem;
+      
+      // Parse form values
+      final name = _nameController.text.trim();
+      int? age;
+      double? weight;
+      double? height;
+      
+      if (_ageController.text.isNotEmpty) {
+        age = int.parse(_ageController.text);
+      }
+      
+      if (_weightController.text.isNotEmpty) {
+        weight = double.parse(_weightController.text);
         
-        // Basic info
-        if (_nameController.text.isNotEmpty && _nameController.text != user.displayName) {
-          // Update display name in Firebase Auth
-          await user.updateDisplayName(_nameController.text);
-          data['displayName'] = _nameController.text;
-        }
-        
-        // Other profile data
-        data['gender'] = _gender;
-        data['dateOfBirth'] = _dateOfBirth;
-        data['bio'] = _bioController.text;
-        data['activityLevel'] = _activityLevel;
-        
-        // Height
-        if (_heightController.text.isNotEmpty) {
-          final isMetric = Provider.of<SettingsProvider>(context, listen: false).useMetricSystem;
-          if (isMetric) {
-            // Metric: value is already in cm
-            data['height'] = double.parse(_heightController.text);
-          } else {
-            // Imperial: convert from feet'inches" to cm
-            final heightText = _heightController.text;
-            if (heightText.contains('\'')) {
-              final parts = heightText.split('\'');
-              final feet = int.parse(parts[0]);
-              int inches = 0;
-              
-              if (parts.length > 1 && parts[1].isNotEmpty) {
-                // Remove the trailing " if present
-                final inchesText = parts[1].replaceAll('"', '');
-                inches = int.parse(inchesText);
-              }
-              
-              data['height'] = AppHelpers.ftInToCm(feet, inches);
-            }
-          }
-        }
-        
-        // Weight
-        if (_weightController.text.isNotEmpty) {
-          final isMetric = Provider.of<SettingsProvider>(context, listen: false).useMetricSystem;
-          if (isMetric) {
-            // Metric: value is already in kg
-            data['weight'] = double.parse(_weightController.text);
-          } else {
-            // Imperial: convert from lbs to kg
-            data['weight'] = AppHelpers.lbsToKg(double.parse(_weightController.text));
-          }
-        }
-        
-        // Update profile
-        await userProvider.updateUserProfile(data);
-        
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Profile updated successfully!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          
-          Navigator.pop(context);
+        // Convert lbs to kg for storage if using imperial
+        if (!isMetric) {
+          weight = AppHelpers.lbsToKg(weight);
         }
       }
+      
+      if (_heightController.text.isNotEmpty) {
+        height = double.parse(_heightController.text);
+        
+        // Convert inches to cm for storage if using imperial
+        if (!isMetric) {
+          height = AppHelpers.inToCm(height);
+        }
+      }
+      
+      // Create profile data
+      final profileData = {
+        'name': name,
+        'gender': _selectedGender,
+        'age': age,
+        'weight': weight,
+        'height': height,
+        'activityLevel': _selectedActivityLevel,
+        'updatedAt': DateTime.now(),
+      };
+      
+      // Save to Firebase
+      await _firebaseService.updateUserProfile(userId, profileData);
+      
+      // Update user provider
+      await userProvider.loadUserProfile();
+      
+      setState(() {
+        _isLoading = false;
+        _isEditing = false;
+      });
+      
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile updated successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     } catch (e) {
-      print('Error saving profile: $e');
+      print('Error updating user profile: $e');
+      setState(() => _isLoading = false);
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving profile: ${e.toString()}')),
+          SnackBar(content: Text('Error updating profile: ${e.toString()}')),
         );
       }
-    } finally {
-      setState(() => _isLoading = false);
     }
-  }
-  
-  Future<void> _selectDate() async {
-    final initialDate = _dateOfBirth ?? DateTime(2000);
-    final firstDate = DateTime(1900);
-    final lastDate = DateTime.now();
-    
-    final pickedDate = await showDatePicker(
-      context: context,
-      initialDate: initialDate,
-      firstDate: firstDate,
-      lastDate: lastDate,
-    );
-    
-    if (pickedDate != null) {
-      setState(() => _dateOfBirth = pickedDate);
-    }
-  }
-  
-  Future<void> _selectProfilePicture() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    
-    if (pickedFile != null) {
-      setState(() => _profileImage = File(pickedFile.path));
-      
-      // TODO: Implement image upload to Firebase Storage
-      // This would be handled in a real app
-    }
-  }
-  
-  String _formatDate(DateTime? date) {
-    if (date == null) return 'Not set';
-    
-    return DateFormat('MMMM d, yyyy').format(date);
   }
   
   @override
   Widget build(BuildContext context) {
-    final isMetric = Provider.of<SettingsProvider>(context).useMetricSystem;
-    final user = Provider.of<UserProvider>(context).user;
+    final settingsProvider = Provider.of<SettingsProvider>(context);
+    final isMetric = settingsProvider.useMetricSystem;
+    final weightUnit = isMetric ? AppConstants.unitKg : AppConstants.unitLbs;
+    final heightUnit = isMetric ? AppConstants.unitCm : AppConstants.unitIn;
+    
+    final userProvider = Provider.of<UserProvider>(context);
+    final user = userProvider.user;
+    final userProfile = userProvider.userProfile;
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Edit Profile'),
+        title: const Text('Profile'),
         actions: [
-          TextButton(
-            onPressed: _saveProfile,
-            child: const Text(
-              'Save',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
+          if (!_isEditing) ...[
+            IconButton(
+              icon: const Icon(Icons.edit),
+              tooltip: 'Edit Profile',
+              onPressed: () {
+                setState(() => _isEditing = true);
+              },
             ),
+          ],
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'Settings',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              );
+            },
           ),
         ],
       ),
@@ -270,269 +239,443 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ? const LoadingIndicator(message: 'Loading profile...')
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Profile picture
-                    Center(
-                      child: Stack(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Profile header
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
                         children: [
                           CircleAvatar(
-                            radius: 60,
-                            backgroundColor: AppColors.primary.withOpacity(0.1),
-                            backgroundImage: _profileImage != null
-                                ? FileImage(_profileImage!)
-                                : (user?.photoURL != null ? NetworkImage(user!.photoURL!) : null),
-                            child: user?.photoURL == null && _profileImage == null
-                                ? Text(
-                                    (_nameController.text.isNotEmpty ? _nameController.text[0] : 'U').toUpperCase(),
-                                    style: const TextStyle(
-                                      fontSize: 40,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.primary,
-                                    ),
-                                  )
-                                : null,
-                          ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: CircleAvatar(
-                              backgroundColor: AppColors.primary,
-                              radius: 20,
-                              child: IconButton(
-                                icon: const Icon(
-                                  Icons.camera_alt,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                                onPressed: _selectProfilePicture,
-                                tooltip: 'Change profile picture',
+                            radius: 40,
+                            backgroundColor: AppColors.primary.withOpacity(0.2),
+                            child: Text(
+                              _nameController.text.isNotEmpty
+                                  ? _nameController.text[0].toUpperCase()
+                                  : 'U',
+                              style: const TextStyle(
+                                fontSize: 36,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
                               ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _nameController.text.isNotEmpty
+                                      ? _nameController.text
+                                      : 'User',
+                                  style: const TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                if (user?.email != null) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    user!.email!,
+                                    style: TextStyle(
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Member since ${user?.metadata.creationTime != null ? DateFormat.yMMMd().format(user!.metadata.creationTime!) : 'Unknown'}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    
-                    // Basic information section
-                    const Text(
-                      'Basic Information',
-                      style: AppTextStyles.heading3,
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Name
-                    TextFormField(
-                      controller: _nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Name',
-                        hintText: 'Enter your full name',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.person),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your name';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Email (read-only)
-                    TextFormField(
-                      controller: _emailController,
-                      readOnly: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.email),
-                        hintText: 'Your email address',
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Gender
-                    DropdownButtonFormField<String>(
-                      value: _gender.isNotEmpty ? _gender : null,
-                      decoration: const InputDecoration(
-                        labelText: 'Gender',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.people),
-                      ),
-                      hint: const Text('Select your gender'),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'male',
-                          child: Text('Male'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'female',
-                          child: Text('Female'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'other',
-                          child: Text('Other'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'prefer_not_to_say',
-                          child: Text('Prefer not to say'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        setState(() => _gender = value ?? '');
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Date of birth
-                    InkWell(
-                      onTap: _selectDate,
-                      borderRadius: BorderRadius.circular(8),
-                      child: InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: 'Date of Birth',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.calendar_today),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(_formatDate(_dateOfBirth)),
-                            const Icon(Icons.arrow_drop_down),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    
-                    // Body measurements section
-                    const Text(
-                      'Body Measurements',
-                      style: AppTextStyles.heading3,
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Height
-                    TextFormField(
-                      controller: _heightController,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: 'Height',
-                        hintText: isMetric ? 'Enter your height in cm' : 'Enter your height (e.g. 5\'10")',
-                        border: const OutlineInputBorder(),
-                        prefixIcon: const Icon(Icons.height),
-                        suffixText: isMetric ? 'cm' : '',
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your height';
-                        }
-                        
-                        if (isMetric) {
-                          // For metric, validate the number
-                          final height = double.tryParse(value);
-                          if (height == null || height <= 0 || height > 300) {
-                            return 'Please enter a valid height';
-                          }
-                        } else {
-                          // For imperial, validate the format (e.g., 5'10")
-                          if (!value.contains('\'')) {
-                            return 'Please use the format: feet\'inches" (e.g., 5\'10")';
-                          }
-                        }
-                        
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Weight
-                    TextFormField(
-                      controller: _weightController,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: 'Weight',
-                        hintText: isMetric ? 'Enter your weight in kg' : 'Enter your weight in lbs',
-                        border: const OutlineInputBorder(),
-                        prefixIcon: const Icon(Icons.monitor_weight),
-                        suffixText: isMetric ? 'kg' : 'lbs',
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your weight';
-                        }
-                        
-                        final weight = double.tryParse(value);
-                        if (weight == null || weight <= 0 || weight > 500) {
-                          return 'Please enter a valid weight';
-                        }
-                        
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                    
-                    // Activity level section
-                    const Text(
-                      'Activity Level',
-                      style: AppTextStyles.heading3,
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Activity level radio buttons
-                    ...['sedentary', 'light', 'moderate', 'active', 'very_active'].map((level) {
-                      return RadioListTile<String>(
-                        title: Text(_activityLevelLabels[level]!),
-                        value: level,
-                        groupValue: _activityLevel,
-                        onChanged: (value) {
-                          setState(() => _activityLevel = value ?? 'moderate');
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  // Profile form or display
+                  _isEditing
+                      ? _buildProfileForm(isMetric, weightUnit, heightUnit)
+                      : _buildProfileInfo(isMetric, weightUnit, heightUnit),
+                ],
+              ),
+            ),
+      bottomNavigationBar: _isEditing
+          ? BottomAppBar(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          setState(() => _isEditing = false);
+                          _loadUserProfile();  // Reset form values
                         },
-                      );
-                    }).toList(),
-                    const SizedBox(height: 24),
-                    
-                    // Bio section
-                    const Text(
-                      'About You',
-                      style: AppTextStyles.heading3,
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Bio
-                    TextFormField(
-                      controller: _bioController,
-                      maxLines: 3,
-                      decoration: const InputDecoration(
-                        labelText: 'Bio',
-                        hintText: 'Tell us a bit about yourself and your fitness goals',
-                        border: OutlineInputBorder(),
-                        alignLabelWithHint: true,
+                        child: const Text('Cancel'),
                       ),
                     ),
-                    const SizedBox(height: 32),
-                    
-                    // Save button
-                    SizedBox(
-                      width: double.infinity,
+                    const SizedBox(width: 16),
+                    Expanded(
                       child: AppButton(
-                        label: 'Save Profile',
-                        icon: Icons.save,
-                        onPressed: _saveProfile,
-                        isFullWidth: true,
+                        label: 'Save',
+                        onPressed: _updateUserProfile,
                         isLoading: _isLoading,
                       ),
                     ),
-                    const SizedBox(height: 32),
                   ],
                 ),
               ),
-            ),
+            )
+          : null,
     );
   }
+  
+  Widget _buildProfileForm(bool isMetric, String weightUnit, String heightUnit) {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Personal Information',
+            style: AppTextStyles.heading3,
+          ),
+          const SizedBox(height: 16),
+          
+          // Name
+          TextFormField(
+            controller: _nameController,
+            decoration: const InputDecoration(
+              labelText: 'Name',
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.person),
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter your name';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+          
+          // Gender
+          DropdownButtonFormField<String>(
+            value: _selectedGender,
+            decoration: const InputDecoration(
+              labelText: 'Gender',
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.people),
+            ),
+            items: _genderOptions.map((gender) {
+              String label = gender.substring(0, 1).toUpperCase() + gender.substring(1);
+              
+              return DropdownMenuItem<String>(
+                value: gender,
+                child: Text(label),
+              );
+            }).toList(),
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => _selectedGender = value);
+              }
+            },
+          ),
+          const SizedBox(height: 16),
+          
+          // Age
+          TextFormField(
+            controller: _ageController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Age',
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.cake),
+            ),
+            validator: (value) {
+              if (value != null && value.isNotEmpty) {
+                try {
+                  final age = int.parse(value);
+                  if (age <= 0 || age > 120) {
+                    return 'Please enter a valid age';
+                  }
+                } catch (e) {
+                  return 'Please enter a valid number';
+                }
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 24),
+          
+          const Text(
+            'Body Measurements',
+            style: AppTextStyles.heading3,
+          ),
+          const SizedBox(height: 16),
+          
+          // Weight
+          TextFormField(
+            controller: _weightController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              labelText: 'Weight',
+              border: const OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.monitor_weight),
+              suffixText: weightUnit,
+            ),
+            validator: (value) {
+              if (value != null && value.isNotEmpty) {
+                try {
+                  final weight = double.parse(value);
+                  if (weight <= 0) {
+                    return 'Weight must be greater than 0';
+                  }
+                } catch (e) {
+                  return 'Please enter a valid number';
+                }
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+          
+          // Height
+          TextFormField(
+            controller: _heightController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              labelText: 'Height',
+              border: const OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.height),
+              suffixText: heightUnit,
+            ),
+            validator: (value) {
+              if (value != null && value.isNotEmpty) {
+                try {
+                  final height = double.parse(value);
+                  if (height <= 0) {
+                    return 'Height must be greater than 0';
+                  }
+                } catch (e) {
+                  return 'Please enter a valid number';
+                }
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 24),
+          
+          const Text(
+            'Lifestyle',
+            style: AppTextStyles.heading3,
+          ),
+          const SizedBox(height: 16),
+          
+          // Activity Level
+          DropdownButtonFormField<String>(
+            value: _selectedActivityLevel,
+            decoration: const InputDecoration(
+              labelText: 'Activity Level',
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.fitness_center),
+            ),
+            items: _activityLevelOptions.entries.map((entry) {
+              return DropdownMenuItem<String>(
+                value: entry.key,
+                child: Text(entry.value),
+              );
+            }).toList(),
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => _selectedActivityLevel = value);
+              }
+            },
+          ),
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildProfileInfo(bool isMetric, String weightUnit, String heightUnit) {
+    final userProvider = Provider.of<UserProvider>(context);
+    final userProfile = userProvider.userProfile;
+    
+    if (userProfile == null) {
+      return const Center(
+        child: Text('No profile information available'),
+      );
+    }
+    
+    // Format values for display
+    String genderDisplay = '';
+    if (userProfile['gender'] != null) {
+      genderDisplay = userProfile['gender'].toString();
+      genderDisplay = genderDisplay.substring(0, 1).toUpperCase() + genderDisplay.substring(1);
+    }
+    
+    String ageDisplay = userProfile['age'] != null ? '${userProfile['age']} years' : 'Not specified';
+    
+    String weightDisplay = 'Not specified';
+    if (userProfile['weight'] != null) {
+      double weight = userProfile['weight'].toDouble();
+      if (!isMetric) {
+        weight = AppHelpers.kgToLbs(weight);
+      }
+      weightDisplay = '${weight.toStringAsFixed(1)} $weightUnit';
+    }
+    
+    String heightDisplay = 'Not specified';
+    if (userProfile['height'] != null) {
+      double height = userProfile['height'].toDouble();
+      if (!isMetric) {
+        height = AppHelpers.cmToIn(height);
+      }
+      heightDisplay = '${height.toStringAsFixed(1)} $heightUnit';
+    }
+    
+    String activityLevelDisplay = 'Not specified';
+    if (userProfile['activityLevel'] != null) {
+      activityLevelDisplay = _activityLevelOptions[userProfile['activityLevel']] ?? 'Not specified';
+    }
+    
+    // Calculate BMI if weight and height are available
+    String bmiDisplay = 'Not available';
+    String bmiCategory = '';
+    if (userProfile['weight'] != null && userProfile['height'] != null) {
+      final weight = userProfile['weight'].toDouble();
+      final height = userProfile['height'].toDouble() / 100; // cm to m
+      
+      final bmi = weight / (height * height);
+      bmiDisplay = bmi.toStringAsFixed(1);
+      
+      if (bmi < 18.5) {
+        bmiCategory = 'Underweight';
+      } else if (bmi < 25) {
+        bmiCategory = 'Normal weight';
+      } else if (bmi < 30) {
+        bmiCategory = 'Overweight';
+      } else {
+        bmiCategory = 'Obese';
+      }
+    }
+    
+    // Calculate daily calorie needs if all required fields are available
+    String calorieNeedsDisplay = 'Not available';
+    if (userProfile['weight'] != null && 
+        userProfile['height'] != null && 
+        userProfile['age'] != null &&
+        userProfile['gender'] != null &&
+        userProfile['activityLevel'] != null) {
+      
+      final calorieNeeds = userProvider.getUserDailyCalorieNeeds();
+      if (calorieNeeds != null) {
+        calorieNeedsDisplay = '$calorieNeeds kcal';
+      }
+    }
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Personal Information',
+          style: AppTextStyles.heading3,
+        ),
+        const SizedBox(height: 16),
+        _buildInfoCard([
+          InfoItem(label: 'Gender', value: genderDisplay),
+          InfoItem(label: 'Age', value: ageDisplay),
+        ]),
+        const SizedBox(height: 24),
+        
+        const Text(
+          'Body Measurements',
+          style: AppTextStyles.heading3,
+        ),
+        const SizedBox(height: 16),
+        _buildInfoCard([
+          InfoItem(label: 'Weight', value: weightDisplay),
+          InfoItem(label: 'Height', value: heightDisplay),
+          InfoItem(label: 'BMI', value: '$bmiDisplay ($bmiCategory)'),
+        ]),
+        const SizedBox(height: 24),
+        
+        const Text(
+          'Lifestyle',
+          style: AppTextStyles.heading3,
+        ),
+        const SizedBox(height: 16),
+        _buildInfoCard([
+          InfoItem(label: 'Activity Level', value: activityLevelDisplay),
+          InfoItem(label: 'Daily Calorie Needs', value: calorieNeedsDisplay),
+        ]),
+        const SizedBox(height: 32),
+        
+        // Edit button
+        SizedBox(
+          width: double.infinity,
+          child: AppButton(
+            label: 'Edit Profile',
+            icon: Icons.edit,
+            onPressed: () {
+              setState(() => _isEditing = true);
+            },
+            isFullWidth: true,
+          ),
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildInfoCard(List<InfoItem> items) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: items.map((item) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                children: [
+                  Text(
+                    '${item.label}:',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      item.value.isNotEmpty ? item.value : 'Not specified',
+                      style: TextStyle(
+                        color: item.value.isNotEmpty ? null : Colors.grey,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+}
+
+class InfoItem {
+  final String label;
+  final String value;
+  
+  InfoItem({required this.label, required this.value});
 }
