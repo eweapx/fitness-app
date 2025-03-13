@@ -1,30 +1,13 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'dart:io';
-import '../models/user_model.dart';
-import '../models/activity_model.dart';
-import '../models/nutrition_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../models/habit_model.dart';
+import '../models/sleep_model.dart';
 
-/// Service class for Firebase interactions
 class FirebaseService {
-  // Singletons for Firebase services
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
-  
-  // Authentication methods
-  
-  /// Get current user ID
-  String? get currentUserId => _auth.currentUser?.uid;
-  
-  /// Get current user
-  User? get currentUser => _auth.currentUser;
-  
-  /// Check if user is signed in
-  bool get isUserSignedIn => _auth.currentUser != null;
-  
-  /// Sign in with email and password
+
+  // Auth methods
   Future<UserCredential> signInWithEmailAndPassword(String email, String password) async {
     try {
       return await _auth.signInWithEmailAndPassword(
@@ -32,369 +15,288 @@ class FirebaseService {
         password: password,
       );
     } catch (e) {
+      print('Error signing in: $e');
       rethrow;
     }
   }
   
-  /// Create a new user with email and password
-  Future<UserCredential> createUserWithEmailAndPassword(String email, String password) async {
+  Future<UserCredential> registerWithEmailAndPassword(String email, String password) async {
     try {
       return await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
     } catch (e) {
+      print('Error registering: $e');
       rethrow;
     }
   }
   
-  /// Sign out
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+    } catch (e) {
+      print('Error sending password reset email: $e');
+      rethrow;
+    }
+  }
+  
   Future<void> signOut() async {
     try {
       await _auth.signOut();
     } catch (e) {
-      rethrow;
-    }
-  }
-  
-  /// Reset password
-  Future<void> resetPassword(String email) async {
-    try {
-      await _auth.sendPasswordResetEmail(email: email);
-    } catch (e) {
+      print('Error signing out: $e');
       rethrow;
     }
   }
   
   // User profile methods
-  
-  /// Create a new user profile
-  Future<void> createUserProfile(UserModel user) async {
+  Future<void> updateUserProfile(String userId, Map<String, dynamic> data) async {
     try {
-      await _firestore.collection('users').doc(user.id).set(user.toMap());
+      await _firestore.collection('users').doc(userId).set(
+        data,
+        SetOptions(merge: true),
+      );
     } catch (e) {
+      print('Error updating user profile: $e');
       rethrow;
     }
   }
   
-  /// Get a user profile
-  Future<UserModel?> getUserProfile(String userId) async {
+  Future<Map<String, dynamic>?> getUserProfile(String userId) async {
     try {
-      final docSnapshot = await _firestore.collection('users').doc(userId).get();
-      if (docSnapshot.exists) {
-        return UserModel.fromMap(docSnapshot.data()!, docSnapshot.id);
-      }
-      return null;
+      final doc = await _firestore.collection('users').doc(userId).get();
+      return doc.data();
     } catch (e) {
+      print('Error getting user profile: $e');
       rethrow;
     }
   }
   
-  /// Update a user profile
-  Future<void> updateUserProfile(UserModel user) async {
+  // Habit tracking methods
+  Future<List<Habit>> getUserHabits(String userId) async {
     try {
-      await _firestore.collection('users').doc(user.id).update(user.toMap());
+      final snapshot = await _firestore
+          .collection('habits')
+          .where('userId', isEqualTo: userId)
+          .get();
+      
+      return snapshot.docs.map((doc) => Habit.fromFirestore(doc)).toList();
     } catch (e) {
+      print('Error getting habits: $e');
       rethrow;
     }
   }
   
-  /// Upload profile image
-  Future<String> uploadProfileImage(File imageFile, String userId) async {
+  Future<String> addHabit(Habit habit) async {
     try {
-      final ref = _storage.ref().child('profile_images').child('$userId.jpg');
-      final uploadTask = ref.putFile(imageFile);
-      final snapshot = await uploadTask;
-      return await snapshot.ref.getDownloadURL();
-    } catch (e) {
-      rethrow;
-    }
-  }
-  
-  // Activity methods
-  
-  /// Add a new activity
-  Future<String> addActivity(ActivityModel activity) async {
-    try {
-      final docRef = await _firestore
-          .collection('users')
-          .doc(activity.userId)
-          .collection('activities')
-          .add(activity.toMap());
+      final docRef = await _firestore.collection('habits').add(habit.toFirestore());
       return docRef.id;
     } catch (e) {
+      print('Error adding habit: $e');
       rethrow;
     }
   }
   
-  /// Update an activity
-  Future<void> updateActivity(ActivityModel activity) async {
+  Future<void> updateHabit(Habit habit) async {
     try {
-      await _firestore
-          .collection('users')
-          .doc(activity.userId)
-          .collection('activities')
-          .doc(activity.id)
-          .update(activity.toMap());
+      if (habit.id == null) {
+        throw ArgumentError('Habit ID is required for update');
+      }
+      
+      await _firestore.collection('habits').doc(habit.id).update(habit.toFirestore());
     } catch (e) {
+      print('Error updating habit: $e');
       rethrow;
     }
   }
   
-  /// Delete an activity
-  Future<void> deleteActivity(String userId, String activityId) async {
+  Future<void> deleteHabit(String habitId) async {
     try {
-      await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('activities')
-          .doc(activityId)
-          .delete();
+      await _firestore.collection('habits').doc(habitId).delete();
     } catch (e) {
+      print('Error deleting habit: $e');
       rethrow;
     }
   }
   
-  /// Get all activities for a user
-  Future<List<ActivityModel>> getUserActivities(String userId) async {
+  // Sleep tracking methods
+  Future<List<SleepEntry>> getSleepEntriesForDateRange(
+    String userId,
+    DateTime startDate,
+    DateTime endDate,
+  ) async {
     try {
-      final querySnapshot = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('activities')
-          .orderBy('date', descending: true)
+      final snapshot = await _firestore
+          .collection('sleep')
+          .where('userId', isEqualTo: userId)
+          .where('date', isGreaterThanOrEqualTo: startDate)
+          .where('date', isLessThanOrEqualTo: endDate)
           .get();
       
-      return querySnapshot.docs
-          .map((doc) => ActivityModel.fromMap(doc.data(), doc.id))
-          .toList();
+      return snapshot.docs.map((doc) => SleepEntry.fromFirestore(doc)).toList();
     } catch (e) {
+      print('Error getting sleep entries: $e');
       rethrow;
     }
   }
   
-  /// Get activities for a specific date
-  Future<List<ActivityModel>> getActivitiesByDate(
-      String userId, DateTime date) async {
+  Future<String> addSleepEntry(SleepEntry entry) async {
     try {
-      // Create datetime range for the given date
-      final startOfDay = DateTime(date.year, date.month, date.day);
-      final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
-      
-      final querySnapshot = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('activities')
-          .where('date', isGreaterThanOrEqualTo: startOfDay)
-          .where('date', isLessThanOrEqualTo: endOfDay)
-          .get();
-      
-      return querySnapshot.docs
-          .map((doc) => ActivityModel.fromMap(doc.data(), doc.id))
-          .toList();
+      final docRef = await _firestore.collection('sleep').add(entry.toFirestore());
+      return docRef.id;
     } catch (e) {
+      print('Error adding sleep entry: $e');
+      rethrow;
+    }
+  }
+  
+  Future<void> updateSleepEntry(SleepEntry entry) async {
+    try {
+      if (entry.id == null) {
+        throw ArgumentError('Sleep entry ID is required for update');
+      }
+      
+      await _firestore.collection('sleep').doc(entry.id).update(entry.toFirestore());
+    } catch (e) {
+      print('Error updating sleep entry: $e');
+      rethrow;
+    }
+  }
+  
+  Future<void> deleteSleepEntry(String entryId) async {
+    try {
+      await _firestore.collection('sleep').doc(entryId).delete();
+    } catch (e) {
+      print('Error deleting sleep entry: $e');
       rethrow;
     }
   }
   
   // Nutrition methods
-  
-  /// Add a new food entry
-  Future<String> addFoodEntry(NutritionModel food) async {
+  Future<List<Map<String, dynamic>>> getMealEntriesForDate(
+    String userId,
+    DateTime date,
+  ) async {
     try {
-      final docRef = await _firestore
-          .collection('users')
-          .doc(food.userId)
-          .collection('nutrition')
-          .add(food.toMap());
+      // Convert to date string to match only the date part
+      final dateString = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      
+      final snapshot = await _firestore
+          .collection('meals')
+          .where('userId', isEqualTo: userId)
+          .where('dateString', isEqualTo: dateString)
+          .get();
+      
+      return snapshot.docs.map((doc) => {
+        'id': doc.id,
+        ...doc.data(),
+      }).toList();
+    } catch (e) {
+      print('Error getting meal entries: $e');
+      rethrow;
+    }
+  }
+  
+  Future<String> addMealEntry(Map<String, dynamic> mealData) async {
+    try {
+      final docRef = await _firestore.collection('meals').add(mealData);
       return docRef.id;
     } catch (e) {
+      print('Error adding meal entry: $e');
       rethrow;
     }
   }
   
-  /// Update a food entry
-  Future<void> updateFoodEntry(NutritionModel food) async {
+  Future<void> updateMealEntry(String mealId, Map<String, dynamic> mealData) async {
     try {
-      await _firestore
-          .collection('users')
-          .doc(food.userId)
-          .collection('nutrition')
-          .doc(food.id)
-          .update(food.toMap());
+      await _firestore.collection('meals').doc(mealId).update(mealData);
     } catch (e) {
+      print('Error updating meal entry: $e');
       rethrow;
     }
   }
   
-  /// Delete a food entry
-  Future<void> deleteFoodEntry(String userId, String foodId) async {
+  Future<void> deleteMealEntry(String mealId) async {
     try {
-      await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('nutrition')
-          .doc(foodId)
-          .delete();
+      await _firestore.collection('meals').doc(mealId).delete();
     } catch (e) {
+      print('Error deleting meal entry: $e');
       rethrow;
     }
   }
   
-  /// Get all food entries for a user
-  Future<List<NutritionModel>> getUserNutrition(String userId) async {
+  // Activity tracking methods
+  Future<List<Map<String, dynamic>>> getActivitiesForDateRange(
+    String userId,
+    DateTime startDate,
+    DateTime endDate,
+  ) async {
     try {
-      final querySnapshot = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('nutrition')
-          .orderBy('date', descending: true)
-          .get();
-      
-      return querySnapshot.docs
-          .map((doc) => NutritionModel.fromMap(doc.data(), doc.id))
-          .toList();
-    } catch (e) {
-      rethrow;
-    }
-  }
-  
-  /// Get food entries for a specific date
-  Future<List<NutritionModel>> getNutritionByDate(
-      String userId, DateTime date) async {
-    try {
-      final startOfDay = DateTime(date.year, date.month, date.day);
-      final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
-      
-      final querySnapshot = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('nutrition')
-          .where('date', isGreaterThanOrEqualTo: startOfDay)
-          .where('date', isLessThanOrEqualTo: endOfDay)
-          .get();
-      
-      return querySnapshot.docs
-          .map((doc) => NutritionModel.fromMap(doc.data(), doc.id))
-          .toList();
-    } catch (e) {
-      rethrow;
-    }
-  }
-  
-  // Goal tracking methods
-  
-  /// Set user goals
-  Future<void> setUserGoals(String userId, Map<String, dynamic> goals) async {
-    try {
-      await _firestore.collection('users').doc(userId).update({
-        'goals': goals,
-      });
-    } catch (e) {
-      rethrow;
-    }
-  }
-  
-  /// Get user goals
-  Future<Map<String, dynamic>?> getUserGoals(String userId) async {
-    try {
-      final docSnapshot = await _firestore.collection('users').doc(userId).get();
-      if (docSnapshot.exists) {
-        final data = docSnapshot.data()!;
-        return data['goals'] as Map<String, dynamic>?;
-      }
-      return null;
-    } catch (e) {
-      rethrow;
-    }
-  }
-  
-  // Statistics and aggregation methods
-  
-  /// Get activity statistics for a date range
-  Future<Map<String, dynamic>> getActivityStats(
-      String userId, DateTime startDate, DateTime endDate) async {
-    try {
-      final querySnapshot = await _firestore
-          .collection('users')
-          .doc(userId)
+      final snapshot = await _firestore
           .collection('activities')
+          .where('userId', isEqualTo: userId)
           .where('date', isGreaterThanOrEqualTo: startDate)
           .where('date', isLessThanOrEqualTo: endDate)
           .get();
       
-      final activities = querySnapshot.docs
-          .map((doc) => ActivityModel.fromMap(doc.data(), doc.id))
-          .toList();
-      
-      // Calculate stats
-      int totalActivities = activities.length;
-      int totalCaloriesBurned = 0;
-      int totalDuration = 0;
-      Map<String, int> activityTypeCount = {};
-      
-      for (var activity in activities) {
-        totalCaloriesBurned += activity.caloriesBurned;
-        totalDuration += activity.duration;
-        
-        // Count by activity type
-        activityTypeCount[activity.type] = 
-            (activityTypeCount[activity.type] ?? 0) + 1;
-      }
-      
-      return {
-        'totalActivities': totalActivities,
-        'totalCaloriesBurned': totalCaloriesBurned,
-        'totalDuration': totalDuration,
-        'activityTypeCount': activityTypeCount,
-      };
+      return snapshot.docs.map((doc) => {
+        'id': doc.id,
+        ...doc.data(),
+      }).toList();
     } catch (e) {
+      print('Error getting activities: $e');
       rethrow;
     }
   }
   
-  /// Get nutrition statistics for a date range
-  Future<Map<String, dynamic>> getNutritionStats(
-      String userId, DateTime startDate, DateTime endDate) async {
+  Future<String> addActivity(Map<String, dynamic> activityData) async {
     try {
-      final querySnapshot = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('nutrition')
-          .where('date', isGreaterThanOrEqualTo: startDate)
-          .where('date', isLessThanOrEqualTo: endDate)
-          .get();
-      
-      final foodEntries = querySnapshot.docs
-          .map((doc) => NutritionModel.fromMap(doc.data(), doc.id))
-          .toList();
-      
-      // Calculate stats
-      int totalCaloriesConsumed = 0;
-      int totalProtein = 0;
-      int totalCarbs = 0;
-      int totalFat = 0;
-      Map<String, int> categoryCount = {};
-      
-      for (var entry in foodEntries) {
-        totalCaloriesConsumed += entry.calories;
-        totalProtein += entry.protein;
-        totalCarbs += entry.carbs;
-        totalFat += entry.fat;
-        
-        // Count by food category
-        categoryCount[entry.category] = 
-            (categoryCount[entry.category] ?? 0) + 1;
-      }
-      
-      return {
-        'totalCaloriesConsumed': totalCaloriesConsumed,
-        'totalProtein': totalProtein,
-        'totalCarbs': totalCarbs,
-        'totalFat': totalFat,
-        'categoryCount': categoryCount,
-      };
+      final docRef = await _firestore.collection('activities').add(activityData);
+      return docRef.id;
     } catch (e) {
+      print('Error adding activity: $e');
+      rethrow;
+    }
+  }
+  
+  Future<void> updateActivity(String activityId, Map<String, dynamic> activityData) async {
+    try {
+      await _firestore.collection('activities').doc(activityId).update(activityData);
+    } catch (e) {
+      print('Error updating activity: $e');
+      rethrow;
+    }
+  }
+  
+  Future<void> deleteActivity(String activityId) async {
+    try {
+      await _firestore.collection('activities').doc(activityId).delete();
+    } catch (e) {
+      print('Error deleting activity: $e');
+      rethrow;
+    }
+  }
+  
+  // User settings methods
+  Future<Map<String, dynamic>> getUserSettings(String userId) async {
+    try {
+      final doc = await _firestore.collection('settings').doc(userId).get();
+      return doc.exists ? doc.data()! : {};
+    } catch (e) {
+      print('Error getting user settings: $e');
+      rethrow;
+    }
+  }
+  
+  Future<void> updateUserSettings(String userId, Map<String, dynamic> settings) async {
+    try {
+      await _firestore.collection('settings').doc(userId).set(
+        settings,
+        SetOptions(merge: true),
+      );
+    } catch (e) {
+      print('Error updating user settings: $e');
       rethrow;
     }
   }

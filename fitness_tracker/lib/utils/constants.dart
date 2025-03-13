@@ -1,260 +1,284 @@
 import 'package:flutter/material.dart';
 
-/// Application colors
+/// App theme colors
 class AppColors {
-  // Primary and secondary colors
-  static const primary = Color(0xFF4A90E2);
-  static const secondary = Color(0xFF50E3C2);
-  static const accent = Color(0xFFFFA726);
+  // Primary brand colors
+  static const Color primary = Color(0xFF4A5CFF); // Vibrant blue
+  static const Color secondary = Color(0xFF6B48FF); // Purple
+  static const Color tertiary = Color(0xFF00D98B); // Green
   
-  // Background colors
-  static const background = Color(0xFFF5F7FA);
-  static const cardBackground = Colors.white;
-  
-  // Status colors
-  static const success = Color(0xFF2ECC71);
-  static const warning = Color(0xFFF1C40F);
-  static const error = Color(0xFFE74C3C);
-  static const info = Color(0xFF3498DB);
+  // UI colors
+  static const Color background = Color(0xFFF9FAFC);
+  static const Color surface = Colors.white;
+  static const Color error = Color(0xFFE53935); // Red
+  static const Color warning = Color(0xFFFFA726); // Orange
+  static const Color success = Color(0xFF58BD76); // Green
   
   // Text colors
-  static const textPrimary = Color(0xFF2C3E50);
-  static const textSecondary = Color(0xFF7F8C8D);
-  static const textLight = Color(0xFFBDC3C7);
+  static const Color textPrimary = Color(0xFF2A2D34);
+  static const Color textSecondary = Color(0xFF686C73);
+  static const Color textTertiary = Color(0xFF9EA3AD);
+  
+  // Activity type colors
+  static const Color running = Color(0xFF26A69A);
+  static const Color cycling = Color(0xFF42A5F5);
+  static const Color swimming = Color(0xFF5C6BC0);
+  static const Color walking = Color(0xFF66BB6A);
+  static const Color yoga = Color(0xFFAB47BC);
+  static const Color gym = Color(0xFFEF5350);
+  
+  // Sleep stage colors
+  static const Color deep = Color(0xFF283593);
+  static const Color light = Color(0xFF5C6BC0);
+  static const Color rem = Color(0xFF9FA8DA);
+  static const Color awake = Color(0xFFE8EAF6);
+  
+  // Nutrition colors
+  static const Color protein = Color(0xFF8D6E63);
+  static const Color carbs = Color(0xFFFFB74D);
+  static const Color fat = Color(0xFF90A4AE);
+  static const Color fiber = Color(0xFF81C784);
+  static const Color water = Color(0xFF4FC3F7);
 }
 
-/// Text styles used across the app
+/// App theme text styles
 class AppTextStyles {
-  static const heading1 = TextStyle(
-    fontSize: 28,
+  // Headings
+  static const TextStyle heading1 = TextStyle(
+    fontSize: 32,
     fontWeight: FontWeight.bold,
     color: AppColors.textPrimary,
+    height: 1.2,
   );
   
-  static const heading2 = TextStyle(
+  static const TextStyle heading2 = TextStyle(
     fontSize: 24,
     fontWeight: FontWeight.bold,
     color: AppColors.textPrimary,
+    height: 1.3,
   );
   
-  static const heading3 = TextStyle(
+  static const TextStyle heading3 = TextStyle(
     fontSize: 20,
     fontWeight: FontWeight.bold,
     color: AppColors.textPrimary,
+    height: 1.4,
   );
   
-  static const heading4 = TextStyle(
-    fontSize: 18,
+  static const TextStyle heading4 = TextStyle(
+    fontSize: 16,
     fontWeight: FontWeight.bold,
     color: AppColors.textPrimary,
+    height: 1.4,
   );
   
-  static const body = TextStyle(
-    fontSize: 16,
-    color: AppColors.textPrimary,
-  );
-  
-  static const bodySmall = TextStyle(
+  // Body text
+  static const TextStyle body = TextStyle(
     fontSize: 14,
     color: AppColors.textPrimary,
+    height: 1.5,
   );
   
-  static const caption = TextStyle(
+  // Captions
+  static const TextStyle caption = TextStyle(
     fontSize: 12,
     color: AppColors.textSecondary,
+    height: 1.5,
   );
   
-  static const button = TextStyle(
+  // Buttons
+  static const TextStyle button = TextStyle(
     fontSize: 16,
     fontWeight: FontWeight.bold,
     color: Colors.white,
+    height: 1.4,
+  );
+  
+  // Links
+  static const TextStyle link = TextStyle(
+    fontSize: 14,
+    color: AppColors.primary,
+    height: 1.5,
+    decoration: TextDecoration.underline,
   );
 }
 
-/// Common dimensions and spacing
-class AppDimensions {
-  static const double paddingSmall = 8.0;
-  static const double paddingMedium = 16.0;
-  static const double paddingLarge = 24.0;
-  static const double paddingExtraLarge = 32.0;
+/// App constants
+class AppConstants {
+  // API endpoints
+  static const String apiBaseUrl = 'https://api.fitnesstracker.com';
+  static const String termsUrl = 'https://fitnesstracker.com/terms';
+  static const String privacyUrl = 'https://fitnesstracker.com/privacy';
+  static const String supportUrl = 'https://fitnesstracker.com/support';
   
-  static const double borderRadiusSmall = 4.0;
-  static const double borderRadiusMedium = 8.0;
-  static const double borderRadiusLarge = 12.0;
-  static const double borderRadiusExtraLarge = 16.0;
+  // File paths
+  static const String assetImagesPath = 'assets/images/';
+  static const String assetIconsPath = 'assets/icons/';
   
-  static const double iconSizeSmall = 16.0;
-  static const double iconSizeMedium = 24.0;
-  static const double iconSizeLarge = 32.0;
-  static const double iconSizeExtraLarge = 48.0;
+  // Shared preferences keys
+  static const String prefAuthToken = 'auth_token';
+  static const String prefUserProfile = 'user_profile';
+  static const String prefSettings = 'app_settings';
+  static const String prefOnboardingComplete = 'onboarding_complete';
+  
+  // Measurement units
+  static const String unitKg = 'kg';
+  static const String unitLbs = 'lbs';
+  static const String unitCm = 'cm';
+  static const String unitFt = 'ft';
+  static const String unitMl = 'ml';
+  static const String unitOz = 'oz';
+  static const String unitKm = 'km';
+  static const String unitMi = 'mi';
+  static const String unitKcal = 'kcal';
+  
+  // Time formats
+  static const String timeFormat24h = 'HH:mm';
+  static const String timeFormat12h = 'h:mm a';
+  static const String dateFormatFull = 'EEEE, MMMM d, yyyy';
+  static const String dateFormatShort = 'MMM d, yyyy';
+  static const String dateFormatCompact = 'MM/dd/yyyy';
+  
+  // Notification channels
+  static const String notificationChannelWorkouts = 'workouts';
+  static const String notificationChannelHabits = 'habits';
+  static const String notificationChannelWater = 'water';
+  static const String notificationChannelMeals = 'meals';
+  
+  // Feature constants
+  static const int waterReminderInterval = 2; // hours
+  static const int defaultCalorieGoal = 2000; // kcal
+  static const int defaultWaterGoal = 2000; // ml
+  static const int defaultStepsGoal = 10000; // steps
+  static const int defaultSleepGoal = 8; // hours
 }
 
-/// Activity types
-class ActivityTypes {
-  static const String running = "running";
-  static const String walking = "walking";
-  static const String cycling = "cycling";
-  static const String swimming = "swimming";
-  static const String gymWorkout = "gym_workout";
-  static const String hiit = "hiit";
-  static const String yoga = "yoga";
-  static const String other = "other";
-  
-  static List<String> get all => [
-    running, 
-    walking, 
-    cycling, 
-    swimming, 
-    gymWorkout, 
-    hiit, 
-    yoga, 
-    other
-  ];
-  
-  static IconData getIconForType(String type) {
-    switch (type) {
-      case running: return Icons.directions_run;
-      case walking: return Icons.directions_walk;
-      case cycling: return Icons.directions_bike;
-      case swimming: return Icons.pool;
-      case gymWorkout: return Icons.fitness_center;
-      case hiit: return Icons.timer;
-      case yoga: return Icons.self_improvement;
-      default: return Icons.sports;
-    }
-  }
-  
-  static String getDisplayName(String type) {
-    switch (type) {
-      case running: return "Running";
-      case walking: return "Walking";
-      case cycling: return "Cycling";
-      case swimming: return "Swimming";
-      case gymWorkout: return "Gym Workout";
-      case hiit: return "HIIT";
-      case yoga: return "Yoga";
-      default: return "Other";
-    }
-  }
-  
-  static Color getColorForType(String type) {
-    switch (type) {
-      case running: return Colors.orangeAccent;
-      case walking: return Colors.lightGreen;
-      case cycling: return Colors.blueAccent;
-      case swimming: return Colors.lightBlueAccent;
-      case gymWorkout: return Colors.redAccent;
-      case hiit: return Colors.deepPurpleAccent;
-      case yoga: return Colors.tealAccent;
-      default: return Colors.grey;
-    }
-  }
+/// Activity types for fitness tracking
+enum ActivityType {
+  running,
+  walking,
+  cycling,
+  swimming,
+  yoga,
+  hiking,
+  weightTraining,
+  other,
 }
 
-/// Nutrition categories
-class FoodCategories {
-  static const String fruits = "fruits";
-  static const String vegetables = "vegetables";
-  static const String grains = "grains";
-  static const String protein = "protein";
-  static const String dairy = "dairy";
-  static const String snacks = "snacks";
-  static const String beverages = "beverages";
-  static const String other = "other";
+/// Meal types for nutrition tracking
+enum MealType {
+  breakfast,
+  lunch,
+  dinner,
+  snack,
+}
+
+/// Units of measurement
+enum MeasurementUnit {
+  metric,
+  imperial,
+}
+
+/// Theme mode
+enum AppThemeMode {
+  light,
+  dark,
+  system,
+}
+
+/// Helper methods for the app
+class AppHelpers {
+  // Convert kilograms to pounds
+  static double kgToLbs(double kg) {
+    return kg * 2.20462;
+  }
   
-  static List<String> get all => [
-    fruits, 
-    vegetables, 
-    grains, 
-    protein, 
-    dairy, 
-    snacks, 
-    beverages, 
-    other
-  ];
+  // Convert pounds to kilograms
+  static double lbsToKg(double lbs) {
+    return lbs / 2.20462;
+  }
   
-  static IconData getIconForCategory(String category) {
-    switch (category) {
-      case fruits: return Icons.apple;
-      case vegetables: return Icons.eco;
-      case grains: return Icons.rice_bowl;
-      case protein: return Icons.egg;
-      case dairy: return Icons.icecream;
-      case snacks: return Icons.cookie;
-      case beverages: return Icons.local_drink;
-      default: return Icons.restaurant;
+  // Convert centimeters to feet and inches
+  static Map<String, int> cmToFtIn(double cm) {
+    final totalInches = cm / 2.54;
+    final feet = totalInches ~/ 12;
+    final inches = (totalInches % 12).round();
+    
+    return {
+      'feet': feet,
+      'inches': inches,
+    };
+  }
+  
+  // Convert feet and inches to centimeters
+  static double ftInToCm(int feet, int inches) {
+    final totalInches = (feet * 12) + inches;
+    return totalInches * 2.54;
+  }
+  
+  // Convert kilometers to miles
+  static double kmToMiles(double km) {
+    return km * 0.621371;
+  }
+  
+  // Convert miles to kilometers
+  static double milesToKm(double miles) {
+    return miles / 0.621371;
+  }
+  
+  // Convert milliliters to fluid ounces
+  static double mlToOz(double ml) {
+    return ml * 0.033814;
+  }
+  
+  // Convert fluid ounces to milliliters
+  static double ozToMl(double oz) {
+    return oz / 0.033814;
+  }
+  
+  // Calculate BMI (Body Mass Index)
+  static double calculateBMI(double weightKg, double heightCm) {
+    // BMI = weight(kg) / height(m)²
+    final heightM = heightCm / 100;
+    return weightKg / (heightM * heightM);
+  }
+  
+  // Get BMI category
+  static String getBMICategory(double bmi) {
+    if (bmi < 18.5) {
+      return 'Underweight';
+    } else if (bmi >= 18.5 && bmi < 25) {
+      return 'Normal';
+    } else if (bmi >= 25 && bmi < 30) {
+      return 'Overweight';
+    } else {
+      return 'Obese';
     }
   }
   
-  static String getDisplayName(String category) {
-    switch (category) {
-      case fruits: return "Fruits";
-      case vegetables: return "Vegetables";
-      case grains: return "Grains";
-      case protein: return "Protein";
-      case dairy: return "Dairy";
-      case snacks: return "Snacks";
-      case beverages: return "Beverages";
-      default: return "Other";
+  // Calculate daily calories needed (Harris-Benedict equation)
+  static int calculateDailyCalories(
+    double weightKg,
+    double heightCm,
+    int age,
+    String gender,
+    double activityLevel,
+  ) {
+    double bmr;
+    
+    if (gender.toLowerCase() == 'male') {
+      bmr = 88.362 + (13.397 * weightKg) + (4.799 * heightCm) - (5.677 * age);
+    } else {
+      bmr = 447.593 + (9.247 * weightKg) + (3.098 * heightCm) - (4.330 * age);
     }
-  }
-  
-  static Color getColorForCategory(String category) {
-    switch (category) {
-      case fruits: return Colors.redAccent;
-      case vegetables: return Colors.greenAccent;
-      case grains: return Colors.amberAccent;
-      case protein: return Colors.deepOrangeAccent;
-      case dairy: return Colors.lightBlueAccent;
-      case snacks: return Colors.purpleAccent;
-      case beverages: return Colors.blueAccent;
-      default: return Colors.grey;
-    }
-  }
-}
-
-/// Date and time formatting constants
-class DateTimeFormats {
-  static const String dateOnly = 'yyyy-MM-dd';
-  static const String timeOnly = 'HH:mm';
-  static const String dateAndTime = 'yyyy-MM-dd HH:mm';
-  static const String monthDay = 'MMM dd';
-  static const String dayMonth = 'dd MMM';
-  static const String monthDayYear = 'MMM dd, yyyy';
-  static const String dayOfWeek = 'EEEE';
-}
-
-/// App-wide shared preferences keys
-class AppPreferenceKeys {
-  static const String userId = 'user_id';
-  static const String userEmail = 'user_email';
-  static const String isDarkMode = 'is_dark_mode';
-  static const String dailyCalorieGoal = 'daily_calorie_goal';
-  static const String dailyStepGoal = 'daily_step_goal';
-  static const String dailyWaterGoal = 'daily_water_goal';
-  static const String lastSyncTime = 'last_sync_time';
-  static const String useBiometrics = 'use_biometrics';
-}
-
-/// Shared validation functions
-class Validators {
-  static bool isValidEmail(String email) {
-    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
-  }
-  
-  static bool isValidPassword(String password) {
-    return password.length >= 6;
-  }
-  
-  static bool isValidName(String name) {
-    return name.isNotEmpty && name.trim().length >= 2;
-  }
-  
-  static bool isPositiveNumber(num? value) {
-    return value != null && value > 0;
-  }
-  
-  static bool isNonNegativeNumber(num? value) {
-    return value != null && value >= 0;
+    
+    // Activity level multipliers
+    // 1.2 = Sedentary (little or no exercise)
+    // 1.375 = Lightly active (light exercise/sports 1-3 days/week)
+    // 1.55 = Moderately active (moderate exercise/sports 3-5 days/week)
+    // 1.725 = Very active (hard exercise/sports 6-7 days/week)
+    // 1.9 = Extra active (very hard exercise, physical job, or training twice a day)
+    
+    return (bmr * activityLevel).round();
   }
 }

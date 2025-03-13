@@ -1,8 +1,7 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
-import 'dart:math';
-import 'dart:io' show Platform;
 
 class NotificationService {
   // Singleton pattern
@@ -10,285 +9,301 @@ class NotificationService {
   factory NotificationService() => _instance;
   NotificationService._internal();
   
-  // Local notifications plugin
-  final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
-      FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
+  bool _isInitialized = false;
   
-  // Notification channel IDs for different types of reminders
-  static const String _channelId = 'fitness_reminders';
-  static const String _channelName = 'Fitness Reminders';
-  static const String _channelDescription = 'Reminders for fitness activities, water intake, and more';
-  
-  // Notification IDs for different types of reminders
-  final Map<String, int> _notificationIds = {
-    'Water Intake': 1001,
-    'Workouts': 1002,
-    'Meal Tracking': 1003,
-    'Sleep Tracking': 1004,
-    'Step Goals': 1005,
-    'Weight Tracking': 1006,
-  };
-  
-  // Initialize notifications
-  Future<void> init() async {
+  Future<void> initialize() async {
+    if (_isInitialized) return;
+    
     // Initialize timezone data
     tz_data.initializeTimeZones();
     
-    // Android initialization settings
-    const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+    // Initialize notification settings
+    const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     
-    // iOS initialization settings
-    final DarwinInitializationSettings initializationSettingsIOS =
-        DarwinInitializationSettings(
-          requestAlertPermission: false,
-          requestBadgePermission: false,
-          requestSoundPermission: false,
-          onDidReceiveLocalNotification:
-              (int id, String? title, String? body, String? payload) async {
-            // Handle iOS notification when app is in foreground
-          },
-        );
-    
-    // Initialization settings
-    final InitializationSettings initializationSettings = InitializationSettings(
-      android: initializationSettingsAndroid,
-      iOS: initializationSettingsIOS,
+    const DarwinInitializationSettings iosSettings = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
     );
     
-    // Initialize plugin
-    await _flutterLocalNotificationsPlugin.initialize(
-      initializationSettings,
-      onDidReceiveNotificationResponse: _onNotificationTapped,
+    const InitializationSettings initSettings = InitializationSettings(
+      android: androidSettings,
+      iOS: iosSettings,
     );
+    
+    await _notificationsPlugin.initialize(
+      initSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse details) {
+        // Handle notification tap
+        print('Notification tapped: ${details.payload}');
+      },
+    );
+    
+    _isInitialized = true;
   }
   
-  void _onNotificationTapped(NotificationResponse response) {
-    // Handle notification tap
-    // This can be used to navigate to specific screens when notifications are tapped
-    print("Notification tapped: ${response.payload}");
-  }
-  
-  // Request notification permissions
   Future<bool> requestPermissions() async {
-    if (Platform.isIOS) {
-      final bool? result = await _flutterLocalNotificationsPlugin
-          .resolvePlatformSpecificImplementation<
-              IOSFlutterLocalNotificationsPlugin>()
-          ?.requestPermissions(
-            alert: true,
-            badge: true,
-            sound: true,
-          );
-      return result ?? false;
-    } else if (Platform.isAndroid) {
-      final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
-          _flutterLocalNotificationsPlugin
-              .resolvePlatformSpecificImplementation<
-                  AndroidFlutterLocalNotificationsPlugin>();
-      
-      final bool? result = await androidImplementation?.requestPermission();
-      return result ?? true; // Default to true for older Android versions
-    }
-    return true;
+    if (!_isInitialized) await initialize();
+    
+    // Request permission (for iOS)
+    final result = await _notificationsPlugin
+        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+        ?.requestPermissions(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
+        
+    return result ?? false;
   }
   
-  // Schedule a reminder notification
-  Future<void> scheduleReminderNotification(String reminderType, String message) async {
-    // Get notification ID for this reminder type
-    final int notificationId = _notificationIds[reminderType] ?? 
-                               (1000 + Random().nextInt(1000)); // Fallback to random ID
+  // Show immediate notification
+  Future<void> showNotification({
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    if (!_isInitialized) await initialize();
     
-    // Notification details
-    final AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
-          _channelId,
-          _channelName,
-          channelDescription: _channelDescription,
-          importance: Importance.high,
-          priority: Priority.high,
-          ticker: 'Fitness Reminder',
-          icon: '@mipmap/ic_launcher',
-        );
-    
-    final DarwinNotificationDetails iOSPlatformChannelSpecifics =
-        DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-        );
-    
-    final NotificationDetails platformChannelSpecifics = NotificationDetails(
-      android: androidPlatformChannelSpecifics,
-      iOS: iOSPlatformChannelSpecifics,
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'fitness_tracker_channel',
+      'Fitness Tracker',
+      channelDescription: 'Channel for Fitness Tracker notifications',
+      importance: Importance.high,
+      priority: Priority.high,
+      showWhen: true,
     );
     
-    // Calculate notification time based on reminder type
-    // For real use case, these would be customized based on user preferences
-    DateTime scheduledTime = _getScheduledTimeFor(reminderType);
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
     
-    // Schedule notification
-    await _flutterLocalNotificationsPlugin.zonedSchedule(
-      notificationId,
-      'Fitness Reminder',
-      message,
-      tz.TZDateTime.from(scheduledTime, tz.local),
-      platformChannelSpecifics,
+    const NotificationDetails notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+    
+    await _notificationsPlugin.show(
+      0, // Notification ID
+      title,
+      body,
+      notificationDetails,
+      payload: payload,
+    );
+  }
+  
+  // Schedule a notification for a specific time
+  Future<void> scheduleNotification({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime scheduledTime,
+    String? payload,
+  }) async {
+    if (!_isInitialized) await initialize();
+    
+    final androidDetails = const AndroidNotificationDetails(
+      'fitness_tracker_scheduled',
+      'Scheduled Notifications',
+      channelDescription: 'Channel for scheduled notifications',
+      importance: Importance.high,
+      priority: Priority.high,
+    );
+    
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    
+    final notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+    
+    // Convert to TZ
+    final scheduledDate = tz.TZDateTime.from(scheduledTime, tz.local);
+    
+    await _notificationsPlugin.zonedSchedule(
+      id,
+      title,
+      body,
+      scheduledDate,
+      notificationDetails,
       androidAllowWhileIdle: true,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      payload: reminderType, // Used to identify notification when tapped
-      matchDateTimeComponents: DateTimeComponents.time, // Repeat daily at same time
+      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: DateTimeComponents.time,
+      payload: payload,
     );
   }
   
-  // Cancel specific reminder notifications
-  Future<void> cancelReminderNotification(String reminderType) async {
-    final int? notificationId = _notificationIds[reminderType];
-    if (notificationId != null) {
-      await _flutterLocalNotificationsPlugin.cancel(notificationId);
-    }
+  // Schedule a daily notification at a specific time
+  Future<void> scheduleDailyNotification({
+    required int id,
+    required String title,
+    required String body,
+    required TimeOfDay time,
+    String? payload,
+  }) async {
+    if (!_isInitialized) await initialize();
+    
+    // Create a DateTime for today with the specified time
+    final now = DateTime.now();
+    final scheduledTime = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      time.hour,
+      time.minute,
+    );
+    
+    // If the scheduled time is before now, set it for tomorrow
+    final effectiveDate = scheduledTime.isBefore(now)
+        ? scheduledTime.add(const Duration(days: 1))
+        : scheduledTime;
+    
+    final tzDate = tz.TZDateTime.from(effectiveDate, tz.local);
+    
+    const androidDetails = AndroidNotificationDetails(
+      'fitness_tracker_daily',
+      'Daily Reminders',
+      channelDescription: 'Channel for daily reminders',
+      importance: Importance.high,
+      priority: Priority.high,
+    );
+    
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+    
+    await _notificationsPlugin.zonedSchedule(
+      id,
+      title,
+      body,
+      tzDate,
+      notificationDetails,
+      androidAllowWhileIdle: true,
+      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: DateTimeComponents.time,
+      payload: payload,
+    );
+  }
+  
+  // Cancel a specific notification
+  Future<void> cancelNotification(int id) async {
+    await _notificationsPlugin.cancel(id);
   }
   
   // Cancel all notifications
   Future<void> cancelAllNotifications() async {
-    await _flutterLocalNotificationsPlugin.cancelAll();
+    await _notificationsPlugin.cancelAll();
   }
   
-  // Calculate scheduled time for different reminder types
-  DateTime _getScheduledTimeFor(String reminderType) {
+  // Get pending notification requests
+  Future<List<PendingNotificationRequest>> getPendingNotifications() async {
+    return await _notificationsPlugin.pendingNotificationRequests();
+  }
+  
+  // Schedule a habit reminder
+  Future<void> scheduleHabitReminderNotification(
+    String habitId,
+    String habitName,
+    String message,
+    TimeOfDay reminderTime,
+  ) async {
+    // Generate a unique ID based on the habit ID
+    final id = habitId.hashCode;
+    
+    await scheduleDailyNotification(
+      id: id,
+      title: 'Habit Reminder: $habitName',
+      body: message,
+      time: reminderTime,
+      payload: 'habit:$habitId',
+    );
+  }
+  
+  // Cancel a habit reminder
+  Future<void> cancelHabitReminderNotification(String habitId) async {
+    final id = habitId.hashCode;
+    await cancelNotification(id);
+  }
+  
+  // Show a streak milestone notification
+  Future<void> showStreakNotification(String habitName, int streak) async {
+    await showNotification(
+      title: 'Streak Milestone! 🔥',
+      body: 'You\'ve maintained "$habitName" for $streak days in a row! Keep it up!',
+      payload: 'streak:$habitName:$streak',
+    );
+  }
+  
+  // Show a sleep reminder notification
+  Future<void> scheduleSleepReminder(TimeOfDay bedtime) async {
+    // Schedule for 30 minutes before bedtime
     final now = DateTime.now();
+    final reminderTime = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      bedtime.hour,
+      bedtime.minute,
+    ).subtract(const Duration(minutes: 30));
     
-    switch (reminderType) {
-      case 'Water Intake':
-        // Remind every 2 hours from 8 AM to 8 PM
-        final currentHour = now.hour;
-        final nextReminderHour = (currentHour ~/ 2 * 2) + 2; // Round to nearest 2 hour and add 2
-        return DateTime(
-          now.year, 
-          now.month, 
-          now.day, 
-          nextReminderHour > 20 ? 8 : nextReminderHour, // Reset to 8 AM next day if after 8 PM
-          0,
-        );
-        
-      case 'Workouts':
-        // Remind at 6 AM for morning workouts
-        return DateTime(now.year, now.month, now.day, 6, 0);
-        
-      case 'Meal Tracking':
-        // Remind at meal times: breakfast (7 AM), lunch (12 PM), dinner (7 PM)
-        final currentHour = now.hour;
-        int reminderHour;
-        
-        if (currentHour < 7) {
-          reminderHour = 7; // Breakfast
-        } else if (currentHour < 12) {
-          reminderHour = 12; // Lunch
-        } else if (currentHour < 19) {
-          reminderHour = 19; // Dinner
-        } else {
-          reminderHour = 7; // Breakfast next day
-        }
-        
-        return DateTime(now.year, now.month, now.day, reminderHour, 0);
-        
-      case 'Sleep Tracking':
-        // Remind at 9 PM for sleep tracking
-        return DateTime(now.year, now.month, now.day, 21, 0);
-        
-      case 'Step Goals':
-        // Remind at noon to check step progress
-        return DateTime(now.year, now.month, now.day, 12, 0);
-        
-      case 'Weight Tracking':
-        // Remind at 7 AM for consistent weight tracking
-        return DateTime(now.year, now.month, now.day, 7, 0);
-        
-      default:
-        // Default to noon
-        return DateTime(now.year, now.month, now.day, 12, 0);
+    // If the reminder time is in the past, schedule for tomorrow
+    final effectiveDate = reminderTime.isBefore(now)
+        ? reminderTime.add(const Duration(days: 1))
+        : reminderTime;
+    
+    await scheduleNotification(
+      id: 'sleep_reminder'.hashCode,
+      title: 'Bedtime Reminder',
+      body: 'Your bedtime is in 30 minutes. Start winding down now for better sleep quality.',
+      scheduledTime: effectiveDate,
+      payload: 'sleep_reminder',
+    );
+  }
+  
+  // Show a water reminder notification
+  Future<void> scheduleWaterReminders() async {
+    // Schedule reminders throughout the day
+    final reminderTimes = [
+      const TimeOfDay(hour: 9, minute: 0),   // 9:00 AM
+      const TimeOfDay(hour: 11, minute: 30), // 11:30 AM
+      const TimeOfDay(hour: 14, minute: 0),  // 2:00 PM
+      const TimeOfDay(hour: 16, minute: 30), // 4:30 PM
+      const TimeOfDay(hour: 19, minute: 0),  // 7:00 PM
+    ];
+    
+    for (int i = 0; i < reminderTimes.length; i++) {
+      await scheduleDailyNotification(
+        id: 'water_reminder_$i'.hashCode,
+        title: 'Hydration Reminder',
+        body: 'Time to drink some water! Stay hydrated for better health.',
+        time: reminderTimes[i],
+        payload: 'water_reminder:$i',
+      );
     }
   }
   
-  // Show immediate notification
-  Future<void> showImmediateNotification(String title, String body) async {
-    // Notification details
-    final AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
-          _channelId,
-          _channelName,
-          channelDescription: _channelDescription,
-          importance: Importance.high,
-          priority: Priority.high,
-          ticker: 'Fitness Alert',
-          icon: '@mipmap/ic_launcher',
-        );
-    
-    final DarwinNotificationDetails iOSPlatformChannelSpecifics =
-        DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-        );
-    
-    final NotificationDetails platformChannelSpecifics = NotificationDetails(
-      android: androidPlatformChannelSpecifics,
-      iOS: iOSPlatformChannelSpecifics,
-    );
-    
-    // Show notification
-    await _flutterLocalNotificationsPlugin.show(
-      Random().nextInt(100000), // Random ID to avoid conflicts
-      title,
-      body,
-      platformChannelSpecifics,
-      payload: 'immediate',
-    );
-  }
-  
-  // Check if notifications are enabled at the system level
-  Future<bool> areNotificationsEnabled() async {
-    if (Platform.isIOS) {
-      // For iOS, we can check authorization status
-      final settings = await _flutterLocalNotificationsPlugin
-          .resolvePlatformSpecificImplementation<
-              IOSFlutterLocalNotificationsPlugin>()
-          ?.getNotificationAppLaunchDetails();
-      return settings?.didNotificationLaunchApp ?? false;
-    } else if (Platform.isAndroid) {
-      // For Android, we can check if the channel is enabled
-      final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
-          _flutterLocalNotificationsPlugin
-              .resolvePlatformSpecificImplementation<
-                  AndroidFlutterLocalNotificationsPlugin>();
-      final areEnabled = await androidImplementation?.areNotificationsEnabled();
-      return areEnabled ?? false;
-    }
-    return false;
-  }
-  
-  // Show goal achievement notification
-  Future<void> showGoalAchievementNotification(String goalType, String achievement) async {
-    await showImmediateNotification(
-      'Goal Achieved! 🎉',
-      'You reached your $goalType goal: $achievement',
-    );
-  }
-  
-  // Show streak notification (for habit tracking)
-  Future<void> showStreakNotification(String habitName, int days) async {
-    await showImmediateNotification(
-      'Streak Milestone! 🔥',
-      'You maintained your $habitName habit for $days days in a row!',
-    );
-  }
-  
-  // AI insight notification
-  Future<void> showAIInsightNotification(String insight) async {
-    await showImmediateNotification(
-      'AI Health Insight 🧠',
-      insight,
+  // Show a meal planning reminder
+  Future<void> scheduleMealPlanningReminder() async {
+    await scheduleDailyNotification(
+      id: 'meal_planning'.hashCode,
+      title: 'Meal Planning',
+      body: 'Have you planned your meals for tomorrow? A little planning helps maintain healthy eating habits.',
+      time: const TimeOfDay(hour: 19, minute: 30), // 7:30 PM
+      payload: 'meal_planning',
     );
   }
 }

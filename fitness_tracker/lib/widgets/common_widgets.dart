@@ -1,207 +1,139 @@
 import 'package:flutter/material.dart';
 import '../utils/constants.dart';
 
-/// A custom button with a standardized style
+/// A reusable button with consistent styling
 class AppButton extends StatelessWidget {
   final String label;
-  final VoidCallback onPressed;
-  final Color? backgroundColor;
-  final Color? textColor;
   final IconData? icon;
-  final bool isOutlined;
+  final VoidCallback onPressed;
   final bool isFullWidth;
+  final bool isOutlined;
+  final Color? color;
   final bool isLoading;
-
+  
   const AppButton({
     super.key,
     required this.label,
-    required this.onPressed,
-    this.backgroundColor,
-    this.textColor,
     this.icon,
-    this.isOutlined = false,
+    required this.onPressed,
     this.isFullWidth = false,
+    this.isOutlined = false,
+    this.color,
     this.isLoading = false,
   });
-
+  
   @override
   Widget build(BuildContext context) {
-    final color = backgroundColor ?? AppColors.primary;
+    final buttonStyle = isOutlined
+        ? ElevatedButton.styleFrom(
+            foregroundColor: color ?? AppColors.primary,
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            side: BorderSide(color: color ?? AppColors.primary),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: 12,
+            ),
+          )
+        : ElevatedButton.styleFrom(
+            foregroundColor: Colors.white,
+            backgroundColor: color ?? AppColors.primary,
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: 12,
+            ),
+          );
     
-    if (isOutlined) {
-      return SizedBox(
-        width: isFullWidth ? double.infinity : null,
-        child: OutlinedButton(
-          onPressed: isLoading ? null : onPressed,
-          style: OutlinedButton.styleFrom(
-            side: BorderSide(color: color),
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+    final buttonChild = isLoading
+        ? const SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
             ),
-          ),
-          child: _buildButtonContent(color),
-        ),
-      );
-    } else {
-      return SizedBox(
-        width: isFullWidth ? double.infinity : null,
-        child: ElevatedButton(
-          onPressed: isLoading ? null : onPressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: color,
-            foregroundColor: textColor ?? Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          child: _buildButtonContent(textColor ?? Colors.white),
-        ),
-      );
-    }
+          )
+        : Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon),
+                const SizedBox(width: 8),
+              ],
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          );
+    
+    return SizedBox(
+      width: isFullWidth ? double.infinity : null,
+      child: ElevatedButton(
+        style: buttonStyle,
+        onPressed: isLoading ? null : onPressed,
+        child: buttonChild,
+      ),
+    );
   }
+}
 
-  Widget _buildButtonContent(Color textColor) {
-    if (isLoading) {
-      return SizedBox(
-        height: 20,
-        width: 20,
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          valueColor: AlwaysStoppedAnimation<Color>(textColor),
-        ),
-      );
-    }
-
-    if (icon != null) {
-      return Row(
+/// A loading indicator with a message
+class LoadingIndicator extends StatelessWidget {
+  final String message;
+  
+  const LoadingIndicator({
+    super.key,
+    this.message = 'Loading...',
+  });
+  
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 20),
-          const SizedBox(width: 8),
-          Text(label),
+          const CircularProgressIndicator(),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            style: AppTextStyles.body,
+          ),
         ],
-      );
-    }
-
-    return Text(label);
+      ),
+    );
   }
 }
 
-/// A section card with a title and content
-class SectionCard extends StatelessWidget {
+/// A metric card for displaying health metrics
+class MetricCard extends StatelessWidget {
   final String title;
-  final List<Widget> children;
-  final Widget? trailing;
+  final String value;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
   final VoidCallback? onTap;
-
-  const SectionCard({
+  
+  const MetricCard({
     super.key,
     required this.title,
-    required this.children,
-    this.trailing,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  title,
-                  style: AppTextStyles.heading3,
-                ),
-                if (trailing != null) trailing!,
-                if (onTap != null)
-                  IconButton(
-                    icon: const Icon(Icons.arrow_forward_ios, size: 16),
-                    onPressed: onTap,
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            ...children,
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// A custom progress bar with label
-class LabeledProgressBar extends StatelessWidget {
-  final String label;
-  final String value;
-  final double progress;
-  final Color? color;
-  final bool showPercentage;
-
-  const LabeledProgressBar({
-    super.key,
-    required this.label,
     required this.value,
-    required this.progress,
-    this.color,
-    this.showPercentage = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(label, style: AppTextStyles.caption),
-            Text(
-              showPercentage ? '${(progress * 100).toInt()}% | $value' : value,
-              style: AppTextStyles.caption,
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        LinearProgressIndicator(
-          value: progress,
-          backgroundColor: Colors.grey[300],
-          valueColor: AlwaysStoppedAnimation<Color>(color ?? AppColors.primary),
-          minHeight: 8,
-          borderRadius: BorderRadius.circular(4),
-        ),
-      ],
-    );
-  }
-}
-
-/// A stat card with icon, value and label
-class StatCard extends StatelessWidget {
-  final IconData icon;
-  final String value;
-  final String label;
-  final Color? color;
-  final VoidCallback? onTap;
-
-  const StatCard({
-    super.key,
+    required this.subtitle,
     required this.icon,
-    required this.value,
-    required this.label,
-    this.color,
+    this.color = Colors.blue,
     this.onTap,
   });
-
+  
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -213,28 +145,38 @@ class StatCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(16),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                icon,
-                size: 32,
-                color: color ?? AppColors.primary,
+              Row(
+                children: [
+                  Icon(
+                    icon,
+                    color: color,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    title,
+                    style: AppTextStyles.body.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               Text(
                 value,
-                style: const TextStyle(
-                  fontSize: 18,
+                style: AppTextStyles.heading2.copyWith(
+                  color: color,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
-                label,
+                subtitle,
                 style: AppTextStyles.caption,
-                textAlign: TextAlign.center,
               ),
             ],
           ),
@@ -244,183 +186,251 @@ class StatCard extends StatelessWidget {
   }
 }
 
-/// A loading indicator with optional message
-class LoadingIndicator extends StatelessWidget {
-  final String? message;
-
-  const LoadingIndicator({super.key, this.message});
-
+/// A section header with optional action
+class SectionHeader extends StatelessWidget {
+  final String title;
+  final String? actionText;
+  final VoidCallback? onActionTap;
+  
+  const SectionHeader({
+    super.key,
+    required this.title,
+    this.actionText,
+    this.onActionTap,
+  });
+  
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 8,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const CircularProgressIndicator(),
-          if (message != null) ...[
-            const SizedBox(height: 16),
-            Text(message!, style: AppTextStyles.caption),
-          ],
+          Text(
+            title,
+            style: AppTextStyles.heading3,
+          ),
+          if (actionText != null)
+            InkWell(
+              onTap: onActionTap,
+              borderRadius: BorderRadius.circular(4),
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Text(
+                  actionText!,
+                  style: AppTextStyles.body.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
 }
 
-/// An empty state widget with icon and message
-class EmptyStateWidget extends StatelessWidget {
+/// A clickable card with title, icon, and description
+class FeatureCard extends StatelessWidget {
+  final String title;
   final IconData icon;
-  final String message;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-
-  const EmptyStateWidget({
+  final String description;
+  final VoidCallback onTap;
+  final Color color;
+  
+  const FeatureCard({
     super.key,
+    required this.title,
     required this.icon,
-    required this.message,
-    this.actionLabel,
-    this.onAction,
+    required this.description,
+    required this.onTap,
+    this.color = Colors.blue,
   });
-
+  
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              style: AppTextStyles.body.copyWith(color: Colors.grey[600]),
-              textAlign: TextAlign.center,
-            ),
-            if (actionLabel != null && onAction != null) ...[
-              const SizedBox(height: 24),
-              AppButton(
-                label: actionLabel!,
-                onPressed: onAction!,
-                icon: Icons.add,
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                title,
+                style: AppTextStyles.heading3,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                description,
+                style: AppTextStyles.body,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-/// A circular progress indicator with percentage and label
-class CircularPercentIndicator extends StatelessWidget {
-  final double percent;
-  final String label;
-  final String? centerText;
-  final Color? color;
-  final double radius;
-  final double lineWidth;
-
-  const CircularPercentIndicator({
+/// A progress card for showing progress towards a goal
+class ProgressCard extends StatelessWidget {
+  final String title;
+  final double progress;
+  final String metric;
+  final String goal;
+  final Color color;
+  final IconData icon;
+  
+  const ProgressCard({
     super.key,
-    required this.percent,
-    required this.label,
-    this.centerText,
-    this.color,
-    this.radius = 60.0,
-    this.lineWidth = 8.0,
+    required this.title,
+    required this.progress,
+    required this.metric,
+    required this.goal,
+    this.color = Colors.green,
+    this.icon = Icons.trending_up,
   });
-
+  
   @override
   Widget build(BuildContext context) {
-    final finalPercent = percent > 1.0 ? 1.0 : percent;
-
-    return Column(
-      children: [
-        Stack(
-          alignment: Alignment.center,
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(
-              height: radius * 2,
-              width: radius * 2,
-              child: CircularProgressIndicator(
-                value: finalPercent,
-                backgroundColor: Colors.grey[300],
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  color ?? AppColors.primary,
+            Row(
+              children: [
+                Icon(
+                  icon,
+                  color: color,
+                  size: 20,
                 ),
-                strokeWidth: lineWidth,
-              ),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: AppTextStyles.body.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
-            Text(
-              centerText ?? '${(finalPercent * 100).toInt()}%',
-              style: AppTextStyles.heading3,
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        metric,
+                        style: AppTextStyles.heading2.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Goal: $goal',
+                        style: AppTextStyles.caption,
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '${(progress * 100).toInt()}%',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: _getProgressColor(progress),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      LinearProgressIndicator(
+                        value: progress,
+                        backgroundColor: Colors.grey.shade200,
+                        valueColor: AlwaysStoppedAnimation<Color>(_getProgressColor(progress)),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ],
         ),
-        const SizedBox(height: 8),
-        Text(label, style: AppTextStyles.caption),
-      ],
+      ),
     );
+  }
+  
+  Color _getProgressColor(double progress) {
+    if (progress >= 1.0) {
+      return Colors.green;
+    } else if (progress >= 0.7) {
+      return Colors.green.shade700;
+    } else if (progress >= 0.4) {
+      return Colors.orange;
+    } else {
+      return Colors.red;
+    }
   }
 }
 
-/// A custom app bar with back button and actions
-class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
-  final String title;
-  final List<Widget>? actions;
-  final bool showBackButton;
-  final PreferredSizeWidget? bottom;
-
-  const CustomAppBar({
-    super.key,
-    required this.title,
-    this.actions,
-    this.showBackButton = true,
-    this.bottom,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return AppBar(
-      title: Text(title),
-      automaticallyImplyLeading: showBackButton,
-      actions: actions,
-      bottom: bottom,
-    );
-  }
-
-  @override
-  Size get preferredSize => bottom == null
-      ? const Size.fromHeight(kToolbarHeight)
-      : Size.fromHeight(kToolbarHeight + bottom!.preferredSize.height);
-}
-
-/// A date selector widget
-class DateSelector extends StatelessWidget {
+/// A date selector for selecting a date range
+class DateRangeSelector extends StatelessWidget {
   final DateTime selectedDate;
   final Function(DateTime) onDateSelected;
-  final bool showPrevNext;
-
-  const DateSelector({
+  final bool showControls;
+  
+  const DateRangeSelector({
     super.key,
     required this.selectedDate,
     required this.onDateSelected,
-    this.showPrevNext = true,
+    this.showControls = true,
   });
-
+  
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        if (showPrevNext)
+        if (showControls)
           IconButton(
-            icon: const Icon(Icons.arrow_back_ios, size: 16),
+            icon: const Icon(Icons.chevron_left),
             onPressed: () {
               onDateSelected(
                 selectedDate.subtract(const Duration(days: 1)),
@@ -433,8 +443,9 @@ class DateSelector extends StatelessWidget {
               context: context,
               initialDate: selectedDate,
               firstDate: DateTime(2020),
-              lastDate: DateTime.now().add(const Duration(days: 365)),
+              lastDate: DateTime.now(),
             );
+            
             if (pickedDate != null) {
               onDateSelected(pickedDate);
             }
@@ -445,50 +456,269 @@ class DateSelector extends StatelessWidget {
               vertical: 8,
             ),
             decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: BorderRadius.circular(16),
+              color: AppColors.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.calendar_today, size: 16),
+                const Icon(
+                  Icons.calendar_today,
+                  size: 18,
+                  color: AppColors.primary,
+                ),
                 const SizedBox(width: 8),
                 Text(
-                  _getDisplayDate(selectedDate),
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  _formatDate(selectedDate),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
                 ),
               ],
             ),
           ),
         ),
-        if (showPrevNext)
+        if (showControls)
           IconButton(
-            icon: const Icon(Icons.arrow_forward_ios, size: 16),
+            icon: const Icon(Icons.chevron_right),
             onPressed: () {
-              final tomorrow = selectedDate.add(const Duration(days: 1));
-              if (!tomorrow.isAfter(DateTime.now())) {
-                onDateSelected(tomorrow);
+              final tomorrow = DateTime.now().add(const Duration(days: 1));
+              if (selectedDate.isBefore(tomorrow)) {
+                onDateSelected(
+                  selectedDate.add(const Duration(days: 1)),
+                );
               }
             },
           ),
       ],
     );
   }
-
-  String _getDisplayDate(DateTime date) {
+  
+  String _formatDate(DateTime date) {
     final now = DateTime.now();
-    final yesterday = DateTime(now.year, now.month, now.day - 1);
-    final tomorrow = DateTime(now.year, now.month, now.day + 1);
-    final selectedDay = DateTime(date.year, date.month, date.day);
-
-    if (selectedDay == DateTime(now.year, now.month, now.day)) {
+    final yesterday = now.subtract(const Duration(days: 1));
+    
+    if (date.year == now.year && date.month == now.month && date.day == now.day) {
       return 'Today';
-    } else if (selectedDay == yesterday) {
+    } else if (date.year == yesterday.year && date.month == yesterday.month && date.day == yesterday.day) {
       return 'Yesterday';
-    } else if (selectedDay == tomorrow) {
-      return 'Tomorrow';
     } else {
       return '${date.day}/${date.month}/${date.year}';
     }
+  }
+}
+
+/// A chart legend item
+class ChartLegendItem extends StatelessWidget {
+  final String label;
+  final Color color;
+  
+  const ChartLegendItem({
+    super.key,
+    required this.label,
+    required this.color,
+  });
+  
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 16,
+          height: 8,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: AppTextStyles.caption,
+        ),
+      ],
+    );
+  }
+}
+
+/// A calendar day for habit tracking
+class CalendarDay extends StatelessWidget {
+  final DateTime date;
+  final bool isCompleted;
+  final bool isToday;
+  final VoidCallback onTap;
+  
+  const CalendarDay({
+    super.key,
+    required this.date,
+    required this.isCompleted,
+    required this.isToday,
+    required this.onTap,
+  });
+  
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: isCompleted ? AppColors.primary : (isToday ? Colors.grey.shade200 : Colors.transparent),
+          border: Border.all(
+            color: isToday ? AppColors.primary : Colors.grey.shade300,
+            width: isToday ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Center(
+          child: Text(
+            date.day.toString(),
+            style: TextStyle(
+              color: isCompleted ? Colors.white : (isToday ? AppColors.primary : Colors.black87),
+              fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A custom card for displaying information with an icon
+class InfoCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final IconData icon;
+  final Color color;
+  
+  const InfoCard({
+    super.key,
+    required this.title,
+    required this.value,
+    required this.icon,
+    this.color = Colors.blue,
+  });
+  
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                icon,
+                color: color,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: AppTextStyles.caption,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    value,
+                    style: AppTextStyles.heading3,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A summary card for displaying a summary of data
+class SummaryCard extends StatelessWidget {
+  final String title;
+  final List<Map<String, dynamic>> items;
+  
+  const SummaryCard({
+    super.key,
+    required this.title,
+    required this.items,
+  });
+  
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: AppTextStyles.heading3,
+            ),
+            const SizedBox(height: 16),
+            ...items.map((item) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                children: [
+                  Icon(
+                    item['icon'] as IconData,
+                    color: item['color'] as Color,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item['title'] as String,
+                          style: AppTextStyles.body.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (item['subtitle'] != null)
+                          Text(
+                            item['subtitle'] as String,
+                            style: AppTextStyles.caption,
+                          ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    item['value'] as String,
+                    style: AppTextStyles.body.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: item['color'] as Color,
+                    ),
+                  ),
+                ],
+              ),
+            )),
+          ],
+        ),
+      ),
+    );
   }
 }
