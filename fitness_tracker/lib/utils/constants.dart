@@ -1,73 +1,67 @@
 import 'package:flutter/material.dart';
 
-// App theme colors
+/// Application colors
 class AppColors {
-  static const primary = Colors.blue;
-  static const secondary = Colors.lightBlue;
-  static const accent = Colors.orangeAccent;
-  static const background = Color(0xFFF5F5F5);
-  static const card = Colors.white;
-  static const text = Color(0xFF333333);
-  static const textLight = Color(0xFF767676);
-  static const error = Colors.redAccent;
-  static const success = Colors.greenAccent;
-  static const warning = Colors.orangeAccent;
-  static const info = Colors.lightBlueAccent;
+  // Primary and secondary colors
+  static const primary = Color(0xFF4A90E2);
+  static const secondary = Color(0xFF50E3C2);
+  static const accent = Color(0xFFFFA726);
   
-  // Activity type colors
-  static const Map<String, Color> activityColors = {
-    'Running': Colors.green,
-    'Walking': Colors.lightGreen,
-    'Cycling': Colors.orange,
-    'Swimming': Colors.blue,
-    'Strength': Colors.red,
-    'Yoga': Colors.purple,
-    'HIIT': Colors.pink,
-    'Other': Colors.grey,
-  };
+  // Background colors
+  static const background = Color(0xFFF5F7FA);
+  static const cardBackground = Colors.white;
   
-  // Meal type colors
-  static const Map<String, Color> mealColors = {
-    'Breakfast': Colors.orange,
-    'Lunch': Colors.green,
-    'Dinner': Colors.blue,
-    'Snack': Colors.purple,
-  };
+  // Status colors
+  static const success = Color(0xFF2ECC71);
+  static const warning = Color(0xFFF1C40F);
+  static const error = Color(0xFFE74C3C);
+  static const info = Color(0xFF3498DB);
   
-  // Macro colors
-  static const protein = Colors.green;
-  static const carbs = Colors.orange;
-  static const fat = Colors.red;
+  // Text colors
+  static const textPrimary = Color(0xFF2C3E50);
+  static const textSecondary = Color(0xFF7F8C8D);
+  static const textLight = Color(0xFFBDC3C7);
 }
 
-// App text styles
+/// Text styles used across the app
 class AppTextStyles {
   static const heading1 = TextStyle(
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: FontWeight.bold,
-    color: AppColors.text,
+    color: AppColors.textPrimary,
   );
   
   static const heading2 = TextStyle(
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: FontWeight.bold,
-    color: AppColors.text,
+    color: AppColors.textPrimary,
   );
   
   static const heading3 = TextStyle(
+    fontSize: 20,
+    fontWeight: FontWeight.bold,
+    color: AppColors.textPrimary,
+  );
+  
+  static const heading4 = TextStyle(
     fontSize: 18,
     fontWeight: FontWeight.bold,
-    color: AppColors.text,
+    color: AppColors.textPrimary,
   );
   
   static const body = TextStyle(
     fontSize: 16,
-    color: AppColors.text,
+    color: AppColors.textPrimary,
+  );
+  
+  static const bodySmall = TextStyle(
+    fontSize: 14,
+    color: AppColors.textPrimary,
   );
   
   static const caption = TextStyle(
-    fontSize: 14,
-    color: AppColors.textLight,
+    fontSize: 12,
+    color: AppColors.textSecondary,
   );
   
   static const button = TextStyle(
@@ -77,138 +71,190 @@ class AppTextStyles {
   );
 }
 
-// Activity types and icons
+/// Common dimensions and spacing
+class AppDimensions {
+  static const double paddingSmall = 8.0;
+  static const double paddingMedium = 16.0;
+  static const double paddingLarge = 24.0;
+  static const double paddingExtraLarge = 32.0;
+  
+  static const double borderRadiusSmall = 4.0;
+  static const double borderRadiusMedium = 8.0;
+  static const double borderRadiusLarge = 12.0;
+  static const double borderRadiusExtraLarge = 16.0;
+  
+  static const double iconSizeSmall = 16.0;
+  static const double iconSizeMedium = 24.0;
+  static const double iconSizeLarge = 32.0;
+  static const double iconSizeExtraLarge = 48.0;
+}
+
+/// Activity types
 class ActivityTypes {
-  static const List<Map<String, dynamic>> types = [
-    {'name': 'Running', 'icon': Icons.directions_run},
-    {'name': 'Walking', 'icon': Icons.directions_walk},
-    {'name': 'Cycling', 'icon': Icons.directions_bike},
-    {'name': 'Swimming', 'icon': Icons.pool},
-    {'name': 'Strength', 'icon': Icons.fitness_center},
-    {'name': 'Yoga', 'icon': Icons.self_improvement},
-    {'name': 'HIIT', 'icon': Icons.timer},
-    {'name': 'Other', 'icon': Icons.sports},
+  static const String running = "running";
+  static const String walking = "walking";
+  static const String cycling = "cycling";
+  static const String swimming = "swimming";
+  static const String gymWorkout = "gym_workout";
+  static const String hiit = "hiit";
+  static const String yoga = "yoga";
+  static const String other = "other";
+  
+  static List<String> get all => [
+    running, 
+    walking, 
+    cycling, 
+    swimming, 
+    gymWorkout, 
+    hiit, 
+    yoga, 
+    other
   ];
   
   static IconData getIconForType(String type) {
-    final activityType = types.firstWhere(
-      (element) => element['name'] == type,
-      orElse: () => types.last,
-    );
-    return activityType['icon'];
-  }
-}
-
-// Meal types and icons
-class MealTypes {
-  static const List<Map<String, dynamic>> types = [
-    {'name': 'Breakfast', 'icon': Icons.free_breakfast},
-    {'name': 'Lunch', 'icon': Icons.lunch_dining},
-    {'name': 'Dinner', 'icon': Icons.dinner_dining},
-    {'name': 'Snack', 'icon': Icons.local_cafe},
-  ];
-  
-  static IconData getIconForType(String type) {
-    final mealType = types.firstWhere(
-      (element) => element['name'] == type,
-      orElse: () => types.last,
-    );
-    return mealType['icon'];
-  }
-}
-
-// App routes
-class AppRoutes {
-  static const home = '/';
-  static const login = '/login';
-  static const register = '/register';
-  static const dashboard = '/dashboard';
-  static const activity = '/activity';
-  static const addActivity = '/add-activity';
-  static const activityDetails = '/activity-details';
-  static const nutrition = '/nutrition';
-  static const addFoodEntry = '/add-food-entry';
-  static const foodEntryDetails = '/food-entry-details';
-  static const profile = '/profile';
-  static const editProfile = '/edit-profile';
-  static const settings = '/settings';
-}
-
-// App constants
-class AppConstants {
-  // Default activity durations in minutes
-  static const List<int> defaultDurations = [15, 30, 45, 60, 90, 120];
-  
-  // Default calorie goals
-  static const int defaultCalorieGoal = 2200;
-  
-  // Default nutrient percentages
-  static const Map<String, double> defaultMacroPercentages = {
-    'protein': 0.30,
-    'carbs': 0.45,
-    'fat': 0.25,
-  };
-  
-  // Health data type names
-  static const String stepsDataType = 'steps';
-  static const String caloriesDataType = 'calories';
-  static const String distanceDataType = 'distance';
-  static const String activeEnergyDataType = 'activeEnergy';
-}
-
-// Date helper functions
-class DateUtils {
-  // Get start of day
-  static DateTime startOfDay(DateTime date) {
-    return DateTime(date.year, date.month, date.day);
-  }
-  
-  // Get end of day
-  static DateTime endOfDay(DateTime date) {
-    return DateTime(date.year, date.month, date.day, 23, 59, 59);
-  }
-  
-  // Get start of week (Monday)
-  static DateTime startOfWeek(DateTime date) {
-    final day = date.weekday;
-    return DateTime(date.year, date.month, date.day - (day - 1));
-  }
-  
-  // Get end of week (Sunday)
-  static DateTime endOfWeek(DateTime date) {
-    final day = date.weekday;
-    return DateTime(date.year, date.month, date.day + (7 - day), 23, 59, 59);
-  }
-  
-  // Get start of month
-  static DateTime startOfMonth(DateTime date) {
-    return DateTime(date.year, date.month, 1);
-  }
-  
-  // Get end of month
-  static DateTime endOfMonth(DateTime date) {
-    return DateTime(date.year, date.month + 1, 0, 23, 59, 59);
-  }
-  
-  // Format date for display
-  static String formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
-  }
-  
-  // Format time for display
-  static String formatTime(DateTime date) {
-    return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
-  }
-  
-  // Format duration in minutes to hours and minutes
-  static String formatDuration(int minutes) {
-    final hours = minutes ~/ 60;
-    final mins = minutes % 60;
-    
-    if (hours > 0) {
-      return '${hours}h ${mins}m';
-    } else {
-      return '${mins}m';
+    switch (type) {
+      case running: return Icons.directions_run;
+      case walking: return Icons.directions_walk;
+      case cycling: return Icons.directions_bike;
+      case swimming: return Icons.pool;
+      case gymWorkout: return Icons.fitness_center;
+      case hiit: return Icons.timer;
+      case yoga: return Icons.self_improvement;
+      default: return Icons.sports;
     }
+  }
+  
+  static String getDisplayName(String type) {
+    switch (type) {
+      case running: return "Running";
+      case walking: return "Walking";
+      case cycling: return "Cycling";
+      case swimming: return "Swimming";
+      case gymWorkout: return "Gym Workout";
+      case hiit: return "HIIT";
+      case yoga: return "Yoga";
+      default: return "Other";
+    }
+  }
+  
+  static Color getColorForType(String type) {
+    switch (type) {
+      case running: return Colors.orangeAccent;
+      case walking: return Colors.lightGreen;
+      case cycling: return Colors.blueAccent;
+      case swimming: return Colors.lightBlueAccent;
+      case gymWorkout: return Colors.redAccent;
+      case hiit: return Colors.deepPurpleAccent;
+      case yoga: return Colors.tealAccent;
+      default: return Colors.grey;
+    }
+  }
+}
+
+/// Nutrition categories
+class FoodCategories {
+  static const String fruits = "fruits";
+  static const String vegetables = "vegetables";
+  static const String grains = "grains";
+  static const String protein = "protein";
+  static const String dairy = "dairy";
+  static const String snacks = "snacks";
+  static const String beverages = "beverages";
+  static const String other = "other";
+  
+  static List<String> get all => [
+    fruits, 
+    vegetables, 
+    grains, 
+    protein, 
+    dairy, 
+    snacks, 
+    beverages, 
+    other
+  ];
+  
+  static IconData getIconForCategory(String category) {
+    switch (category) {
+      case fruits: return Icons.apple;
+      case vegetables: return Icons.eco;
+      case grains: return Icons.rice_bowl;
+      case protein: return Icons.egg;
+      case dairy: return Icons.icecream;
+      case snacks: return Icons.cookie;
+      case beverages: return Icons.local_drink;
+      default: return Icons.restaurant;
+    }
+  }
+  
+  static String getDisplayName(String category) {
+    switch (category) {
+      case fruits: return "Fruits";
+      case vegetables: return "Vegetables";
+      case grains: return "Grains";
+      case protein: return "Protein";
+      case dairy: return "Dairy";
+      case snacks: return "Snacks";
+      case beverages: return "Beverages";
+      default: return "Other";
+    }
+  }
+  
+  static Color getColorForCategory(String category) {
+    switch (category) {
+      case fruits: return Colors.redAccent;
+      case vegetables: return Colors.greenAccent;
+      case grains: return Colors.amberAccent;
+      case protein: return Colors.deepOrangeAccent;
+      case dairy: return Colors.lightBlueAccent;
+      case snacks: return Colors.purpleAccent;
+      case beverages: return Colors.blueAccent;
+      default: return Colors.grey;
+    }
+  }
+}
+
+/// Date and time formatting constants
+class DateTimeFormats {
+  static const String dateOnly = 'yyyy-MM-dd';
+  static const String timeOnly = 'HH:mm';
+  static const String dateAndTime = 'yyyy-MM-dd HH:mm';
+  static const String monthDay = 'MMM dd';
+  static const String dayMonth = 'dd MMM';
+  static const String monthDayYear = 'MMM dd, yyyy';
+  static const String dayOfWeek = 'EEEE';
+}
+
+/// App-wide shared preferences keys
+class AppPreferenceKeys {
+  static const String userId = 'user_id';
+  static const String userEmail = 'user_email';
+  static const String isDarkMode = 'is_dark_mode';
+  static const String dailyCalorieGoal = 'daily_calorie_goal';
+  static const String dailyStepGoal = 'daily_step_goal';
+  static const String dailyWaterGoal = 'daily_water_goal';
+  static const String lastSyncTime = 'last_sync_time';
+  static const String useBiometrics = 'use_biometrics';
+}
+
+/// Shared validation functions
+class Validators {
+  static bool isValidEmail(String email) {
+    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+  }
+  
+  static bool isValidPassword(String password) {
+    return password.length >= 6;
+  }
+  
+  static bool isValidName(String name) {
+    return name.isNotEmpty && name.trim().length >= 2;
+  }
+  
+  static bool isPositiveNumber(num? value) {
+    return value != null && value > 0;
+  }
+  
+  static bool isNonNegativeNumber(num? value) {
+    return value != null && value >= 0;
   }
 }

@@ -1,201 +1,523 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import '../models/activity_model.dart';
+import '../models/nutrition_model.dart';
+import '../models/user_model.dart';
+import '../services/firebase_service.dart';
+import '../utils/constants.dart';
+import '../widgets/common_widgets.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  _DashboardScreenState createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  final FirebaseService _firebaseService = FirebaseService();
+  DateTime _selectedDate = DateTime.now();
+  bool _isLoading = true;
+  UserModel? _user;
+  List<ActivityModel> _activities = [];
+  List<NutritionModel> _foodEntries = [];
+  
+  // Summary stats
+  int _totalCaloriesConsumed = 0;
+  int _totalCaloriesBurned = 0;
+  int _totalSteps = 0;
+  int _totalWorkoutMinutes = 0;
+  double _totalDistance = 0;
+  String _macroRatio = '0:0:0';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      // In a real app, we'd get the current user ID
+      const String demoUserId = 'demo_user';
+      
+      // Load user data
+      final user = await _firebaseService.getUserProfile(demoUserId);
+      
+      // Load activities for selected date
+      final activities = await _firebaseService.getActivitiesByDate(
+        demoUserId, 
+        _selectedDate,
+      );
+      
+      // Load nutrition entries for selected date
+      final foodEntries = await _firebaseService.getNutritionByDate(
+        demoUserId, 
+        _selectedDate,
+      );
+      
+      // Calculate summary stats
+      int caloriesBurned = 0;
+      int steps = 0;
+      int workoutMinutes = 0;
+      double distance = 0;
+      
+      for (var activity in activities) {
+        caloriesBurned += activity.caloriesBurned;
+        steps += activity.steps ?? 0;
+        workoutMinutes += activity.duration;
+        distance += activity.distance ?? 0;
+      }
+      
+      int caloriesConsumed = 0;
+      String macroRatio = '0:0:0';
+      
+      if (foodEntries.isNotEmpty) {
+        caloriesConsumed = foodEntries.getTotalCalories();
+        macroRatio = foodEntries.getAverageMacroRatio();
+      }
+      
+      // Update state with loaded data
+      setState(() {
+        _user = user;
+        _activities = activities;
+        _foodEntries = foodEntries;
+        _totalCaloriesConsumed = caloriesConsumed;
+        _totalCaloriesBurned = caloriesBurned;
+        _totalSteps = steps;
+        _totalWorkoutMinutes = workoutMinutes;
+        _totalDistance = distance;
+        _macroRatio = macroRatio;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading dashboard data: $e');
+      setState(() => _isLoading = false);
+      
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading data: ${e.toString()}')),
+      );
+    }
+  }
+
+  void _onDateChanged(DateTime date) {
+    setState(() => _selectedDate = date);
+    _loadData();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Dashboard')),
-      body: ListView(
-        padding: const EdgeInsets.all(16.0),
+      appBar: AppBar(
+        title: const Text('Dashboard'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.calendar_today),
+            onPressed: () async {
+              final pickedDate = await showDatePicker(
+                context: context,
+                initialDate: _selectedDate,
+                firstDate: DateTime(2020),
+                lastDate: DateTime.now(),
+              );
+              if (pickedDate != null) {
+                _onDateChanged(pickedDate);
+              }
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadData,
+          ),
+        ],
+      ),
+      body: _isLoading
+          ? const LoadingIndicator(message: 'Loading dashboard data...')
+          : RefreshIndicator(
+              onRefresh: _loadData,
+              child: _buildDashboardContent(),
+            ),
+    );
+  }
+
+  Widget _buildDashboardContent() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSummaryCard(context),
+          // Date Header
+          Center(
+            child: DateSelector(
+              selectedDate: _selectedDate,
+              onDateSelected: _onDateChanged,
+            ),
+          ),
           const SizedBox(height: 16),
-          _buildRecentActivitiesSection(context),
+          
+          // Key stats
+          _buildStatsSummary(),
           const SizedBox(height: 16),
-          _buildNutritionSummarySection(context),
+          
+          // Calorie balance
+          _buildCalorieBalance(),
+          const SizedBox(height: 16),
+          
+          // Activity summary
+          if (_activities.isNotEmpty) ...[
+            _buildActivitySummary(),
+            const SizedBox(height: 16),
+          ],
+          
+          // Nutrition summary
+          if (_foodEntries.isNotEmpty) ...[
+            _buildNutritionSummary(),
+            const SizedBox(height: 16),
+          ],
+          
+          // Call to action cards
+          _buildCallToActionCards(),
         ],
       ),
     );
   }
 
-  Widget _buildSummaryCard(BuildContext context) {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Today\'s Summary',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildStat('Steps', '6,543', Icons.directions_walk),
-                _buildStat('Calories', '1,256', Icons.local_fire_department),
-                _buildStat('Water', '5 glasses', Icons.water_drop),
-              ],
-            ),
-            const SizedBox(height: 16),
-            const LinearProgressIndicator(value: 0.65),
-            const SizedBox(height: 8),
-            const Text('65% of daily goal completed'),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStat(String label, String value, IconData icon) {
-    return Column(
+  Widget _buildStatsSummary() {
+    final calorieGoal = _user?.dailyCalorieGoal ?? 2000;
+    final stepGoal = _user?.dailyStepsGoal ?? 10000;
+    
+    return Row(
       children: [
-        Icon(icon, size: 28, color: Colors.blue),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        Expanded(
+          child: StatCard(
+            icon: Icons.local_fire_department,
+            value: _totalCaloriesBurned.toString(),
+            label: 'Calories Burned',
+            color: Colors.orange,
+          ),
         ),
-        Text(label, style: const TextStyle(color: Colors.grey)),
+        Expanded(
+          child: StatCard(
+            icon: Icons.directions_walk,
+            value: _totalSteps.toString(),
+            label: 'Steps',
+            color: Colors.blue,
+            onTap: () {
+              // Navigate to steps detail
+            },
+          ),
+        ),
+        Expanded(
+          child: StatCard(
+            icon: Icons.timer,
+            value: '$_totalWorkoutMinutes min',
+            label: 'Active Time',
+            color: Colors.green,
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildRecentActivitiesSection(BuildContext context) {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildCalorieBalance() {
+    final calorieGoal = _user?.dailyCalorieGoal ?? 2000;
+    final calorieBalance = calorieGoal - _totalCaloriesConsumed + _totalCaloriesBurned;
+    final isPositiveBalance = calorieBalance >= 0;
+    
+    return SectionCard(
+      title: 'Calorie Balance',
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Recent Activities',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                Text(
+                  'Goal: $calorieGoal cal',
+                  style: AppTextStyles.bodySmall,
                 ),
-                TextButton(
-                  onPressed: () {
-                    // Navigate to Activities screen
-                  },
-                  child: const Text('See All'),
+                const SizedBox(height: 4),
+                Text(
+                  'Food: $_totalCaloriesConsumed cal',
+                  style: AppTextStyles.bodySmall,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Exercise: +$_totalCaloriesBurned cal',
+                  style: AppTextStyles.bodySmall,
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            _buildActivityItem('Morning Run', '5.3 km • 32 min', Icons.directions_run),
-            const Divider(),
-            _buildActivityItem('Cycling', '12.7 km • 45 min', Icons.directions_bike),
-            const Divider(),
-            _buildActivityItem('Weight Training', '45 min', Icons.fitness_center),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  isPositiveBalance ? 'Remaining' : 'Exceeded',
+                  style: AppTextStyles.caption,
+                ),
+                Text(
+                  '${isPositiveBalance ? '' : '-'}$calorieBalance',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: isPositiveBalance ? AppColors.success : AppColors.error,
+                  ),
+                ),
+                Text(
+                  'calories',
+                  style: AppTextStyles.caption,
+                ),
+              ],
+            ),
           ],
         ),
-      ),
+        const SizedBox(height: 12),
+        LabeledProgressBar(
+          label: 'Daily Calories',
+          value: '$_totalCaloriesConsumed / $calorieGoal',
+          progress: _totalCaloriesConsumed / calorieGoal,
+          color: _totalCaloriesConsumed > calorieGoal 
+              ? AppColors.error 
+              : AppColors.success,
+          showPercentage: true,
+        ),
+      ],
     );
   }
 
-  Widget _buildActivityItem(String title, String subtitle, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8.0),
-            decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8.0),
+  Widget _buildActivitySummary() {
+    return SectionCard(
+      title: 'Activity Summary',
+      trailing: TextButton(
+        onPressed: () {
+          // Navigate to activity screen
+        },
+        child: Text('View All', style: TextStyle(color: AppColors.primary)),
+      ),
+      children: [
+        if (_activities.isEmpty)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Text('No activities recorded today'),
             ),
-            child: Icon(icon, color: Colors.blue),
-          ),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-              Text(subtitle, style: const TextStyle(color: Colors.grey)),
-            ],
-          ),
+          )
+        else ...[
+          // Display the first 3 activities
+          ..._activities.take(3).map((activity) => _buildActivityItem(activity)),
+          
+          // Show more count if there are more activities
+          if (_activities.length > 3)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Center(
+                child: Text(
+                  '+ ${_activities.length - 3} more activities',
+                  style: AppTextStyles.caption,
+                ),
+              ),
+            ),
         ],
+      ],
+    );
+  }
+
+  Widget _buildActivityItem(ActivityModel activity) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: CircleAvatar(
+        backgroundColor: ActivityTypes.getColorForType(activity.type).withOpacity(0.2),
+        child: Icon(
+          ActivityTypes.getIconForType(activity.type),
+          color: ActivityTypes.getColorForType(activity.type),
+        ),
+      ),
+      title: Text(activity.name),
+      subtitle: Text(
+        '${activity.duration} min • ${activity.caloriesBurned} cal${activity.distance != null ? ' • ${activity.distance!.toStringAsFixed(2)} km' : ''}',
+      ),
+      trailing: Text(
+        DateFormat.jm().format(activity.date),
+        style: AppTextStyles.caption,
       ),
     );
   }
 
-  Widget _buildNutritionSummarySection(BuildContext context) {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Nutrition Summary',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                TextButton(
-                  onPressed: () {
-                    // Navigate to Nutrition screen
-                  },
-                  child: const Text('Details'),
-                ),
-              ],
+  Widget _buildNutritionSummary() {
+    return SectionCard(
+      title: 'Nutrition Summary',
+      trailing: TextButton(
+        onPressed: () {
+          // Navigate to nutrition screen
+        },
+        child: Text('View All', style: TextStyle(color: AppColors.primary)),
+      ),
+      children: [
+        if (_foodEntries.isEmpty)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Text('No food entries recorded today'),
             ),
-            const SizedBox(height: 16),
-            Row(
+          )
+        else ...[
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildNutrientProgress('Carbs', 0.65, Colors.orange),
-                _buildNutrientProgress('Protein', 0.45, Colors.green),
-                _buildNutrientProgress('Fat', 0.3, Colors.red),
+                _buildNutrientCircle(
+                  'Protein',
+                  _foodEntries.getTotalProtein(),
+                  'g',
+                  Colors.redAccent,
+                ),
+                _buildNutrientCircle(
+                  'Carbs',
+                  _foodEntries.getTotalCarbs(),
+                  'g',
+                  Colors.amber,
+                ),
+                _buildNutrientCircle(
+                  'Fat',
+                  _foodEntries.getTotalFat(),
+                  'g',
+                  Colors.blueAccent,
+                ),
               ],
             ),
-            const SizedBox(height: 16),
-            OutlinedButton(
-              onPressed: () {
-                // Log food
-              },
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 45),
+          ),
+          
+          // Display the first 3 food entries
+          ..._foodEntries.take(3).map((entry) => _buildFoodEntryItem(entry)),
+          
+          // Show more count if there are more entries
+          if (_foodEntries.length > 3)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Center(
+                child: Text(
+                  '+ ${_foodEntries.length - 3} more food entries',
+                  style: AppTextStyles.caption,
+                ),
               ),
-              child: const Text('Log Food'),
             ),
-          ],
+        ],
+      ],
+    );
+  }
+
+  Widget _buildNutrientCircle(String label, int value, String unit, Color color) {
+    return Column(
+      children: [
+        Container(
+          width: 70,
+          height: 70,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: color.withOpacity(0.1),
+            border: Border.all(color: color, width: 2),
+          ),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  value.toString(),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+                Text(
+                  unit,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: AppTextStyles.caption,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFoodEntryItem(NutritionModel entry) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: CircleAvatar(
+        backgroundColor: FoodCategories.getColorForCategory(entry.category).withOpacity(0.2),
+        child: Icon(
+          FoodCategories.getIconForCategory(entry.category),
+          color: FoodCategories.getColorForCategory(entry.category),
+        ),
+      ),
+      title: Text(entry.name),
+      subtitle: Text(
+        '${entry.calories} cal • ${entry.protein}g protein • ${entry.carbs}g carbs • ${entry.fat}g fat',
+      ),
+      trailing: Text(
+        entry.mealType ?? 'Meal',
+        style: AppTextStyles.caption,
       ),
     );
   }
 
-  Widget _buildNutrientProgress(String label, double value, Color color) {
+  Widget _buildCallToActionCards() {
     return Column(
       children: [
-        Stack(
-          alignment: Alignment.center,
+        SectionCard(
+          title: 'Fitness Goals',
+          trailing: const Icon(Icons.flag, color: AppColors.accent),
+          onTap: () {
+            // Navigate to goals screen
+          },
           children: [
-            SizedBox(
-              height: 60,
-              width: 60,
-              child: CircularProgressIndicator(
-                value: value,
-                backgroundColor: Colors.grey[300],
-                valueColor: AlwaysStoppedAnimation<Color>(color),
-                strokeWidth: 8,
-              ),
-            ),
-            Text('${(value * 100).toInt()}%',
-                style: const TextStyle(fontWeight: FontWeight.bold)),
+            const Text('Set and track your fitness goals to stay motivated and make progress.'),
           ],
         ),
-        const SizedBox(height: 8),
-        Text(label),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: SectionCard(
+                title: 'Add Activity',
+                trailing: const Icon(Icons.add, color: AppColors.primary),
+                onTap: () {
+                  // Navigate to add activity
+                },
+                children: [
+                  const Text('Log your workouts and daily activities'),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: SectionCard(
+                title: 'Log Food',
+                trailing: const Icon(Icons.add, color: AppColors.primary),
+                onTap: () {
+                  // Navigate to add food
+                },
+                children: [
+                  const Text('Record your meals and nutrition intake'),
+                ],
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
