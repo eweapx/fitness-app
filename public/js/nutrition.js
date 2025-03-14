@@ -167,7 +167,10 @@ class NutritionTracker {
       const summary = this.getNutritionSummaryByDate(date);
       result.push({
         date: date,
-        summary: summary
+        calories: summary.calories,
+        protein: summary.protein,
+        carbs: summary.carbs,
+        fat: summary.fat
       });
     }
     
