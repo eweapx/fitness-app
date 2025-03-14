@@ -15,7 +15,7 @@ class BadHabit {
    * @param {Date} startDate - When tracking of this habit began
    */
   constructor(id, name, description, frequency, category, trigger, alternative, reminderTime, startDate = new Date()) {
-    this.id = id;
+    this.id = id || crypto.randomUUID(); // Generate ID if not provided
     this.name = name;
     this.description = description;
     this.frequency = frequency;
@@ -24,15 +24,14 @@ class BadHabit {
     this.alternative = alternative;
     this.reminderTime = reminderTime;
     this.startDate = startDate;
-    this.streakData = {
-      currentStreak: 0,
-      bestStreak: 0,
-      daysWithout: 0,
-      successRate: 0
+    this.checkIns = {};
+    this.streak = {
+      current: 0,
+      longest: 0,
+      lastCheckIn: null
     };
-    this.checkIns = []; // Array of check-in dates and success (boolean)
   }
-
+  
   /**
    * Add a check-in for this habit
    * @param {Date} date - Date of check-in
@@ -40,97 +39,96 @@ class BadHabit {
    * @returns {Object} Updated streak data
    */
   addCheckIn(date, success) {
+    const dateKey = this.formatDateKey(date);
+    
     // Store the check-in
-    this.checkIns.push({
-      date: date,
-      success: success
-    });
-
+    this.checkIns[dateKey] = {
+      success,
+      timestamp: date.getTime()
+    };
+    
     // Update streak data
     return this.updateStreaks();
   }
-
+  
   /**
    * Update streak calculations based on check-ins
    * @returns {Object} Updated streak data
    */
   updateStreaks() {
-    // Sort check-ins by date
-    const sortedCheckIns = [...this.checkIns].sort((a, b) => a.date - b.date);
+    // Convert check-ins to array for sorting
+    const checkInArray = Object.entries(this.checkIns)
+      .map(([dateKey, data]) => ({
+        date: dateKey,
+        success: data.success,
+        timestamp: data.timestamp
+      }))
+      .sort((a, b) => a.timestamp - b.timestamp);
     
+    // If no check-ins, return default streak data
+    if (checkInArray.length === 0) {
+      return this.streak;
+    }
+    
+    // Calculate current streak
     let currentStreak = 0;
-    let bestStreak = 0;
-    let daysWithout = 0;
+    let longestStreak = 0;
+    const lastCheckIn = checkInArray[checkInArray.length - 1];
     
-    // Calculate current streak (consecutive successful days)
-    for (let i = sortedCheckIns.length - 1; i >= 0; i--) {
-      if (sortedCheckIns[i].success) {
+    // Start from the most recent check-in and go backwards
+    for (let i = checkInArray.length - 1; i >= 0; i--) {
+      if (checkInArray[i].success) {
         currentStreak++;
       } else {
-        break;
+        break; // Streak ends when there's a failure
       }
     }
     
-    // Calculate best streak
+    // Calculate longest streak
     let tempStreak = 0;
-    for (let checkIn of sortedCheckIns) {
+    for (const checkIn of checkInArray) {
       if (checkIn.success) {
         tempStreak++;
-        bestStreak = Math.max(bestStreak, tempStreak);
+        if (tempStreak > longestStreak) {
+          longestStreak = tempStreak;
+        }
       } else {
         tempStreak = 0;
       }
     }
     
-    // Days without the habit (from the most recent successful check-in)
-    if (sortedCheckIns.length > 0 && sortedCheckIns[sortedCheckIns.length - 1].success) {
-      const lastCheckIn = sortedCheckIns[sortedCheckIns.length - 1].date;
-      daysWithout = Math.floor((new Date() - lastCheckIn) / (1000 * 60 * 60 * 24)) + 1;
-    }
+    // Update the streak data
+    this.streak = {
+      current: currentStreak,
+      longest: longestStreak,
+      lastCheckIn: lastCheckIn.date
+    };
     
-    // Success rate calculation
-    const successCount = this.checkIns.filter(checkIn => checkIn.success).length;
-    const successRate = this.checkIns.length > 0 ? Math.round((successCount / this.checkIns.length) * 100) : 0;
-    
-    // Update and return streak data
-    this.streakData = { currentStreak, bestStreak, daysWithout, successRate };
-    return this.streakData;
+    return this.streak;
   }
-
+  
   /**
    * Get check-ins for the past week
    * @returns {Array} Array of check-ins for the past 7 days
    */
   getWeeklyProgress() {
     const today = new Date();
-    const oneWeekAgo = new Date(today);
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 6); // Get data for 7 days (including today)
+    const results = [];
     
-    // Create a mapping of dates to their day of week
-    const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const weekData = {};
-    
-    // Initialize all days of the week
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(oneWeekAgo);
-      date.setDate(date.getDate() + i);
-      const dayOfWeek = weekDays[date.getDay()];
-      const dateStr = this.formatDateKey(date);
-      weekData[dateStr] = { day: dayOfWeek, success: null }; // null means no check-in
+    // Loop through the past 7 days
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(today.getDate() - i);
+      const dateKey = this.formatDateKey(date);
+      
+      results.push({
+        date: date,
+        dateKey: dateKey,
+        checkIn: this.checkIns[dateKey] || null
+      });
     }
     
-    // Add actual check-in data
-    for (const checkIn of this.checkIns) {
-      const checkInDate = new Date(checkIn.date);
-      if (checkInDate >= oneWeekAgo && checkInDate <= today) {
-        const dateStr = this.formatDateKey(checkInDate);
-        if (weekData[dateStr]) {
-          weekData[dateStr].success = checkIn.success;
-        }
-      }
-    }
-    
-    return Object.values(weekData);
+    return results;
   }
   
   /**
@@ -156,7 +154,10 @@ class BadHabit {
    * @returns {number} Number of days since tracking began
    */
   getDaysSinceStart() {
-    return Math.floor((new Date() - this.startDate) / (1000 * 60 * 60 * 24)) + 1;
+    const today = new Date();
+    const diffTime = Math.abs(today - this.startDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
   }
   
   /**
@@ -165,11 +166,11 @@ class BadHabit {
    */
   isValid() {
     return (
+      this.id &&
       typeof this.name === 'string' && 
       this.name.trim() !== '' && 
-      typeof this.description === 'string' &&
-      typeof this.frequency === 'string' && 
-      typeof this.category === 'string'
+      typeof this.category === 'string' &&
+      typeof this.frequency === 'string'
     );
   }
 }
@@ -180,7 +181,6 @@ class BadHabit {
 class HabitTracker {
   constructor() {
     this.habits = [];
-    this.nextId = 1;
   }
   
   /**
@@ -191,12 +191,6 @@ class HabitTracker {
   addHabit(habit) {
     if (!(habit instanceof BadHabit) || !habit.isValid()) {
       return false;
-    }
-    
-    // Generate ID if not provided
-    if (!habit.id) {
-      habit.id = this.nextId.toString();
-      this.nextId++;
     }
     
     this.habits.push(habit);
@@ -229,18 +223,13 @@ class HabitTracker {
    */
   updateHabit(id, updates) {
     const habitIndex = this.habits.findIndex(habit => habit.id === id);
+    
     if (habitIndex === -1) {
       return false;
     }
     
-    const habit = this.habits[habitIndex];
-    
-    // Update fields
-    Object.keys(updates).forEach(key => {
-      if (key !== 'id' && key !== 'checkIns' && key !== 'streakData') {
-        habit[key] = updates[key];
-      }
-    });
+    // Update the habit properties
+    Object.assign(this.habits[habitIndex], updates);
     
     this.saveToLocalStorage();
     return true;
@@ -255,13 +244,14 @@ class HabitTracker {
    */
   recordCheckIn(id, date, success) {
     const habit = this.getHabitById(id);
+    
     if (!habit) {
       return null;
     }
     
-    const streakData = habit.addCheckIn(date, success);
+    const streak = habit.addCheckIn(date, success);
     this.saveToLocalStorage();
-    return streakData;
+    return streak;
   }
   
   /**
@@ -273,7 +263,7 @@ class HabitTracker {
     const initialLength = this.habits.length;
     this.habits = this.habits.filter(habit => habit.id !== id);
     
-    if (this.habits.length !== initialLength) {
+    if (this.habits.length < initialLength) {
       this.saveToLocalStorage();
       return true;
     }
@@ -286,35 +276,31 @@ class HabitTracker {
    * @returns {Object} Statistics on habit breaking progress
    */
   getOverallProgress() {
-    if (this.habits.length === 0) {
-      return {
-        successRate: 0,
-        currentStreak: 0,
-        bestStreak: 0,
-        daysWithout: 0,
-        totalHabits: 0
-      };
-    }
-    
-    // Calculate aggregate statistics
-    let totalSuccessRate = 0;
-    let bestOverallStreak = 0;
-    let totalCurrentStreak = 0;
-    let totalDaysWithout = 0;
+    const totalHabits = this.habits.length;
+    let totalCheckIns = 0;
+    let successfulCheckIns = 0;
+    let longestStreak = 0;
     
     this.habits.forEach(habit => {
-      totalSuccessRate += habit.streakData.successRate;
-      bestOverallStreak = Math.max(bestOverallStreak, habit.streakData.bestStreak);
-      totalCurrentStreak += habit.streakData.currentStreak;
-      totalDaysWithout += habit.streakData.daysWithout;
+      // Count check-ins
+      const checkInCount = Object.keys(habit.checkIns).length;
+      totalCheckIns += checkInCount;
+      
+      // Count successful check-ins
+      successfulCheckIns += Object.values(habit.checkIns).filter(checkIn => checkIn.success).length;
+      
+      // Track longest streak across all habits
+      if (habit.streak.longest > longestStreak) {
+        longestStreak = habit.streak.longest;
+      }
     });
     
     return {
-      successRate: Math.round(totalSuccessRate / this.habits.length),
-      currentStreak: Math.round(totalCurrentStreak / this.habits.length),
-      bestStreak: bestOverallStreak,
-      daysWithout: Math.round(totalDaysWithout / this.habits.length),
-      totalHabits: this.habits.length
+      totalHabits,
+      totalCheckIns,
+      successfulCheckIns,
+      successRate: totalCheckIns > 0 ? (successfulCheckIns / totalCheckIns) * 100 : 0,
+      longestStreak
     };
   }
   
@@ -325,7 +311,7 @@ class HabitTracker {
     try {
       localStorage.setItem('badHabits', JSON.stringify(this.habits));
     } catch (error) {
-      console.error('Error saving habits to localStorage:', error);
+      console.error('Error saving bad habits to localStorage:', error);
     }
   }
   
@@ -335,20 +321,14 @@ class HabitTracker {
   loadFromLocalStorage() {
     try {
       const storedHabits = localStorage.getItem('badHabits');
+      
       if (storedHabits) {
         const habitData = JSON.parse(storedHabits);
         
-        // Reset the habits array
+        // Reset and recreate habits
         this.habits = [];
         
-        // Find the highest ID to set nextId correctly
-        let maxId = 0;
-        
         habitData.forEach(habitObj => {
-          // Convert date strings back to Date objects
-          const startDate = new Date(habitObj.startDate);
-          
-          // Create a new BadHabit instance
           const habit = new BadHabit(
             habitObj.id,
             habitObj.name,
@@ -358,38 +338,18 @@ class HabitTracker {
             habitObj.trigger,
             habitObj.alternative,
             habitObj.reminderTime,
-            startDate
+            new Date(habitObj.startDate)
           );
           
-          // Set the streak data
-          habit.streakData = habitObj.streakData || {
-            currentStreak: 0,
-            bestStreak: 0,
-            daysWithout: 0,
-            successRate: 0
-          };
+          // Restore check-ins and streak data
+          habit.checkIns = habitObj.checkIns || {};
+          habit.streak = habitObj.streak || { current: 0, longest: 0, lastCheckIn: null };
           
-          // Convert checkIn dates back to Date objects
-          habit.checkIns = (habitObj.checkIns || []).map(checkIn => ({
-            date: new Date(checkIn.date),
-            success: checkIn.success
-          }));
-          
-          // Add the habit to our collection
           this.habits.push(habit);
-          
-          // Update maxId if needed
-          const habitId = parseInt(habitObj.id);
-          if (!isNaN(habitId) && habitId > maxId) {
-            maxId = habitId;
-          }
         });
-        
-        // Set the next ID to be one higher than the max found
-        this.nextId = maxId + 1;
       }
     } catch (error) {
-      console.error('Error loading habits from localStorage:', error);
+      console.error('Error loading bad habits from localStorage:', error);
     }
   }
   
@@ -398,7 +358,6 @@ class HabitTracker {
    */
   reset() {
     this.habits = [];
-    this.nextId = 1;
     localStorage.removeItem('badHabits');
   }
 }
