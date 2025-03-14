@@ -104,12 +104,30 @@
         padding: 10px 0 5px;
       }
       
-      @media (max-width: 576px) {
+      .mobile-tab-nav a {
+        color: #6c757d;
+        transition: color 0.3s ease;
+      }
+      
+      .mobile-tab-nav a.active {
+        color: #0d6efd;
+      }
+      
+      .mobile-tab-nav i {
+        font-size: 1.2rem;
+      }
+      
+      @media (max-width: 768px) {
         .mobile-tab-nav {
           display: flex;
         }
         
         .navbar-collapse .navbar-nav {
+          display: none;
+        }
+        
+        /* Hide floating action button on mobile */
+        .position-fixed.bottom-0.end-0.m-4 {
           display: none;
         }
       }
@@ -930,6 +948,64 @@
       }
     }
     
+    // Mobile tab navigation
+    function setupMobileTabNavigation() {
+      const mobileDashboardTab = document.getElementById('mobile-dashboard');
+      const mobileWorkoutsTab = document.getElementById('mobile-workouts');
+      const mobileNutritionTab = document.getElementById('mobile-nutrition');
+      const mobileQuitTab = document.getElementById('mobile-quit');
+      const mobileProfileTab = document.getElementById('mobile-profile');
+      const appContainer = document.querySelector('.app-container');
+      
+      // Store current content
+      const dashboardContent = appContainer.innerHTML;
+      
+      // Setup mobile tab click handlers
+      mobileDashboardTab.addEventListener('click', (e) => {
+        e.preventDefault();
+        setActiveMobileTab(mobileDashboardTab);
+        appContainer.innerHTML = dashboardContent;
+        // Reinitialize the dashboard state
+        updateStats();
+        renderActivities();
+      });
+      
+      mobileWorkoutsTab.addEventListener('click', (e) => {
+        e.preventDefault();
+        setActiveMobileTab(mobileWorkoutsTab);
+        appContainer.innerHTML = workoutsContent;
+      });
+      
+      mobileNutritionTab.addEventListener('click', (e) => {
+        e.preventDefault();
+        setActiveMobileTab(mobileNutritionTab);
+        appContainer.innerHTML = nutritionContent;
+      });
+      
+      mobileQuitTab.addEventListener('click', (e) => {
+        e.preventDefault();
+        setActiveMobileTab(mobileQuitTab);
+        appContainer.innerHTML = habitsContent;
+      });
+      
+      mobileProfileTab.addEventListener('click', (e) => {
+        e.preventDefault();
+        setActiveMobileTab(mobileProfileTab);
+        appContainer.innerHTML = profileContent;
+      });
+      
+      // Helper function to set active mobile tab
+      function setActiveMobileTab(activeTab) {
+        // Remove active class from all tabs
+        [mobileDashboardTab, mobileWorkoutsTab, mobileNutritionTab, mobileQuitTab, mobileProfileTab].forEach(tab => {
+          tab.classList.remove('active');
+        });
+        
+        // Add active class to clicked tab
+        activeTab.classList.add('active');
+      }
+    }
+
     // Initialize the app
     function initApp() {
       // Add sample activities
@@ -943,6 +1019,7 @@
       
       // Set up tab navigation
       setupTabNavigation();
+      setupMobileTabNavigation();
       
       // Update UI
       updateStats();
