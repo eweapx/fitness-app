@@ -1332,6 +1332,218 @@ function updateSleepChart() {
 }
 
 /**
+ * Initialize a scroll wheel for numeric inputs
+ * @param {string} inputId - ID of the input element
+ * @param {number} maxValue - Maximum value for the input
+ */
+function initializeScrollWheel(inputId, maxValue) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  
+  // Create container for the scroll wheel
+  const container = document.createElement('div');
+  container.className = 'scroll-wheel-container';
+  container.style.cssText = `
+    position: relative;
+    display: none;
+    height: 150px;
+    overflow: hidden;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin: 10px 0;
+    touch-action: pan-y;
+  `;
+  
+  // Create the scroll wheel
+  const wheel = document.createElement('div');
+  wheel.className = 'scroll-wheel';
+  wheel.style.cssText = `
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    transform: translateY(0);
+    transition: transform 0.2s ease-out;
+  `;
+  
+  // Add number options to the wheel
+  for (let i = 0; i <= maxValue; i++) {
+    const option = document.createElement('div');
+    option.className = 'scroll-wheel-option';
+    option.textContent = i;
+    option.dataset.value = i;
+    option.style.cssText = `
+      height: 40px;
+      line-height: 40px;
+      font-size: 20px;
+      user-select: none;
+    `;
+    wheel.appendChild(option);
+  }
+  
+  container.appendChild(wheel);
+  input.parentNode.insertBefore(container, input.nextSibling);
+  
+  // Add a selection indicator line
+  const selectionLine = document.createElement('div');
+  selectionLine.className = 'selection-line';
+  selectionLine.style.cssText = `
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 40px;
+    transform: translateY(-50%);
+    border-top: 1px solid #ddd;
+    border-bottom: 1px solid #ddd;
+    pointer-events: none;
+    background-color: rgba(0, 123, 255, 0.1);
+  `;
+  container.appendChild(selectionLine);
+  
+  // Store references and state
+  input.scrollWheel = {
+    container,
+    wheel,
+    options: wheel.querySelectorAll('.scroll-wheel-option'),
+    optionHeight: 40,
+    startY: 0,
+    currentY: 0,
+    lastY: 0,
+    currentValue: parseInt(input.value) || 0
+  };
+  
+  // Set initial position based on input value
+  const initialValue = parseInt(input.value) || 0;
+  updateScrollWheelPosition(input, initialValue);
+  
+  // Set up input mode toggle
+  input.addEventListener('click', function() {
+    // Check if the container is already visible
+    if (container.style.display === 'block') {
+      container.style.display = 'none';
+      input.style.display = 'block';
+    } else {
+      container.style.display = 'block';
+      input.style.display = 'none';
+      updateScrollWheelPosition(input, parseInt(input.value) || 0);
+    }
+  });
+  
+  // Set up touch events for scroll wheel
+  let isDragging = false;
+  
+  container.addEventListener('touchstart', function(e) {
+    const touch = e.touches[0];
+    input.scrollWheel.startY = touch.clientY;
+    input.scrollWheel.lastY = input.scrollWheel.currentY;
+    isDragging = true;
+    e.preventDefault();
+  }, { passive: false });
+  
+  container.addEventListener('touchmove', function(e) {
+    if (!isDragging) return;
+    
+    const touch = e.touches[0];
+    const deltaY = touch.clientY - input.scrollWheel.startY;
+    
+    // Calculate new position
+    const newY = input.scrollWheel.lastY + deltaY;
+    input.scrollWheel.currentY = newY;
+    
+    // Calculate value based on scroll position
+    const offset = newY % input.scrollWheel.optionHeight;
+    const index = Math.round((newY - offset) / -input.scrollWheel.optionHeight);
+    
+    let value = Math.max(0, Math.min(maxValue, index));
+    
+    // Update the visual position of the wheel
+    wheel.style.transform = `translateY(${newY}px)`;
+    
+    // Update the input value
+    input.value = value;
+    input.scrollWheel.currentValue = value;
+    
+    e.preventDefault();
+  }, { passive: false });
+  
+  container.addEventListener('touchend', function() {
+    if (!isDragging) return;
+    isDragging = false;
+    
+    // Snap to nearest option
+    const value = input.scrollWheel.currentValue;
+    updateScrollWheelPosition(input, value);
+    
+    // Trigger change event on the input
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  
+  // Sync scroll wheel when input changes
+  input.addEventListener('change', function() {
+    const value = parseInt(this.value) || 0;
+    this.value = Math.max(0, Math.min(maxValue, value));
+    updateScrollWheelPosition(this, this.value);
+  });
+}
+
+/**
+ * Update the position of a scroll wheel to show the selected value
+ * @param {HTMLElement} input - The input element
+ * @param {number} value - The value to display
+ */
+function updateScrollWheelPosition(input, value) {
+  if (!input.scrollWheel) return;
+  
+  const { wheel, optionHeight } = input.scrollWheel;
+  const position = -(value * optionHeight) + (input.scrollWheel.container.offsetHeight / 2 - optionHeight / 2);
+  
+  wheel.style.transition = 'transform 0.3s ease-out';
+  wheel.style.transform = `translateY(${position}px)`;
+  input.scrollWheel.currentY = position;
+  input.scrollWheel.currentValue = value;
+  input.value = value;
+  
+  // Remove the transition after it completes
+  setTimeout(() => {
+    wheel.style.transition = '';
+  }, 300);
+}
+
+/**
+ * Set up double tap to toggle between input modes
+ * @param {string} inputId - ID of the input element
+ */
+function setupDoubleTapToggle(inputId) {
+  const input = document.getElementById(inputId);
+  if (!input || !input.scrollWheel) return;
+  
+  let lastTap = 0;
+  
+  input.addEventListener('click', function(e) {
+    const currentTime = new Date().getTime();
+    const tapLength = currentTime - lastTap;
+    
+    if (tapLength < 500 && tapLength > 0) {
+      // Double tap detected
+      if (input.scrollWheel.container.style.display === 'block') {
+        // Switch to manual input
+        input.scrollWheel.container.style.display = 'none';
+        input.style.display = 'block';
+        input.focus();
+      } else {
+        // Switch to scroll wheel
+        input.scrollWheel.container.style.display = 'block';
+        input.style.display = 'none';
+        updateScrollWheelPosition(input, parseInt(input.value) || 0);
+      }
+      e.preventDefault();
+    }
+    
+    lastTap = currentTime;
+  });
+}
+
+/**
  * Delete a sleep record
  * @param {string} recordId - ID of the record to delete
  */
@@ -2336,6 +2548,187 @@ function initializeHealthSnapshot() {
   
   // Update the snapshot widget with the most recent data
   updateHealthSnapshotWidget();
+}
+
+/**
+ * Initialize the enhanced workout form features
+ */
+function initializeWorkoutForm() {
+  // Get form elements
+  const workoutCategoryRadios = document.querySelectorAll('input[name="workout-category"]');
+  const equipmentTypeRadios = document.querySelectorAll('input[name="equipment-type"]');
+  const weightTrainingOptions = document.getElementById('weight-training-options');
+  const barbellWeightSelector = document.getElementById('barbell-weight-selector');
+  const otherWeightSelector = document.getElementById('other-weight-selector');
+  const plateBtns = document.querySelectorAll('.plate-btn');
+  const clearPlatesBtn = document.getElementById('clear-plates-btn');
+  const selectedPlatesDisplay = document.getElementById('selected-plates-display');
+  const barbellTotalWeight = document.getElementById('barbell-total-weight');
+  const exercisePresets = document.querySelectorAll('.exercise-preset-list .dropdown-item');
+  const activityNameInput = document.getElementById('activity-name');
+  
+  // Selected plates array
+  let selectedPlates = [];
+  
+  // Set up workout category toggle
+  workoutCategoryRadios.forEach(radio => {
+    radio.addEventListener('change', function() {
+      // Show/hide weight training options based on category
+      if (this.value === 'weights') {
+        weightTrainingOptions.style.display = 'block';
+        
+        // Show proper weight selection based on equipment type
+        const equipmentType = document.querySelector('input[name="equipment-type"]:checked').value;
+        updateEquipmentOptions(equipmentType);
+        
+        // Update activity type
+        document.getElementById('activity-type').value = 'weights';
+      } else {
+        weightTrainingOptions.style.display = 'none';
+      }
+      
+      // Show/hide exercise presets based on category
+      updateExercisePresets(this.value);
+    });
+  });
+  
+  // Set up equipment type toggle
+  equipmentTypeRadios.forEach(radio => {
+    radio.addEventListener('change', function() {
+      updateEquipmentOptions(this.value);
+    });
+  });
+  
+  // Set up plate buttons
+  plateBtns.forEach(btn => {
+    btn.addEventListener('click', function() {
+      const weight = parseFloat(this.dataset.weight);
+      
+      // Add this plate to the selected plates
+      selectedPlates.push(weight);
+      
+      // Sort plates from heaviest to lightest (for visual display)
+      selectedPlates.sort((a, b) => b - a);
+      
+      // Update UI
+      updateSelectedPlates();
+      updateBarbellWeight();
+    });
+  });
+  
+  // Set up clear plates button
+  if (clearPlatesBtn) {
+    clearPlatesBtn.addEventListener('click', function() {
+      selectedPlates = [];
+      updateSelectedPlates();
+      updateBarbellWeight();
+    });
+  }
+  
+  // Set up exercise presets
+  exercisePresets.forEach(preset => {
+    preset.addEventListener('click', function(e) {
+      e.preventDefault();
+      const exerciseName = this.dataset.name;
+      activityNameInput.value = exerciseName;
+    });
+  });
+  
+  // Initialize scroll wheels
+  initializeScrollWheel('other-weight-input', 200);
+  initializeScrollWheel('sets-input', 20);
+  initializeScrollWheel('reps-input', 100);
+  
+  // Double tap to switch input mode
+  setupDoubleTapToggle('other-weight-input');
+  setupDoubleTapToggle('sets-input');
+  setupDoubleTapToggle('reps-input');
+  
+  /**
+   * Update the UI based on the selected equipment type
+   * @param {string} equipmentType - The selected equipment type
+   */
+  function updateEquipmentOptions(equipmentType) {
+    if (equipmentType === 'barbell') {
+      barbellWeightSelector.style.display = 'block';
+      otherWeightSelector.style.display = 'none';
+    } else if (equipmentType === 'bodyweight') {
+      barbellWeightSelector.style.display = 'none';
+      otherWeightSelector.style.display = 'none';
+    } else {
+      // Dumbbell or machine
+      barbellWeightSelector.style.display = 'none';
+      otherWeightSelector.style.display = 'block';
+      
+      // Update max weight for dumbbells vs machines
+      const otherWeightInput = document.getElementById('other-weight-input');
+      if (equipmentType === 'dumbbell') {
+        otherWeightInput.max = 200;
+      } else {
+        otherWeightInput.max = 1000;
+      }
+    }
+  }
+  
+  /**
+   * Update the selected plates display
+   */
+  function updateSelectedPlates() {
+    selectedPlatesDisplay.innerHTML = '';
+    
+    if (selectedPlates.length === 0) {
+      selectedPlatesDisplay.innerHTML = '<span class="text-muted">No plates selected</span>';
+      return;
+    }
+    
+    // Create a visual representation of the plates
+    selectedPlates.forEach((weight, index) => {
+      const plateElement = document.createElement('span');
+      plateElement.className = 'plate-badge';
+      plateElement.textContent = weight + ' lb';
+      
+      // Add a remove button
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'btn-close btn-close-white ms-1';
+      removeBtn.setAttribute('aria-label', 'Remove');
+      removeBtn.style.fontSize = '0.5rem';
+      
+      // Set up remove button click handler
+      removeBtn.addEventListener('click', function() {
+        selectedPlates.splice(index, 1);
+        updateSelectedPlates();
+        updateBarbellWeight();
+      });
+      
+      plateElement.appendChild(removeBtn);
+      selectedPlatesDisplay.appendChild(plateElement);
+    });
+  }
+  
+  /**
+   * Update the barbell total weight display
+   */
+  function updateBarbellWeight() {
+    const totalWeight = Activity.calculateBarbellWeight(selectedPlates);
+    barbellTotalWeight.textContent = totalWeight;
+  }
+  
+  /**
+   * Show/hide exercise presets based on workout category
+   * @param {string} category - The workout category (cardio or weights)
+   */
+  function updateExercisePresets(category) {
+    const cardioPresets = document.querySelectorAll('.cardio-presets');
+    const weightPresets = document.querySelectorAll('.weight-presets');
+    
+    if (category === 'cardio') {
+      cardioPresets.forEach(item => item.style.display = 'block');
+      weightPresets.forEach(item => item.style.display = 'none');
+    } else {
+      cardioPresets.forEach(item => item.style.display = 'none');
+      weightPresets.forEach(item => item.style.display = 'block');
+    }
+  }
 }
 
 /**
