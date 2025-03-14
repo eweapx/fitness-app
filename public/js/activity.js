@@ -140,13 +140,18 @@ class Activity {
    * @returns {number} Total weight including the bar (45lbs)
    */
   static calculateBarbellWeight(plates) {
-    // Standard barbell is 45 lbs
+    // Standard Olympic barbell weighs 45lbs
     const barWeight = 45;
     
-    // Sum the weight of all plates (multiplied by 2 for both sides)
-    const plateWeight = plates.reduce((sum, plate) => sum + (Number(plate) * 2), 0);
+    // If no plates provided, return just the bar weight
+    if (!plates || !Array.isArray(plates) || plates.length === 0) {
+      return barWeight;
+    }
     
-    // Return total weight
+    // Calculate the total weight of all plates (doubled because plates are on both sides)
+    const plateWeight = plates.reduce((total, plate) => total + parseFloat(plate), 0) * 2;
+    
+    // Return the total weight (bar + plates)
     return barWeight + plateWeight;
   }
 }
