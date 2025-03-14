@@ -1,73 +1,122 @@
-// Initialize the trackers
-const fitnessTracker = new FitnessTracker();
-const habitTracker = new HabitTracker();
-const nutritionTracker = new NutritionTracker();
-const sleepTracker = new SleepTracker();
+/**
+ * Main application logic for the Health & Wellness Tracker
+ */
 
-// Set up event listeners when the document is ready
+// Initialize all trackers
+console.log('Health & Wellness App Initializing...');
+
+// Initialize the fitness tracker
+const fitnessTracker = new FitnessTracker();
+fitnessTracker.loadFromLocalStorage();
+console.log('Fitness tracker loaded', fitnessTracker.getActivities().length, 'activities');
+
+// Initialize the habit tracker
+const habitTracker = new HabitTracker();
+habitTracker.loadFromLocalStorage();
+console.log('Habit tracker loaded', habitTracker.getHabits().length, 'habits');
+
+// Initialize the nutrition tracker
+const nutritionTracker = new NutritionTracker();
+nutritionTracker.loadFromLocalStorage();
+console.log('Nutrition tracker loaded', nutritionTracker.getMeals().length, 'meals');
+
+// Initialize the sleep tracker
+const sleepTracker = new SleepTracker();
+sleepTracker.loadFromLocalStorage();
+console.log('Sleep tracker loaded', sleepTracker.getSleepRecords().length, 'records');
+
+// Set up event listeners once the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('Health & Wellness App Initializing...');
-  
-  // Initialize trackers by loading data from localStorage
-  initializeTrackers();
-  
-  // Set up event listeners for all forms and interactive elements
+  // Set up event listeners for all forms
   setupEventListeners();
   
-  // Update the dashboard with initial data
+  // Update the dashboard with current data
   updateDashboard();
 });
-
-/**
- * Initialize trackers by loading data from localStorage
- */
-function initializeTrackers() {
-  // Load data from localStorage via the tracker classes
-  console.log('Fitness tracker loaded', fitnessTracker.getActivitiesCount(), 'activities');
-  console.log('Habit tracker loaded', habitTracker.getHabits().length, 'habits');
-  console.log('Nutrition tracker loaded', nutritionTracker.getMeals().length, 'meals');
-  console.log('Sleep tracker loaded', sleepTracker.getSleepRecords().length, 'records');
-}
 
 /**
  * Set up all event listeners for the application
  */
 function setupEventListeners() {
-  // Activity form submission
-  const activityForm = document.getElementById('add-activity-form');
-  if (activityForm) {
-    activityForm.addEventListener('submit', handleActivityFormSubmit);
+  // Activity form
+  const addActivityForm = document.getElementById('add-activity-form');
+  if (addActivityForm) {
+    addActivityForm.addEventListener('submit', handleActivityFormSubmit);
   }
   
-  // Steps form submission
-  const stepsForm = document.getElementById('add-steps-form');
-  if (stepsForm) {
-    stepsForm.addEventListener('submit', handleStepsFormSubmit);
+  // Steps form
+  const addStepsForm = document.getElementById('add-steps-form');
+  if (addStepsForm) {
+    addStepsForm.addEventListener('submit', handleStepsFormSubmit);
   }
   
-  // Habit form submission
-  const habitForm = document.getElementById('add-habit-form');
-  if (habitForm) {
-    habitForm.addEventListener('submit', handleHabitFormSubmit);
+  // Habit form
+  const addHabitForm = document.getElementById('add-habit-form');
+  if (addHabitForm) {
+    addHabitForm.addEventListener('submit', handleHabitFormSubmit);
   }
   
-  // Check-in form submission
-  const checkInForm = document.getElementById('habit-check-in-form');
-  if (checkInForm) {
-    checkInForm.addEventListener('submit', handleCheckInFormSubmit);
+  // Check-in form
+  const habitCheckInForm = document.getElementById('habit-check-in-form');
+  if (habitCheckInForm) {
+    habitCheckInForm.addEventListener('submit', handleCheckInFormSubmit);
   }
   
-  // Meal form submission
-  const mealForm = document.getElementById('add-meal-form');
-  if (mealForm) {
-    mealForm.addEventListener('submit', handleMealFormSubmit);
+  // Meal form
+  const addMealForm = document.getElementById('add-meal-form');
+  if (addMealForm) {
+    addMealForm.addEventListener('submit', handleMealFormSubmit);
   }
   
-  // Sleep form submission
-  const sleepForm = document.getElementById('add-sleep-form');
-  if (sleepForm) {
-    sleepForm.addEventListener('submit', handleSleepFormSubmit);
+  // Sleep form
+  const addSleepForm = document.getElementById('add-sleep-form');
+  if (addSleepForm) {
+    addSleepForm.addEventListener('submit', handleSleepFormSubmit);
   }
+  
+  // Connection form
+  const addConnectionForm = document.getElementById('add-connection-form');
+  if (addConnectionForm) {
+    addConnectionForm.addEventListener('submit', handleConnectionFormSubmit);
+  }
+  
+  // Connection type selector
+  const connectionType = document.getElementById('connection-type');
+  if (connectionType) {
+    connectionType.addEventListener('change', function() {
+      // Hide all specific fields
+      document.getElementById('apple-health-fields').style.display = 'none';
+      document.getElementById('google-fit-fields').style.display = 'none';
+      document.getElementById('fitness-watch-fields').style.display = 'none';
+      
+      // Show fields for selected connection type
+      const selectedType = this.value;
+      if (selectedType === 'apple-health') {
+        document.getElementById('apple-health-fields').style.display = 'block';
+      } else if (selectedType === 'google-fit') {
+        document.getElementById('google-fit-fields').style.display = 'block';
+      } else if (selectedType === 'fitness-watch') {
+        document.getElementById('fitness-watch-fields').style.display = 'block';
+      }
+    });
+  }
+  
+  // Connect buttons
+  const connectButtons = document.querySelectorAll('.btn-connect');
+  connectButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      const service = this.getAttribute('data-service');
+      document.getElementById('connection-type').value = service;
+      
+      // Trigger the change event to show/hide appropriate fields
+      const event = new Event('change');
+      document.getElementById('connection-type').dispatchEvent(event);
+      
+      // Show the modal
+      const modal = new bootstrap.Modal(document.getElementById('addConnectionModal'));
+      modal.show();
+    });
+  });
 }
 
 /**
@@ -77,31 +126,28 @@ function setupEventListeners() {
 function handleActivityFormSubmit(event) {
   event.preventDefault();
   
-  // Get form values
   const name = document.getElementById('activity-name').value;
-  const calories = document.getElementById('activity-calories').value;
-  const duration = document.getElementById('activity-duration').value;
+  const calories = parseInt(document.getElementById('activity-calories').value);
+  const duration = parseInt(document.getElementById('activity-duration').value);
   const type = document.getElementById('activity-type').value;
   
-  // Create and add the activity
   const activity = new Activity(name, calories, duration, type);
   
   if (fitnessTracker.addActivity(activity)) {
-    // Close the modal
-    const modal = bootstrap.Modal.getInstance(document.getElementById('logActivityModal'));
-    modal.hide();
+    // Update the UI
+    updateDashboard();
     
     // Reset the form
     event.target.reset();
     
-    // Update the dashboard
-    updateDashboard();
+    // Hide the modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('logActivityModal'));
+    modal.hide();
     
     // Show success message
-    showMessage('Activity logged successfully!', 'success');
+    showMessage('Activity added successfully!', 'success');
   } else {
-    // Show error message
-    showMessage('Please fill in all required fields correctly.', 'danger');
+    showMessage('Please fill in all fields correctly.', 'danger');
   }
 }
 
@@ -112,24 +158,22 @@ function handleActivityFormSubmit(event) {
 function handleStepsFormSubmit(event) {
   event.preventDefault();
   
-  // Get steps value
-  const steps = document.getElementById('steps-count-input').value;
+  const steps = parseInt(document.getElementById('steps-count-input').value);
   
   if (fitnessTracker.addSteps(steps)) {
-    // Close the modal
-    const modal = bootstrap.Modal.getInstance(document.getElementById('addStepsModal'));
-    modal.hide();
+    // Update the UI
+    updateDashboard();
     
     // Reset the form
     event.target.reset();
     
-    // Update the dashboard
-    updateDashboard();
+    // Hide the modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('addStepsModal'));
+    modal.hide();
     
     // Show success message
     showMessage('Steps added successfully!', 'success');
   } else {
-    // Show error message
     showMessage('Please enter a valid number of steps.', 'danger');
   }
 }
@@ -141,7 +185,6 @@ function handleStepsFormSubmit(event) {
 function handleHabitFormSubmit(event) {
   event.preventDefault();
   
-  // Get form values
   const name = document.getElementById('habit-name').value;
   const description = document.getElementById('habit-description').value;
   const frequency = document.getElementById('habit-frequency').value;
@@ -150,9 +193,9 @@ function handleHabitFormSubmit(event) {
   const alternative = document.getElementById('habit-alternative').value;
   const reminderTime = document.getElementById('habit-reminder-time').value;
   
-  // Create and add the habit
+  const habitId = 'habit_' + Date.now();
   const habit = new BadHabit(
-    null, // id will be generated automatically
+    habitId,
     name,
     description,
     frequency,
@@ -163,20 +206,19 @@ function handleHabitFormSubmit(event) {
   );
   
   if (habitTracker.addHabit(habit)) {
-    // Close the modal
-    const modal = bootstrap.Modal.getInstance(document.getElementById('addHabitModal'));
-    modal.hide();
+    // Update the UI
+    updateDashboard();
     
     // Reset the form
     event.target.reset();
     
-    // Update the dashboard
-    updateDashboard();
+    // Hide the modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('addHabitModal'));
+    modal.hide();
     
     // Show success message
     showMessage('Habit added successfully!', 'success');
   } else {
-    // Show error message
     showMessage('Please fill in all required fields.', 'danger');
   }
 }
@@ -188,34 +230,28 @@ function handleHabitFormSubmit(event) {
 function handleCheckInFormSubmit(event) {
   event.preventDefault();
   
-  // Get form values
   const habitId = document.getElementById('check-in-habit-id').value;
+  const success = document.getElementById('check-in-success-yes').checked;
   const dateStr = document.getElementById('check-in-date').value;
-  const success = document.querySelector('input[name="check-in-success"]:checked').value === 'true';
-  
-  // Create date object
   const date = new Date(dateStr);
   
-  // Record the check-in
   const result = habitTracker.recordCheckIn(habitId, date, success);
   
   if (result) {
-    // Close the modal
+    // Update the UI
+    updateDashboard();
+    
+    // Reset the form
+    event.target.reset();
+    
+    // Hide the modal
     const modal = bootstrap.Modal.getInstance(document.getElementById('check-in-modal'));
     modal.hide();
     
-    // Update the dashboard
-    updateDashboard();
-    
     // Show success message
-    const message = success 
-      ? `Great job! You've maintained a streak of ${result.currentStreak} days.` 
-      : 'Check-in recorded. Keep trying, you can do it!';
-    
-    showMessage(message, success ? 'success' : 'warning');
+    showMessage('Check-in recorded successfully!', 'success');
   } else {
-    // Show error message
-    showMessage('Error recording check-in. Please try again.', 'danger');
+    showMessage('Unable to record check-in. Please try again.', 'danger');
   }
 }
 
@@ -224,16 +260,12 @@ function handleCheckInFormSubmit(event) {
  * @param {string} habitId - ID of the habit to delete
  */
 function deleteHabit(habitId) {
-  if (confirm('Are you sure you want to delete this habit tracking? This cannot be undone.')) {
+  if (confirm('Are you sure you want to delete this habit?')) {
     if (habitTracker.deleteHabit(habitId)) {
-      // Update the dashboard
       updateDashboard();
-      
-      // Show success message
-      showMessage('Habit deleted successfully.', 'success');
+      showMessage('Habit deleted successfully!', 'success');
     } else {
-      // Show error message
-      showMessage('Error deleting habit. Please try again.', 'danger');
+      showMessage('Unable to delete habit. Please try again.', 'danger');
     }
   }
 }
@@ -244,14 +276,14 @@ function deleteHabit(habitId) {
  * @param {string} habitName - Name of the habit to display
  */
 function openCheckInModal(habitId, habitName) {
-  // Set the habit ID in the hidden field
+  // Set the habit ID in the form
   document.getElementById('check-in-habit-id').value = habitId;
   
-  // Update the modal title
+  // Set the title
   const modalTitle = document.querySelector('#check-in-modal .modal-title');
-  modalTitle.textContent = `Check-in for: ${habitName}`;
+  modalTitle.textContent = `Check-in: ${habitName}`;
   
-  // Set today's date as default
+  // Set today's date
   const today = new Date();
   const yyyy = today.getFullYear();
   const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -264,187 +296,280 @@ function openCheckInModal(habitId, habitName) {
 }
 
 /**
+ * Handle the meal form submission
+ * @param {Event} event - Form submission event
+ */
+function handleMealFormSubmit(event) {
+  event.preventDefault();
+  
+  const name = document.getElementById('meal-name').value;
+  const description = document.getElementById('meal-description').value;
+  const calories = parseInt(document.getElementById('meal-calories').value);
+  const protein = parseInt(document.getElementById('meal-protein').value || '0');
+  const carbs = parseInt(document.getElementById('meal-carbs').value || '0');
+  const fat = parseInt(document.getElementById('meal-fat').value || '0');
+  const category = document.getElementById('meal-category').value;
+  
+  // Get the date from the time input
+  const timeStr = document.getElementById('meal-time').value || '12:00';
+  const now = new Date();
+  const [hours, minutes] = timeStr.split(':');
+  now.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+  
+  const meal = new Meal(name, description, calories, protein, carbs, fat, category, now);
+  
+  if (nutritionTracker.addMeal(meal)) {
+    // Update the UI
+    updateDashboard();
+    
+    // Reset the form
+    event.target.reset();
+    
+    // Hide the modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('addMealModal'));
+    modal.hide();
+    
+    // Show success message
+    showMessage('Meal added successfully!', 'success');
+  } else {
+    showMessage('Please fill in all required fields.', 'danger');
+  }
+}
+
+/**
+ * Handle the sleep form submission
+ * @param {Event} event - Form submission event
+ */
+function handleSleepFormSubmit(event) {
+  event.preventDefault();
+  
+  const dateStr = document.getElementById('sleep-date').value;
+  const bedtimeStr = document.getElementById('sleep-bedtime').value;
+  const waketimeStr = document.getElementById('sleep-waketime').value;
+  const quality = parseInt(document.getElementById('sleep-quality').value);
+  
+  // Create Date objects for bedtime and waketime
+  const [year, month, day] = dateStr.split('-');
+  const [bedHours, bedMinutes] = bedtimeStr.split(':');
+  const [wakeHours, wakeMinutes] = waketimeStr.split(':');
+  
+  const bedtime = new Date(year, month - 1, day, bedHours, bedMinutes);
+  
+  // If waketime is earlier than bedtime, assume it's the next day
+  let waketime = new Date(year, month - 1, day, wakeHours, wakeMinutes);
+  if (waketime < bedtime) {
+    waketime.setDate(waketime.getDate() + 1);
+  }
+  
+  // Get any selected disturbances
+  const disturbances = [];
+  const selectedDisturbance = document.querySelector('input[name="sleep-disturbances"]:checked').value;
+  if (selectedDisturbance !== 'none') {
+    disturbances.push(selectedDisturbance);
+  }
+  
+  // Create a notes string from any additional notes
+  const notes = document.getElementById('sleep-notes')?.value || '';
+  
+  const sleepRecord = new SleepRecord(bedtime, waketime, quality, notes, disturbances);
+  
+  if (sleepTracker.addSleepRecord(sleepRecord)) {
+    // Update the UI
+    updateDashboard();
+    
+    // Reset the form
+    event.target.reset();
+    
+    // Hide the modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('addSleepModal'));
+    modal.hide();
+    
+    // Show success message
+    showMessage('Sleep record added successfully!', 'success');
+  } else {
+    showMessage('Please fill in all required fields.', 'danger');
+  }
+}
+
+/**
+ * Handle connection form submission
+ * @param {Event} event - Form submission event
+ */
+function handleConnectionFormSubmit(event) {
+  event.preventDefault();
+  
+  const connectionType = document.getElementById('connection-type').value;
+  const syncFrequency = document.getElementById('sync-frequency').value;
+  
+  // Get settings and data types based on the connection type
+  let settings = {};
+  let dataTypes = [];
+  
+  if (connectionType === 'apple-health') {
+    dataTypes = [];
+    if (document.getElementById('apple-steps').checked) dataTypes.push('steps');
+    if (document.getElementById('apple-workouts').checked) dataTypes.push('workouts');
+    if (document.getElementById('apple-sleep').checked) dataTypes.push('sleep');
+    if (document.getElementById('apple-nutrition').checked) dataTypes.push('nutrition');
+  } 
+  else if (connectionType === 'google-fit') {
+    dataTypes = [];
+    if (document.getElementById('google-steps').checked) dataTypes.push('steps');
+    if (document.getElementById('google-workouts').checked) dataTypes.push('workouts');
+    if (document.getElementById('google-sleep').checked) dataTypes.push('sleep');
+    if (document.getElementById('google-nutrition').checked) dataTypes.push('nutrition');
+  } 
+  else if (connectionType === 'fitness-watch') {
+    const brand = document.getElementById('watch-brand').value;
+    settings = { brand };
+    
+    dataTypes = [];
+    if (document.getElementById('watch-steps').checked) dataTypes.push('steps');
+    if (document.getElementById('watch-workouts').checked) dataTypes.push('workouts');
+    if (document.getElementById('watch-sleep').checked) dataTypes.push('sleep');
+    if (document.getElementById('watch-heart-rate').checked) dataTypes.push('heart-rate');
+  }
+  
+  // Create a connection
+  const connection = new HealthConnection(connectionType, settings, dataTypes, syncFrequency);
+  
+  // Show connecting message
+  showMessage('Connecting to health data source...', 'info');
+  
+  // Add the connection
+  healthConnectionManager.addConnection(connection)
+    .then(result => {
+      updateConnectionsView();
+      updateDashboard();
+      
+      // Reset the form
+      event.target.reset();
+      
+      // Hide the modal
+      const modal = bootstrap.Modal.getInstance(document.getElementById('addConnectionModal'));
+      modal.hide();
+      
+      // Show success message
+      showMessage(`Successfully connected to ${connection.getDisplayName()}`, 'success');
+    })
+    .catch(error => {
+      console.error('Connection error:', error);
+      showMessage('Failed to connect. Please try again.', 'danger');
+    });
+}
+
+/**
  * Update the dashboard with current data
  */
 function updateDashboard() {
-  // Update fitness statistics
   updateFitnessStats();
-  
-  // Update activities list
   updateActivitiesList();
-  
-  // Update habit statistics
   updateHabitStats();
-  
-  // Update habits list
   updateHabitsList();
-
-  // Update nutrition statistics
   updateNutritionStats();
-  
-  // Update sleep statistics
+  updateMealsList();
+  updateNutritionChart();
   updateSleepStats();
+  updateSleepRecordsList();
+  updateSleepChart();
+  updateConnectionsView();
 }
 
 /**
  * Update fitness statistics on the dashboard
  */
 function updateFitnessStats() {
-  // Update steps count
-  const stepsCountElement = document.getElementById('steps-count');
-  if (stepsCountElement) {
-    stepsCountElement.textContent = fitnessTracker.getTotalSteps().toLocaleString();
-  }
+  const stepsCount = document.getElementById('steps-count');
+  const caloriesCount = document.getElementById('calories-count');
+  const activitiesCount = document.getElementById('activities-count');
   
-  // Update calories count
-  const caloriesCountElement = document.getElementById('calories-count');
-  if (caloriesCountElement) {
-    caloriesCountElement.textContent = fitnessTracker.getTotalCalories().toLocaleString();
-  }
-  
-  // Update activities count
-  const activitiesCountElement = document.getElementById('activities-count');
-  if (activitiesCountElement) {
-    activitiesCountElement.textContent = fitnessTracker.getActivitiesCount().toLocaleString();
-  }
+  if (stepsCount) stepsCount.textContent = fitnessTracker.getTotalSteps().toLocaleString();
+  if (caloriesCount) caloriesCount.textContent = fitnessTracker.getTotalCalories().toLocaleString();
+  if (activitiesCount) activitiesCount.textContent = fitnessTracker.getActivitiesCount().toString();
 }
 
 /**
  * Update the activities list on the dashboard
  */
 function updateActivitiesList() {
-  // Get elements
-  const activitiesListElement = document.getElementById('activities-list');
-  const noActivitiesElement = document.getElementById('no-activities');
-  const allActivitiesListElement = document.getElementById('all-activities-list');
-  const noAllActivitiesElement = document.getElementById('no-all-activities');
+  const activitiesList = document.getElementById('activities-list');
+  const noActivities = document.getElementById('no-activities');
+  const allActivitiesList = document.getElementById('all-activities-list');
+  const noAllActivities = document.getElementById('no-all-activities');
   
-  // Get activities
   const activities = fitnessTracker.getActivities();
   
-  // Check if we have activities
-  if (activities.length > 0) {
-    // Hide "no activities" message on the dashboard
-    if (noActivitiesElement) {
-      noActivitiesElement.style.display = 'none';
-    }
-    
-    // Hide "no activities" message on the activities tab
-    if (noAllActivitiesElement) {
-      noAllActivitiesElement.style.display = 'none';
-    }
-    
-    // Update dashboard activities list (recent 3)
-    if (activitiesListElement) {
-      activitiesListElement.innerHTML = '';
+  // Update the dashboard activities list (recent activities only)
+  if (activitiesList && noActivities) {
+    if (activities.length === 0) {
+      activitiesList.style.display = 'none';
+      noActivities.style.display = 'block';
+    } else {
+      activitiesList.style.display = 'block';
+      noActivities.style.display = 'none';
       
-      // Display the 3 most recent activities
-      const recentActivities = [...activities].sort((a, b) => b.date - a.date).slice(0, 3);
+      // Clear the list
+      activitiesList.innerHTML = '';
+      
+      // Add recent activities (up to 5)
+      const recentActivities = activities.slice(0, 5);
       
       recentActivities.forEach(activity => {
         const activityElement = document.createElement('div');
-        activityElement.className = 'activity-item d-flex align-items-center mb-3 p-2 border-bottom';
-        
-        // Determine icon class based on activity type
-        let iconClass = 'bi-activity';
-        let iconBg = 'bg-primary';
-        
-        if (activity.type === 'running') {
-          iconClass = 'bi-emoji-smile';
-          iconBg = 'bg-success';
-        } else if (activity.type === 'cycling') {
-          iconClass = 'bi-bicycle';
-          iconBg = 'bg-info';
-        } else if (activity.type === 'weights') {
-          iconClass = 'bi-vinyl';
-          iconBg = 'bg-danger';
-        } else if (activity.type === 'swimming') {
-          iconClass = 'bi-water';
-          iconBg = 'bg-warning';
-        }
-        
+        activityElement.className = 'card mb-2';
         activityElement.innerHTML = `
-          <div class="activity-icon ${iconBg} text-white">
-            <i class="bi ${iconClass}"></i>
-          </div>
-          <div>
-            <h6 class="mb-0">${activity.name}</h6>
-            <div class="text-muted small d-flex">
-              <span class="me-3"><i class="bi bi-stopwatch me-1"></i> ${activity.duration} min</span>
-              <span><i class="bi bi-fire me-1"></i> ${activity.calories} cal</span>
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h6 class="mb-1">${activity.name}</h6>
+                <p class="text-muted mb-0 small">${activity.getFormattedDate()} | ${activity.duration} mins | ${activity.type}</p>
+              </div>
+              <div>
+                <span class="badge bg-primary rounded-pill">${activity.calories} cal</span>
+              </div>
             </div>
-            <div class="text-muted small">${activity.getFormattedDate()}</div>
           </div>
         `;
         
-        activitiesListElement.appendChild(activityElement);
+        activitiesList.appendChild(activityElement);
       });
     }
-    
-    // Update all activities list
-    if (allActivitiesListElement) {
-      allActivitiesListElement.innerHTML = '';
+  }
+  
+  // Update the all activities list (for the Activity tab)
+  if (allActivitiesList && noAllActivities) {
+    if (activities.length === 0) {
+      allActivitiesList.style.display = 'none';
+      noAllActivities.style.display = 'block';
+    } else {
+      allActivitiesList.style.display = 'block';
+      noAllActivities.style.display = 'none';
       
-      // Sort by date (newest first)
+      // Clear the list
+      allActivitiesList.innerHTML = '';
+      
+      // Sort activities by date (newest first)
       const sortedActivities = [...activities].sort((a, b) => b.date - a.date);
       
       sortedActivities.forEach(activity => {
         const activityElement = document.createElement('div');
-        activityElement.className = 'activity-item d-flex align-items-center mb-3 p-2 border-bottom';
-        
-        // Determine icon class based on activity type
-        let iconClass = 'bi-activity';
-        let iconBg = 'bg-primary';
-        
-        if (activity.type === 'running') {
-          iconClass = 'bi-emoji-smile';
-          iconBg = 'bg-success';
-        } else if (activity.type === 'cycling') {
-          iconClass = 'bi-bicycle';
-          iconBg = 'bg-info';
-        } else if (activity.type === 'weights') {
-          iconClass = 'bi-vinyl';
-          iconBg = 'bg-danger';
-        } else if (activity.type === 'swimming') {
-          iconClass = 'bi-water';
-          iconBg = 'bg-warning';
-        }
-        
+        activityElement.className = 'card mb-2';
         activityElement.innerHTML = `
-          <div class="activity-icon ${iconBg} text-white">
-            <i class="bi ${iconClass}"></i>
-          </div>
-          <div class="flex-grow-1">
-            <h6 class="mb-0">${activity.name}</h6>
-            <div class="text-muted small d-flex">
-              <span class="me-3"><i class="bi bi-stopwatch me-1"></i> ${activity.duration} min</span>
-              <span><i class="bi bi-fire me-1"></i> ${activity.calories} cal</span>
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h6 class="mb-1">${activity.name}</h6>
+                <p class="text-muted mb-0 small">${activity.getFormattedDate()} | ${activity.duration} mins | ${activity.type}</p>
+              </div>
+              <div>
+                <span class="badge bg-primary rounded-pill">${activity.calories} cal</span>
+              </div>
             </div>
-            <div class="text-muted small">${activity.getFormattedDate()}</div>
           </div>
         `;
         
-        allActivitiesListElement.appendChild(activityElement);
+        allActivitiesList.appendChild(activityElement);
       });
-    }
-  } else {
-    // Show "no activities" message on the dashboard
-    if (noActivitiesElement) {
-      noActivitiesElement.style.display = 'block';
-    }
-    
-    // Show "no activities" message on the activities tab
-    if (noAllActivitiesElement) {
-      noAllActivitiesElement.style.display = 'block';
-    }
-    
-    // Clear activities lists
-    if (activitiesListElement) {
-      activitiesListElement.innerHTML = '';
-    }
-    
-    if (allActivitiesListElement) {
-      allActivitiesListElement.innerHTML = '';
     }
   }
 }
@@ -453,93 +578,69 @@ function updateActivitiesList() {
  * Update habit statistics on the dashboard
  */
 function updateHabitStats() {
-  // Get overall progress
-  const progress = habitTracker.getOverallProgress();
+  const habitsCount = document.getElementById('habits-count');
+  const currentStreakCount = document.getElementById('current-streak-count');
+  const successRateCount = document.getElementById('success-rate-count');
   
-  // Update habits count
-  const habitsCountElement = document.getElementById('habits-count');
-  if (habitsCountElement) {
-    habitsCountElement.textContent = progress.totalHabits.toLocaleString();
-  }
+  const stats = habitTracker.getOverallProgress();
   
-  // Update current streak count
-  const currentStreakElement = document.getElementById('current-streak-count');
-  if (currentStreakElement) {
-    currentStreakElement.textContent = progress.avgCurrentStreak.toLocaleString();
-  }
-  
-  // Update success rate
-  const successRateElement = document.getElementById('success-rate-count');
-  if (successRateElement) {
-    successRateElement.textContent = `${progress.successRate}%`;
-  }
+  if (habitsCount) habitsCount.textContent = habitTracker.getHabits().length.toString();
+  if (currentStreakCount) currentStreakCount.textContent = stats.currentStreak.toString();
+  if (successRateCount) successRateCount.textContent = `${Math.round(stats.successRate)}%`;
 }
 
 /**
  * Update the habits list on the dashboard
  */
 function updateHabitsList() {
-  // Get elements
-  const habitsListElement = document.getElementById('habits-list');
-  const noHabitsElement = document.getElementById('no-habits');
-  const allHabitsListElement = document.getElementById('all-habits-list');
-  const noAllHabitsElement = document.getElementById('no-all-habits');
+  const habitsList = document.getElementById('habits-list');
+  const noHabits = document.getElementById('no-habits');
+  const allHabitsList = document.getElementById('all-habits-list');
+  const noAllHabits = document.getElementById('no-all-habits');
   
-  // Get habits
   const habits = habitTracker.getHabits();
   
-  // Check if we have habits
-  if (habits.length > 0) {
-    // Hide "no habits" message on the dashboard
-    if (noHabitsElement) {
-      noHabitsElement.style.display = 'none';
-    }
-    
-    // Hide "no habits" message on the habits tab
-    if (noAllHabitsElement) {
-      noAllHabitsElement.style.display = 'none';
-    }
-    
-    // Update dashboard habits list (recent 3)
-    if (habitsListElement) {
-      habitsListElement.innerHTML = '';
+  // Update the dashboard habits list (recent habits only)
+  if (habitsList && noHabits) {
+    if (habits.length === 0) {
+      habitsList.style.display = 'none';
+      noHabits.style.display = 'block';
+    } else {
+      habitsList.style.display = 'block';
+      noHabits.style.display = 'none';
       
-      // Display up to 3 habits
-      const displayHabits = habits.slice(0, 3);
+      // Clear the list
+      habitsList.innerHTML = '';
       
-      displayHabits.forEach(habit => {
+      // Add recent habits (up to 3)
+      const recentHabits = habits.slice(0, 3);
+      
+      recentHabits.forEach(habit => {
         const habitElement = createHabitElement(habit);
-        habitsListElement.appendChild(habitElement);
+        habitsList.appendChild(habitElement);
       });
     }
-    
-    // Update all habits list
-    if (allHabitsListElement) {
-      allHabitsListElement.innerHTML = '';
+  }
+  
+  // Update the all habits list (for the Habits tab)
+  if (allHabitsList && noAllHabits) {
+    if (habits.length === 0) {
+      allHabitsList.style.display = 'none';
+      noAllHabits.style.display = 'block';
+    } else {
+      allHabitsList.style.display = 'block';
+      noAllHabits.style.display = 'none';
       
-      habits.forEach(habit => {
+      // Clear the list
+      allHabitsList.innerHTML = '';
+      
+      // Sort habits by date (newest first)
+      const sortedHabits = [...habits].sort((a, b) => b.startDate - a.startDate);
+      
+      sortedHabits.forEach(habit => {
         const habitElement = createHabitElement(habit, true);
-        allHabitsListElement.appendChild(habitElement);
+        allHabitsList.appendChild(habitElement);
       });
-    }
-  } else {
-    // Show "no habits" message on the dashboard
-    if (noHabitsElement) {
-      noHabitsElement.style.display = 'block';
-    }
-    
-    // Show "no habits" message on the habits tab
-    if (noAllHabitsElement) {
-      noAllHabitsElement.style.display = 'block';
-    }
-    
-    // Clear habits lists
-    if (habitsListElement) {
-      habitsListElement.innerHTML = '';
-    }
-    
-    if (allHabitsListElement) {
-      allHabitsListElement.innerHTML = '';
     }
   }
 }
@@ -551,231 +652,121 @@ function updateHabitsList() {
  * @returns {HTMLElement} The created element
  */
 function createHabitElement(habit, showDetails = false) {
-  const habitElement = document.createElement('div');
-  habitElement.className = 'habit-item d-flex align-items-center mb-3 p-2 border-bottom';
+  const element = document.createElement('div');
+  element.className = 'card mb-3';
   
-  // Determine icon class based on habit category
-  let iconClass = 'bi-exclamation-triangle';
-  let iconBg = 'bg-secondary';
+  const streakInfo = habit.updateStreaks();
+  const weeklyProgress = habit.getWeeklyProgress();
   
-  if (habit.category === 'screen') {
-    iconClass = 'bi-phone';
-    iconBg = 'bg-info';
-  } else if (habit.category === 'food') {
-    iconClass = 'bi-cup-straw';
-    iconBg = 'bg-danger';
-  } else if (habit.category === 'productivity') {
-    iconClass = 'bi-alarm';
-    iconBg = 'bg-warning';
-  } else if (habit.category === 'health') {
-    iconClass = 'bi-heart';
-    iconBg = 'bg-danger';
-  } else if (habit.category === 'spending') {
-    iconClass = 'bi-cash-coin';
-    iconBg = 'bg-success';
-  }
-  
-  // Create the basic habit item
-  let habitHTML = `
-    <div class="habit-icon ${iconBg} text-white">
-      <i class="bi ${iconClass}"></i>
-    </div>
-    <div class="flex-grow-1">
-      <div class="d-flex justify-content-between align-items-center">
-        <h6 class="mb-0">${habit.name}</h6>
-        <div>
-          <span class="badge bg-primary me-2">${habit.currentStreak} days</span>
-          <button class="btn btn-sm btn-outline-success me-1" onclick="openCheckInModal('${habit.id}', '${habit.name}')">
-            <i class="bi bi-check-circle"></i> Check-in
-          </button>
-          <button class="btn btn-sm btn-outline-danger" onclick="deleteHabit('${habit.id}')">
-            <i class="bi bi-trash"></i>
-          </button>
-        </div>
-      </div>
-      <div class="text-muted small">Tracking since ${habit.getFormattedStartDate()}</div>
-  `;
-  
-  // Add additional details if requested
-  if (showDetails) {
-    habitHTML += `
-      <div class="mt-2">
-        <div class="mb-1">
-          <strong>Why quit:</strong> ${habit.description || 'Not specified'}
-        </div>
-        <div class="mb-1">
-          <strong>Frequency:</strong> ${habit.frequency}
-        </div>
-        <div class="mb-1">
-          <strong>Trigger:</strong> ${habit.trigger || 'Not specified'}
-        </div>
-        <div class="mb-1">
-          <strong>Alternative:</strong> ${habit.alternative || 'Not specified'}
-        </div>
-        <div class="progress mt-2" style="height: 10px;">
-          <div class="progress-bar bg-success" role="progressbar" style="width: ${habit.currentStreak * 10}%"></div>
-        </div>
+  let progressHtml = '';
+  for (let i = 6; i >= 0; i--) {
+    const day = new Date();
+    day.setDate(day.getDate() - i);
+    const dateKey = habit.formatDateKey(day);
+    
+    const dayName = ['S', 'M', 'T', 'W', 'T', 'F', 'S'][day.getDay()];
+    let statusClass = 'bg-light';
+    
+    if (weeklyProgress[dateKey] === true) {
+      statusClass = 'bg-success';
+    } else if (weeklyProgress[dateKey] === false) {
+      statusClass = 'bg-danger';
+    }
+    
+    progressHtml += `
+      <div class="col px-1">
+        <div class="text-center small text-muted">${dayName}</div>
+        <div class="rounded-circle ${statusClass}" style="width: 20px; height: 20px; margin: 0 auto;"></div>
       </div>
     `;
   }
   
-  habitHTML += '</div>';
-  habitElement.innerHTML = habitHTML;
-  
-  return habitElement;
-}
-
-/**
- * Handle the meal form submission
- * @param {Event} event - Form submission event
- */
-function handleMealFormSubmit(event) {
-  event.preventDefault();
-  
-  // Get form values
-  const name = document.getElementById('meal-name').value;
-  const description = document.getElementById('meal-description').value;
-  const calories = document.getElementById('meal-calories').value;
-  const protein = document.getElementById('meal-protein').value;
-  const carbs = document.getElementById('meal-carbs').value;
-  const fat = document.getElementById('meal-fat').value;
-  const category = document.getElementById('meal-category').value;
-  const timeStr = document.getElementById('meal-time').value;
-  
-  // Create date with the specified time if available
-  let date = new Date();
-  if (timeStr) {
-    const [hours, minutes] = timeStr.split(':');
-    date.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+  let detailsHtml = '';
+  if (showDetails) {
+    detailsHtml = `
+      <div class="mt-3">
+        <div class="d-flex justify-content-between small text-muted mb-2">
+          <div>Category: ${habit.category}</div>
+          <div>Frequency: ${habit.frequency}</div>
+        </div>
+        <div class="small text-muted mb-2">Tracking for: ${habit.getDaysSinceStart()} days</div>
+        <p class="small mb-0">${habit.description}</p>
+        
+        ${habit.trigger ? `<p class="small mb-0"><strong>Trigger:</strong> ${habit.trigger}</p>` : ''}
+        ${habit.alternative ? `<p class="small mb-0"><strong>Alternative:</strong> ${habit.alternative}</p>` : ''}
+      </div>
+    `;
   }
   
-  // Create and add the meal
-  const meal = new Meal(name, description, calories, protein, carbs, fat, category, date);
+  element.innerHTML = `
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">${habit.name}</h6>
+        <div>
+          <button class="btn btn-sm btn-outline-primary me-1" onclick="openCheckInModal('${habit.id}', '${habit.name}')">
+            Check-in
+          </button>
+          
+          ${showDetails ? `
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteHabit('${habit.id}')">
+              <i class="bi bi-trash"></i>
+            </button>
+          ` : ''}
+        </div>
+      </div>
+      
+      <div class="mt-2 d-flex justify-content-between align-items-center">
+        <div class="small text-muted">Current streak: ${streakInfo.currentStreak} days</div>
+        <div class="small text-muted">Best: ${streakInfo.bestStreak} days</div>
+      </div>
+      
+      <div class="mt-2">
+        <div class="row g-0">
+          ${progressHtml}
+        </div>
+      </div>
+      
+      ${detailsHtml}
+    </div>
+  `;
   
-  if (nutritionTracker.addMeal(meal)) {
-    // Close the modal
-    const modal = bootstrap.Modal.getInstance(document.getElementById('addMealModal'));
-    modal.hide();
-    
-    // Reset the form
-    event.target.reset();
-    
-    // Update the dashboard
-    updateDashboard();
-    
-    // Show success message
-    showMessage('Meal logged successfully!', 'success');
-  } else {
-    // Show error message
-    showMessage('Please fill in all required fields correctly.', 'danger');
-  }
+  return element;
 }
 
 /**
  * Update nutrition statistics
  */
 function updateNutritionStats() {
-  // Get today's nutrition summary
-  const today = new Date();
-  const nutritionSummary = nutritionTracker.getNutritionSummaryByDate(today);
-  const goals = nutritionTracker.getGoals();
+  const nutritionCalories = document.getElementById('nutrition-calories');
+  const nutritionProtein = document.getElementById('nutrition-protein');
+  const nutritionCarbs = document.getElementById('nutrition-carbs');
+  const nutritionFat = document.getElementById('nutrition-fat');
   
-  // Update nutrition stats in the UI
-  const caloriesElement = document.getElementById('nutrition-calories');
-  if (caloriesElement) {
-    caloriesElement.textContent = nutritionSummary.calories.toLocaleString();
-  }
+  const todaySummary = nutritionTracker.getNutritionSummaryByDate(new Date());
   
-  const proteinElement = document.getElementById('nutrition-protein');
-  if (proteinElement) {
-    proteinElement.textContent = `${nutritionSummary.protein.toLocaleString()}g`;
-  }
-  
-  const carbsElement = document.getElementById('nutrition-carbs');
-  if (carbsElement) {
-    carbsElement.textContent = `${nutritionSummary.carbs.toLocaleString()}g`;
-  }
-  
-  const fatElement = document.getElementById('nutrition-fat');
-  if (fatElement) {
-    fatElement.textContent = `${nutritionSummary.fat.toLocaleString()}g`;
-  }
-  
-  // Update meals list
-  updateMealsList();
-  
-  // Update nutrition chart
-  updateNutritionChart();
+  if (nutritionCalories) nutritionCalories.textContent = todaySummary.calories.toString();
+  if (nutritionProtein) nutritionProtein.textContent = `${todaySummary.protein}g`;
+  if (nutritionCarbs) nutritionCarbs.textContent = `${todaySummary.carbs}g`;
+  if (nutritionFat) nutritionFat.textContent = `${todaySummary.fat}g`;
 }
 
 /**
  * Update meals list
  */
 function updateMealsList() {
-  // Get meals element
-  const mealsListElement = document.getElementById('meals-list');
-  if (!mealsListElement) return;
+  const mealsList = document.getElementById('meals-list');
+  
+  if (!mealsList) return;
   
   // Get today's meals
   const today = new Date();
-  const todaysMeals = nutritionTracker.getMealsByDate(today);
+  const meals = nutritionTracker.getMealsByDate(today);
   
-  // Check if we have meals for today
-  if (todaysMeals.length > 0) {
-    mealsListElement.innerHTML = '';
-    
-    // Sort by time (earliest first)
-    const sortedMeals = [...todaysMeals].sort((a, b) => a.date - b.date);
-    
-    sortedMeals.forEach(meal => {
-      const mealElement = document.createElement('div');
-      mealElement.className = 'd-flex align-items-center mb-3 p-2 border-bottom';
-      
-      // Determine icon class based on meal category
-      let iconClass = 'bi-egg-fried';
-      let iconBg = 'bg-primary';
-      
-      if (meal.category === 'breakfast') {
-        iconClass = 'bi-cup-hot';
-        iconBg = 'bg-warning';
-      } else if (meal.category === 'lunch') {
-        iconClass = 'bi-egg-fried';
-        iconBg = 'bg-success';
-      } else if (meal.category === 'dinner') {
-        iconClass = 'bi-cup';
-        iconBg = 'bg-danger';
-      } else if (meal.category === 'snack') {
-        iconClass = 'bi-apple';
-        iconBg = 'bg-info';
-      } else if (meal.category === 'dessert') {
-        iconClass = 'bi-cake';
-        iconBg = 'bg-secondary';
-      }
-      
-      mealElement.innerHTML = `
-        <div class="activity-icon ${iconBg} text-white">
-          <i class="bi ${iconClass}"></i>
-        </div>
-        <div class="flex-grow-1">
-          <div class="d-flex justify-content-between">
-            <h6 class="mb-0">${meal.name}</h6>
-            <span class="text-muted small">${meal.getFormattedTime()}</span>
-          </div>
-          <p class="mb-0 text-muted small">${meal.description || ''}</p>
-          <div class="text-muted small d-flex flex-wrap">
-            <span class="me-3"><i class="bi bi-fire me-1"></i> ${meal.calories} cal</span>
-            <span class="me-3"><i class="bi bi-egg me-1"></i> ${meal.protein}g protein</span>
-            <span class="me-3"><i class="bi bi-circle me-1"></i> ${meal.carbs}g carbs</span>
-            <span><i class="bi bi-droplet me-1"></i> ${meal.fat}g fat</span>
-          </div>
-        </div>
-      `;
-      
-      mealsListElement.appendChild(mealElement);
-    });
-  } else {
-    // No meals for today
-    mealsListElement.innerHTML = `
+  // Clear the list
+  mealsList.innerHTML = '';
+  
+  if (meals.length === 0) {
+    mealsList.innerHTML = `
       <div class="text-center py-4">
         <p class="text-muted">No meals logged yet today.</p>
         <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addMealModal">
@@ -783,6 +774,42 @@ function updateMealsList() {
         </button>
       </div>
     `;
+  } else {
+    // Sort meals by time (earliest first)
+    const sortedMeals = [...meals].sort((a, b) => a.date - b.date);
+    
+    // Add each meal
+    sortedMeals.forEach(meal => {
+      const mealElement = document.createElement('div');
+      mealElement.className = 'card mb-2';
+      mealElement.innerHTML = `
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="mb-1">${meal.name}</h6>
+              <p class="text-muted mb-0 small">${meal.getFormattedTime()} | ${meal.category} | ${meal.description || '-'}</p>
+            </div>
+            <div>
+              <span class="badge bg-primary rounded-pill">${meal.calories} cal</span>
+            </div>
+          </div>
+          
+          <div class="mt-2 d-flex">
+            <div class="me-3 small">
+              <span class="text-primary">P:</span> ${meal.protein}g
+            </div>
+            <div class="me-3 small">
+              <span class="text-primary">C:</span> ${meal.carbs}g
+            </div>
+            <div class="small">
+              <span class="text-primary">F:</span> ${meal.fat}g
+            </div>
+          </div>
+        </div>
+      `;
+      
+      mealsList.appendChild(mealElement);
+    });
   }
 }
 
@@ -791,26 +818,27 @@ function updateMealsList() {
  */
 function updateNutritionChart() {
   const chartCanvas = document.getElementById('nutrition-chart');
+  
   if (!chartCanvas) return;
   
-  // Get weekly nutrition data
+  const ctx = chartCanvas.getContext('2d');
+  
+  // Get the weekly nutrition data
   const weeklyData = nutritionTracker.getWeeklyNutritionSummary();
   
-  // Format dates for labels
+  // Prepare data for Chart.js
   const labels = weeklyData.map(day => {
-    const date = day.date;
-    return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    const date = new Date(day.date);
+    return date.toLocaleDateString('en-US', { weekday: 'short' });
   });
   
-  // Get data for each nutrient
-  const caloriesData = weeklyData.map(day => day.summary.calories);
-  const proteinData = weeklyData.map(day => day.summary.protein);
-  const carbsData = weeklyData.map(day => day.summary.carbs);
-  const fatData = weeklyData.map(day => day.summary.fat);
+  const caloriesData = weeklyData.map(day => day.calories);
+  const proteinData = weeklyData.map(day => day.protein);
+  const carbsData = weeklyData.map(day => day.carbs);
+  const fatData = weeklyData.map(day => day.fat);
   
-  // Create or update chart
+  // Create or update the chart
   if (window.nutritionChart) {
-    // Update existing chart
     window.nutritionChart.data.labels = labels;
     window.nutritionChart.data.datasets[0].data = caloriesData;
     window.nutritionChart.data.datasets[1].data = proteinData;
@@ -818,8 +846,7 @@ function updateNutritionChart() {
     window.nutritionChart.data.datasets[3].data = fatData;
     window.nutritionChart.update();
   } else {
-    // Create new chart
-    window.nutritionChart = new Chart(chartCanvas, {
+    window.nutritionChart = new Chart(ctx, {
       type: 'bar',
       data: {
         labels: labels,
@@ -827,32 +854,32 @@ function updateNutritionChart() {
           {
             label: 'Calories',
             data: caloriesData,
-            backgroundColor: 'rgba(54, 162, 235, 0.5)',
-            borderColor: 'rgb(54, 162, 235)',
+            backgroundColor: 'rgba(255, 99, 132, 0.5)',
+            borderColor: 'rgb(255, 99, 132)',
             borderWidth: 1,
             yAxisID: 'y'
           },
           {
             label: 'Protein (g)',
             data: proteinData,
-            backgroundColor: 'rgba(255, 99, 132, 0.5)',
-            borderColor: 'rgb(255, 99, 132)',
+            backgroundColor: 'rgba(54, 162, 235, 0.5)',
+            borderColor: 'rgb(54, 162, 235)',
             borderWidth: 1,
             yAxisID: 'y1'
           },
           {
             label: 'Carbs (g)',
             data: carbsData,
-            backgroundColor: 'rgba(75, 192, 192, 0.5)',
-            borderColor: 'rgb(75, 192, 192)',
+            backgroundColor: 'rgba(255, 206, 86, 0.5)',
+            borderColor: 'rgb(255, 206, 86)',
             borderWidth: 1,
             yAxisID: 'y1'
           },
           {
             label: 'Fat (g)',
             data: fatData,
-            backgroundColor: 'rgba(255, 205, 86, 0.5)',
-            borderColor: 'rgb(255, 205, 86)',
+            backgroundColor: 'rgba(75, 192, 192, 0.5)',
+            borderColor: 'rgb(75, 192, 192)',
             borderWidth: 1,
             yAxisID: 'y1'
           }
@@ -860,6 +887,10 @@ function updateNutritionChart() {
       },
       options: {
         responsive: true,
+        interaction: {
+          mode: 'index',
+          intersect: false,
+        },
         scales: {
           y: {
             type: 'linear',
@@ -876,11 +907,11 @@ function updateNutritionChart() {
             position: 'right',
             title: {
               display: true,
-              text: 'Grams'
+              text: 'Macros (g)'
             },
             grid: {
-              drawOnChartArea: false
-            }
+              drawOnChartArea: false,
+            },
           }
         }
       }
@@ -892,106 +923,88 @@ function updateNutritionChart() {
  * Update sleep statistics
  */
 function updateSleepStats() {
-  // Get sleep stats
+  const sleepDuration = document.getElementById('sleep-duration');
+  const sleepQuality = document.getElementById('sleep-quality');
+  const sleepConsistency = document.getElementById('sleep-consistency');
+  
   const stats = sleepTracker.getStats();
   
-  // Update sleep duration
-  const durationElement = document.getElementById('sleep-duration');
-  if (durationElement) {
-    durationElement.textContent = `${stats.averageDuration.toFixed(1)} hrs`;
-  }
-  
-  // Update sleep quality
-  const qualityElement = document.getElementById('sleep-quality');
-  if (qualityElement) {
-    // Convert quality from 1-5 scale to percentage
-    const qualityPct = Math.round((stats.averageQuality / 5) * 100);
-    qualityElement.textContent = `${qualityPct}%`;
-  }
-  
-  // Update consistency
-  const consistencyElement = document.getElementById('sleep-consistency');
-  if (consistencyElement) {
-    consistencyElement.textContent = `${Math.round(stats.consistencyScore)}%`;
-  }
-  
-  // Get sleep records
-  updateSleepRecordsList();
-  
-  // Update sleep chart
-  updateSleepChart();
+  if (sleepDuration) sleepDuration.textContent = `${stats.averageDuration.toFixed(1)} hrs`;
+  if (sleepQuality) sleepQuality.textContent = `${Math.round(stats.averageQuality * 20)}%`;
+  if (sleepConsistency) sleepConsistency.textContent = `${Math.round(stats.consistency)}%`;
 }
 
 /**
  * Update the sleep records list
  */
 function updateSleepRecordsList() {
-  // Get elements
-  const sleepRecordsElement = document.getElementById('sleep-records-list');
-  if (!sleepRecordsElement) return;
+  const sleepRecordsList = document.getElementById('sleep-records-list');
   
-  // Get recent sleep records
-  const sleepRecords = sleepTracker.getSleepRecords();
+  if (!sleepRecordsList) return;
   
-  // Check if we have sleep records
-  if (sleepRecords.length > 0) {
-    sleepRecordsElement.innerHTML = '';
-    
-    // Get the 5 most recent sleep records
-    const recentRecords = [...sleepRecords].sort((a, b) => b.date - a.date).slice(0, 5);
-    
-    recentRecords.forEach(record => {
-      const recordElement = document.createElement('div');
-      recordElement.className = 'd-flex align-items-center mb-3 p-2 border-bottom';
-      
-      // Determine icon class based on sleep quality
-      let qualityColor = 'danger';
-      let qualityText = 'Poor';
-      
-      if (record.quality >= 4) {
-        qualityColor = 'success';
-        qualityText = 'Excellent';
-      } else if (record.quality >= 3) {
-        qualityColor = 'info';
-        qualityText = 'Good';
-      } else if (record.quality >= 2) {
-        qualityColor = 'warning';
-        qualityText = 'Average';
-      }
-      
-      recordElement.innerHTML = `
-        <div class="activity-icon bg-primary text-white">
-          <i class="bi bi-moon-stars"></i>
-        </div>
-        <div class="flex-grow-1">
-          <div class="d-flex justify-content-between align-items-center">
-            <h6 class="mb-0">${record.getFormattedDate()}</h6>
-            <span class="badge bg-${qualityColor}">${qualityText}</span>
-          </div>
-          <div class="text-muted small">
-            ${record.getFormattedTime(record.startTime)} - ${record.getFormattedTime(record.endTime)} (${record.getDuration()} hrs)
-          </div>
-          <div class="text-muted small">${record.notes}</div>
-        </div>
-        <div>
-          <button class="btn btn-sm btn-outline-danger" onclick="deleteSleepRecord('${record.id}')">
-            <i class="bi bi-trash"></i>
-          </button>
-        </div>
-      `;
-      
-      sleepRecordsElement.appendChild(recordElement);
-    });
-  } else {
-    // No sleep records
-    sleepRecordsElement.innerHTML = `
+  // Get all sleep records
+  const records = sleepTracker.getSleepRecords();
+  
+  // Clear the list
+  sleepRecordsList.innerHTML = '';
+  
+  if (records.length === 0) {
+    sleepRecordsList.innerHTML = `
       <div class="text-center py-4">
-        <p class="text-muted">No sleep records yet.</p>
+        <p class="text-muted">No sleep records logged yet.</p>
         <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSleepModal">
-          Log Your First Sleep
+          Log Your First Sleep Record
         </button>
       </div>
     `;
+  } else {
+    // Sort records by date (newest first)
+    const sortedRecords = [...records].sort((a, b) => b.startTime - a.startTime);
+    
+    // Add recent records (up to 5)
+    const recentRecords = sortedRecords.slice(0, 5);
+    
+    recentRecords.forEach(record => {
+      const recordElement = document.createElement('div');
+      recordElement.className = 'card mb-2';
+      
+      const duration = record.getDuration().toFixed(1);
+      const qualityDesc = record.getQualityDescription();
+      const qualityStars = '★'.repeat(record.quality) + '☆'.repeat(5 - record.quality);
+      
+      recordElement.innerHTML = `
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="mb-1">${record.getFormattedDate()}</h6>
+              <p class="text-muted mb-0 small">
+                Bedtime: ${record.getFormattedTime(record.startTime)} | 
+                Wake: ${record.getFormattedTime(record.endTime)}
+              </p>
+            </div>
+            <div class="text-end">
+              <span class="badge bg-primary rounded-pill">${duration} hrs</span>
+              <div class="small text-warning">${qualityStars}</div>
+            </div>
+          </div>
+          
+          ${record.notes || record.disturbances.length > 0 ? `
+            <div class="mt-2 small">
+              ${record.disturbances.length > 0 ? `<div>Disturbances: ${record.disturbances.join(', ')}</div>` : ''}
+              ${record.notes ? `<div>Notes: ${record.notes}</div>` : ''}
+            </div>
+          ` : ''}
+          
+          <div class="mt-2">
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteSleepRecord('${record.id}')">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </div>
+      `;
+      
+      sleepRecordsList.appendChild(recordElement);
+    });
   }
 }
 
@@ -1000,56 +1013,61 @@ function updateSleepRecordsList() {
  */
 function updateSleepChart() {
   const chartCanvas = document.getElementById('sleep-chart');
+  
   if (!chartCanvas) return;
   
-  // Get weekly sleep data
+  const ctx = chartCanvas.getContext('2d');
+  
+  // Get the weekly sleep data
   const weeklyData = sleepTracker.getWeeklySleepSummary();
   
-  // Format dates for labels
+  // Prepare data for Chart.js
   const labels = weeklyData.map(day => {
-    const date = day.date;
-    return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    const date = new Date(day.date);
+    return date.toLocaleDateString('en-US', { weekday: 'short' });
   });
   
-  // Get data for each metric
-  const durationData = weeklyData.map(day => day.summary.totalDuration);
-  const qualityData = weeklyData.map(day => day.summary.averageQuality);
+  const durationData = weeklyData.map(day => day.duration);
+  const qualityData = weeklyData.map(day => day.quality * 20); // Convert 1-5 to percentage
   
-  // Create or update chart
+  // Create or update the chart
   if (window.sleepChart) {
-    // Update existing chart
     window.sleepChart.data.labels = labels;
     window.sleepChart.data.datasets[0].data = durationData;
     window.sleepChart.data.datasets[1].data = qualityData;
     window.sleepChart.update();
   } else {
-    // Create new chart
-    window.sleepChart = new Chart(chartCanvas, {
+    window.sleepChart = new Chart(ctx, {
       type: 'bar',
       data: {
         labels: labels,
         datasets: [
           {
-            label: 'Sleep Duration (hours)',
+            label: 'Duration (hours)',
             data: durationData,
-            backgroundColor: 'rgba(54, 162, 235, 0.5)',
-            borderColor: 'rgb(54, 162, 235)',
+            backgroundColor: 'rgba(75, 192, 192, 0.5)',
+            borderColor: 'rgb(75, 192, 192)',
             borderWidth: 1,
             yAxisID: 'y'
           },
           {
-            label: 'Sleep Quality (1-5)',
-            data: qualityData,
             type: 'line',
-            backgroundColor: 'rgba(255, 99, 132, 0.5)',
-            borderColor: 'rgb(255, 99, 132)',
+            label: 'Quality (%)',
+            data: qualityData,
+            backgroundColor: 'rgba(255, 159, 64, 0.5)',
+            borderColor: 'rgb(255, 159, 64)',
             borderWidth: 2,
-            yAxisID: 'y1'
+            yAxisID: 'y1',
+            tension: 0.1
           }
         ]
       },
       options: {
         responsive: true,
+        interaction: {
+          mode: 'index',
+          intersect: false,
+        },
         scales: {
           y: {
             type: 'linear',
@@ -1059,8 +1077,8 @@ function updateSleepChart() {
               display: true,
               text: 'Hours'
             },
-            min: 0,
-            suggestedMax: 12
+            suggestedMin: 0,
+            suggestedMax: 10
           },
           y1: {
             type: 'linear',
@@ -1068,13 +1086,13 @@ function updateSleepChart() {
             position: 'right',
             title: {
               display: true,
-              text: 'Quality'
+              text: 'Quality (%)'
             },
             min: 0,
-            max: 5,
+            max: 100,
             grid: {
-              drawOnChartArea: false
-            }
+              drawOnChartArea: false,
+            },
           }
         }
       }
@@ -1083,81 +1101,164 @@ function updateSleepChart() {
 }
 
 /**
- * Handle the sleep form submission
- * @param {Event} event - Form submission event
- */
-function handleSleepFormSubmit(event) {
-  event.preventDefault();
-  
-  // Get form values
-  const bedtimeStr = document.getElementById('sleep-bedtime').value;
-  const wakeTimeStr = document.getElementById('sleep-waketime').value;
-  const quality = parseInt(document.getElementById('sleep-quality').value, 10);
-  const notes = document.getElementById('sleep-notes').value;
-  const disturbancesElement = document.querySelector('input[name="sleep-disturbances"]:checked');
-  
-  // Create date objects for bedtime and wake time
-  const bedDate = document.getElementById('sleep-date').value;
-  
-  // Create bedtime date
-  const [bedHours, bedMinutes] = bedtimeStr.split(':');
-  const bedtime = new Date(bedDate);
-  bedtime.setHours(parseInt(bedHours, 10), parseInt(bedMinutes, 10), 0, 0);
-  
-  // Create wake time date
-  const wakeDate = new Date(bedDate);
-  // If wake time is earlier than bedtime, it's the next day
-  const [wakeHours, wakeMinutes] = wakeTimeStr.split(':');
-  wakeDate.setHours(parseInt(wakeHours, 10), parseInt(wakeMinutes, 10), 0, 0);
-  
-  if (wakeDate <= bedtime) {
-    wakeDate.setDate(wakeDate.getDate() + 1);
-  }
-  
-  // Get disturbances
-  const disturbances = [];
-  if (disturbancesElement) {
-    disturbances.push(disturbancesElement.value);
-  }
-  
-  // Create and add the sleep record
-  const sleepRecord = new SleepRecord(bedtime, wakeDate, quality, notes, disturbances);
-  
-  if (sleepTracker.addSleepRecord(sleepRecord)) {
-    // Close the modal
-    const modal = bootstrap.Modal.getInstance(document.getElementById('addSleepModal'));
-    modal.hide();
-    
-    // Reset the form
-    event.target.reset();
-    
-    // Update the dashboard
-    updateDashboard();
-    
-    // Show success message
-    showMessage('Sleep logged successfully!', 'success');
-  } else {
-    // Show error message
-    showMessage('Please fill in all required fields correctly.', 'danger');
-  }
-}
-
-/**
  * Delete a sleep record
  * @param {string} recordId - ID of the record to delete
  */
 function deleteSleepRecord(recordId) {
-  if (confirm('Are you sure you want to delete this sleep record? This cannot be undone.')) {
+  if (confirm('Are you sure you want to delete this sleep record?')) {
     if (sleepTracker.deleteSleepRecord(recordId)) {
-      // Update the dashboard
+      updateDashboard();
+      showMessage('Sleep record deleted successfully!', 'success');
+    } else {
+      showMessage('Unable to delete sleep record. Please try again.', 'danger');
+    }
+  }
+}
+
+/**
+ * Update the connections view
+ */
+function updateConnectionsView() {
+  const connectedDevicesList = document.getElementById('connected-devices-list');
+  const noConnectedDevices = document.getElementById('no-connected-devices');
+  const lastSyncTime = document.getElementById('last-sync-time');
+  const syncedWorkoutsCount = document.getElementById('synced-workouts-count');
+  const syncedStepsCount = document.getElementById('synced-steps-count');
+  const syncedCaloriesCount = document.getElementById('synced-calories-count');
+  
+  const connections = healthConnectionManager.getConnections();
+  const stats = healthConnectionManager.getAggregateStats();
+  
+  // Update stats
+  if (lastSyncTime) {
+    lastSyncTime.textContent = stats.lastSync ? new Date(stats.lastSync).toLocaleString() : 'Never';
+  }
+  if (syncedWorkoutsCount) syncedWorkoutsCount.textContent = stats.workouts.toString();
+  if (syncedStepsCount) syncedStepsCount.textContent = stats.steps.toLocaleString();
+  if (syncedCaloriesCount) syncedCaloriesCount.textContent = stats.calories.toLocaleString();
+  
+  // Update connected devices list
+  if (connectedDevicesList && noConnectedDevices) {
+    if (connections.length === 0) {
+      if (connectedDevicesList) connectedDevicesList.innerHTML = '';
+      if (noConnectedDevices) noConnectedDevices.style.display = 'block';
+    } else {
+      if (noConnectedDevices) noConnectedDevices.style.display = 'none';
+      
+      // Clear the list
+      connectedDevicesList.innerHTML = '';
+      
+      // Add connected devices
+      connections.forEach(connection => {
+        const deviceElement = document.createElement('div');
+        deviceElement.className = 'card mb-3';
+        
+        const dataTypes = connection.dataTypes.map(type => {
+          return `<span class="badge bg-light text-dark me-1">${type}</span>`;
+        }).join('');
+        
+        deviceElement.innerHTML = `
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h6 class="mb-1">${connection.getDisplayName()}</h6>
+                <p class="text-muted mb-0 small">Last sync: ${connection.getFormattedLastSync()}</p>
+                <div class="mt-1">
+                  ${dataTypes}
+                </div>
+              </div>
+              <div>
+                <button class="btn btn-sm btn-outline-primary me-1" 
+                  onclick="syncConnection('${connection.id}')"
+                  ${connection.connected ? '' : 'disabled'}>
+                  <i class="bi bi-arrow-repeat"></i> Sync
+                </button>
+                <button class="btn btn-sm btn-outline-danger" 
+                  onclick="disconnectDevice('${connection.id}')">
+                  <i class="bi bi-x-circle"></i> Disconnect
+                </button>
+              </div>
+            </div>
+            <div class="mt-2">
+              <div class="row">
+                <div class="col-4">
+                  <div class="small text-muted">Workouts</div>
+                  <div class="fw-bold">${connection.stats.workouts}</div>
+                </div>
+                <div class="col-4">
+                  <div class="small text-muted">Steps</div>
+                  <div class="fw-bold">${connection.stats.steps.toLocaleString()}</div>
+                </div>
+                <div class="col-4">
+                  <div class="small text-muted">Calories</div>
+                  <div class="fw-bold">${connection.stats.calories.toLocaleString()}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        connectedDevicesList.appendChild(deviceElement);
+      });
+    }
+  }
+}
+
+/**
+ * Sync a specific connection
+ * @param {string} connectionId - ID of the connection to sync
+ */
+function syncConnection(connectionId) {
+  const connection = healthConnectionManager.getConnectionById(connectionId);
+  
+  if (!connection) {
+    showMessage('Connection not found.', 'danger');
+    return;
+  }
+  
+  showMessage(`Syncing data from ${connection.getDisplayName()}...`, 'info');
+  
+  connection.syncData()
+    .then(result => {
+      // Potential TODO: Process the new data to update tracker stats
+      
+      updateConnectionsView();
       updateDashboard();
       
-      // Show success message
-      showMessage('Sleep record deleted successfully.', 'success');
-    } else {
-      // Show error message
-      showMessage('Error deleting sleep record. Please try again.', 'danger');
-    }
+      showMessage(`Successfully synced data from ${connection.getDisplayName()}`, 'success');
+    })
+    .catch(error => {
+      console.error('Sync error:', error);
+      showMessage('Failed to sync data. Please try again.', 'danger');
+    });
+}
+
+/**
+ * Disconnect a device
+ * @param {string} connectionId - ID of the connection to disconnect
+ */
+function disconnectDevice(connectionId) {
+  const connection = healthConnectionManager.getConnectionById(connectionId);
+  
+  if (!connection) {
+    showMessage('Connection not found.', 'danger');
+    return;
+  }
+  
+  if (confirm(`Are you sure you want to disconnect ${connection.getDisplayName()}?`)) {
+    showMessage(`Disconnecting ${connection.getDisplayName()}...`, 'info');
+    
+    healthConnectionManager.removeConnection(connectionId)
+      .then(result => {
+        updateConnectionsView();
+        updateDashboard();
+        
+        showMessage(`Successfully disconnected ${connection.getDisplayName()}`, 'success');
+      })
+      .catch(error => {
+        console.error('Disconnect error:', error);
+        showMessage('Failed to disconnect. Please try again.', 'danger');
+      });
   }
 }
 
@@ -1167,31 +1268,40 @@ function deleteSleepRecord(recordId) {
  * @param {string} type - Type of message (success, danger, warning, info)
  */
 function showMessage(message, type = 'info') {
-  // Create toast element
-  const toastElement = document.createElement('div');
-  toastElement.className = `toast align-items-center text-white bg-${type} border-0`;
-  toastElement.setAttribute('role', 'alert');
-  toastElement.setAttribute('aria-live', 'assertive');
-  toastElement.setAttribute('aria-atomic', 'true');
+  // Create a toast container if it doesn't exist
+  let toastContainer = document.querySelector('.toast-container');
   
-  toastElement.innerHTML = `
-    <div class="d-flex">
-      <div class="toast-body">
+  if (!toastContainer) {
+    toastContainer = document.createElement('div');
+    toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+    document.body.appendChild(toastContainer);
+  }
+  
+  // Create a unique ID for this toast
+  const toastId = 'toast-' + Date.now();
+  
+  // Create the toast element
+  const toastHtml = `
+    <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="toast-header">
+        <strong class="me-auto">Health & Wellness Tracker</strong>
+        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+      <div class="toast-body bg-${type} text-${type === 'warning' || type === 'info' ? 'dark' : 'white'}">
         ${message}
       </div>
-      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
     </div>
   `;
   
   // Add the toast to the container
-  const toastContainer = document.getElementById('toast-container');
-  toastContainer.appendChild(toastElement);
+  toastContainer.innerHTML += toastHtml;
   
   // Initialize and show the toast
-  const toast = new bootstrap.Toast(toastElement, { autohide: true, delay: 3000 });
+  const toastElement = document.getElementById(toastId);
+  const toast = new bootstrap.Toast(toastElement, { delay: 5000 });
   toast.show();
   
-  // Remove the toast after it's hidden
+  // Remove the toast element when hidden
   toastElement.addEventListener('hidden.bs.toast', function() {
     toastElement.remove();
   });
