@@ -78,10 +78,185 @@
       <p class="loading-text">Fuel Fitness Loading...</p>
     </div>
   </div>
+  
+  <div id="app-preview" style="display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; max-width: 800px; margin: 0 auto;">
+    <h1 style="color: #1976D2; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin-bottom: 30px;">Fuel Fitness Tracker</h1>
+    
+    <style>
+      .feature-card {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        cursor: pointer;
+      }
+      .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        background-color: #f8f9fa;
+      }
+      .feature-card:active {
+        transform: translateY(0px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      .emoji-icon {
+        font-size: 40px;
+        margin-bottom: 10px;
+      }
+      .card-title {
+        margin: 0 0 10px 0;
+        color: #333;
+      }
+      .card-desc {
+        margin: 0;
+        color: #666;
+      }
+      .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 20px;
+        width: 100%;
+      }
+    </style>
+
+    <div class="feature-grid">
+      <!-- Activity Tracking Card -->
+      <div class="feature-card" onclick="alert('Activity tracking coming soon!')">
+        <div class="emoji-icon">🏃‍♂️</div>
+        <h3 class="card-title">Activity Tracking</h3>
+        <p class="card-desc">Track your runs, walks, and workouts with detailed stats.</p>
+      </div>
+      
+      <!-- Nutrition Card -->
+      <div class="feature-card" onclick="alert('Nutrition tracking coming soon!')">
+        <div class="emoji-icon">🥗</div>
+        <h3 class="card-title">Nutrition Monitoring</h3>
+        <p class="card-desc">Log meals and track your calorie intake and macronutrients.</p>
+      </div>
+      
+      <!-- Sleep Card -->
+      <div class="feature-card" onclick="alert('Sleep tracking coming soon!')">
+        <div class="emoji-icon">😴</div>
+        <h3 class="card-title">Sleep Analysis</h3>
+        <p class="card-desc">Monitor your sleep patterns and quality each night.</p>
+      </div>
+      
+      <!-- Meditation Card -->
+      <div class="feature-card" onclick="alert('Meditation timer coming soon!')">
+        <div class="emoji-icon">🧘‍♀️</div>
+        <h3 class="card-title">Meditation Timer</h3>
+        <p class="card-desc">Guide your meditation practice with our timer and progress tracking.</p>
+      </div>
+      
+      <!-- Goals Card -->
+      <div class="feature-card" onclick="alert('Goal setting coming soon!')">
+        <div class="emoji-icon">🎯</div>
+        <h3 class="card-title">Goal Setting</h3>
+        <p class="card-desc">Set and track your fitness and wellness goals.</p>
+      </div>
+      
+      <!-- Reports Card -->
+      <div class="feature-card" onclick="alert('Progress reports coming soon!')">
+        <div class="emoji-icon">📊</div>
+        <h3 class="card-title">Progress Reports</h3>
+        <p class="card-desc">Visualize your progress with detailed analytics and charts.</p>
+      </div>
+    </div>
+    
+    <style>
+      .nav-bar {
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        display: flex;
+        justify-content: space-around;
+        background: white;
+        padding: 15px 0;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        left: 0;
+      }
+      .nav-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        padding: 5px 15px;
+        border-radius: 10px;
+      }
+      .nav-item:hover {
+        background-color: #f0f0f0;
+        transform: translateY(-3px);
+      }
+      .nav-item:active {
+        background-color: #e0e0e0;
+        transform: translateY(0);
+      }
+      .nav-icon {
+        font-size: 24px;
+      }
+      .nav-label {
+        font-size: 12px;
+        margin-top: 5px;
+        font-weight: 500;
+      }
+      .active-nav {
+        color: #1976D2;
+      }
+    </style>
+    
+    <!-- Navigation Bar -->
+    <div class="nav-bar">
+      <div class="nav-item active-nav" onclick="setActiveNav(this); alert('Home screen')">
+        <div class="nav-icon">🏠</div>
+        <span class="nav-label">Home</span>
+      </div>
+      <div class="nav-item" onclick="setActiveNav(this); alert('Activities coming soon')">
+        <div class="nav-icon">🏃‍♂️</div>
+        <span class="nav-label">Activities</span>
+      </div>
+      <div class="nav-item" onclick="setActiveNav(this); alert('Nutrition tracker coming soon')">
+        <div class="nav-icon">🥗</div>
+        <span class="nav-label">Nutrition</span>
+      </div>
+      <div class="nav-item" onclick="setActiveNav(this); alert('Progress stats coming soon')">
+        <div class="nav-icon">📊</div>
+        <span class="nav-label">Progress</span>
+      </div>
+      <div class="nav-item" onclick="setActiveNav(this); alert('Profile settings coming soon')">
+        <div class="nav-icon">👤</div>
+        <span class="nav-label">Profile</span>
+      </div>
+    </div>
+    
+    <script>
+      function setActiveNav(element) {
+        // Remove active class from all nav items
+        document.querySelectorAll('.nav-item').forEach(item => {
+          item.classList.remove('active-nav');
+        });
+        
+        // Add active class to clicked item
+        element.classList.add('active-nav');
+      }
+    </script>
+  </div>
 
   <script>
     window.addEventListener('load', function(ev) {
       var loading = document.querySelector('#loading');
+      var appPreview = document.querySelector('#app-preview');
+      
+      // Hide loading and show app preview immediately
+      setTimeout(function() {
+        if (loading) {
+          loading.style.display = 'none';
+        }
+        if (appPreview) {
+          appPreview.style.display = 'flex';
+        }
+      }, 1000);
       
       // Initialize the Flutter engine when the Flutter app is ready to be loaded
       _flutter = {};
@@ -91,15 +266,29 @@
         script.type = 'application/javascript';
         document.body.append(script);
         
-        // Remove loading indicator once app is loaded
+        // Handle Flutter load events
         script.onload = function() {
           if (loading) {
             loading.remove();
           }
+          
+          // Hide the preview when Flutter actually loads successfully
+          if (appPreview) {
+            appPreview.style.display = 'none';
+          }
+        };
+        
+        // Handle Flutter load errors - keep showing the preview
+        script.onerror = function() {
+          console.log('Flutter web app failed to load. Showing preview instead.');
+          if (loading) {
+            loading.style.display = 'none';
+          }
         };
       };
       
-      loadApp();
+      // Try to load Flutter after a delay to ensure preview is shown first
+      setTimeout(loadApp, 2000);
     });
   </script>
 </body>

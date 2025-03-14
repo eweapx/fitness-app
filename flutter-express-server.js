@@ -2,7 +2,30 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const app = express();
-const PORT = 5001;
+const PORT = 5000; // Try port 5000 first
+
+// Function to find an available port
+function startServerWithAvailablePort(initialPort) {
+  const server = app.listen(initialPort, '0.0.0.0', () => {
+    console.log(`Flutter Web App server running on http://0.0.0.0:${initialPort}`);
+    
+    // Log a clear message every 5 seconds to indicate the server is running
+    setInterval(() => {
+      console.log(`[HEALTH CHECK] Flutter Web App still running on port ${initialPort} - ${new Date().toISOString()}`);
+    }, 5000);
+    
+    // Log a message to ensure port is visible to port detection
+    console.log(`PORT=${initialPort} EXPLICITLY LISTENING`);
+  }).on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`Port ${initialPort} is already in use. Trying another port.`);
+      startServerWithAvailablePort(initialPort + 1);
+    } else {
+      console.error(`Error starting server: ${err.message}`);
+      process.exit(1);
+    }
+  });
+}
 
 // Console logging middleware
 app.use((req, res, next) => {
@@ -47,22 +70,5 @@ app.use((err, req, res, next) => {
   res.status(500).send('Something went wrong!');
 });
 
-// Start the server with error handling
-const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Flutter Web App server running on http://0.0.0.0:${PORT}`);
-  
-  // Log a clear message every 5 seconds to indicate the server is running
-  setInterval(() => {
-    console.log(`[HEALTH CHECK] Flutter Web App still running on port ${PORT} - ${new Date().toISOString()}`);
-  }, 5000);
-  
-  // Log a message to ensure port is visible to port detection
-  console.log(`PORT=${PORT} EXPLICITLY LISTENING`);
-}).on('error', (err) => {
-  if (err.code === 'EADDRINUSE') {
-    console.error(`Port ${PORT} is already in use. Please free up the port and try again.`);
-  } else {
-    console.error(`Error starting server: ${err.message}`);
-  }
-  process.exit(1);
-});
+// Start the server with the port finding function
+startServerWithAvailablePort(PORT);

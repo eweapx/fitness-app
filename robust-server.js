@@ -80,15 +80,15 @@ function startServer(port) {
 // Handle server errors
 server.on('error', (error) => {
   if (error.code === 'EADDRINUSE') {
-    console.log(`Port 5000 is in use, trying 5001...`);
-    startServer(5001);
+    console.log(`Port 5003 is in use, trying 5004...`);
+    startServer(5004);
   } else {
     console.error('Server error:', error);
   }
 });
 
-// Start the server on port 5000
-startServer(5000);
+// Start the server on port 5003 (changed from 5000 to avoid conflicts with Flutter and Basic servers)
+startServer(5003);
 
 // Handle process termination
 process.on('SIGINT', () => {

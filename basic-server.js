@@ -31,8 +31,8 @@ const server = http.createServer((req, res) => {
   }
 });
 
-// Start server on port 5000
-const PORT = 5000;
+// Start server on port 5002 (changed from 5000 to avoid conflicts)
+const PORT = 5002;
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Basic Server running at http://0.0.0.0:${PORT}`);
