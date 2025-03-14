@@ -1228,6 +1228,92 @@ function deleteSleepRecord(recordId) {
 }
 
 /**
+ * Update activity chart
+ */
+function updateActivityChart() {
+  const chartCanvas = document.getElementById('activity-chart');
+  
+  if (!chartCanvas) return;
+  
+  const ctx = chartCanvas.getContext('2d');
+  
+  // Get activities
+  const activities = fitnessTracker.getActivities();
+  
+  // Group activities by type and calculate total calories
+  const activityTypes = ['running', 'cycling', 'weights', 'swimming', 'other'];
+  const typeCalories = {};
+  
+  activityTypes.forEach(type => {
+    typeCalories[type] = 0;
+  });
+  
+  // Calculate total calories for each activity type
+  activities.forEach(activity => {
+    const type = activity.type.toLowerCase();
+    if (typeCalories.hasOwnProperty(type)) {
+      typeCalories[type] += activity.calories;
+    } else {
+      typeCalories['other'] += activity.calories;
+    }
+  });
+  
+  // Create or update chart
+  if (window.activityChart) {
+    window.activityChart.data.datasets[0].data = activityTypes.map(type => typeCalories[type]);
+    window.activityChart.update();
+  } else {
+    window.activityChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Running', 'Cycling', 'Weights', 'Swimming', 'Other'],
+        datasets: [{
+          data: activityTypes.map(type => typeCalories[type]),
+          backgroundColor: [
+            'rgba(255, 99, 132, 0.7)',  // Red for running
+            'rgba(54, 162, 235, 0.7)',  // Blue for cycling
+            'rgba(255, 206, 86, 0.7)',  // Yellow for weights
+            'rgba(75, 192, 192, 0.7)',  // Teal for swimming
+            'rgba(153, 102, 255, 0.7)'  // Purple for other
+          ],
+          borderColor: [
+            'rgb(255, 99, 132)',
+            'rgb(54, 162, 235)',
+            'rgb(255, 206, 86)',
+            'rgb(75, 192, 192)',
+            'rgb(153, 102, 255)'
+          ],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            position: 'bottom',
+          },
+          title: {
+            display: true,
+            text: 'Calories Burned by Activity Type'
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const label = context.label || '';
+                const value = context.formattedValue;
+                const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
+                const percentage = total > 0 ? Math.round((context.raw / total) * 100) : 0;
+                return `${label}: ${value} calories (${percentage}%)`;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+}
+
+/**
  * Update the connections view
  */
 function updateConnectionsView() {
