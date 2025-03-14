@@ -2173,10 +2173,10 @@
       const bottomMoreTab = document.querySelector('.bottom-nav #more-tab');
       
       // Get all extended nav tabs
-      const bottomSleepTab = document.querySelector('.bottom-nav #sleep-tab');
-      const bottomMeditationTab = document.querySelector('.bottom-nav #meditation-tab');
-      const bottomGoalsTab = document.querySelector('.bottom-nav #goals-tab');
-      const bottomMedsTab = document.querySelector('.bottom-nav #meds-tab');
+      const bottomSleepTab = document.querySelector('.nav-extended #sleep-tab');
+      const bottomMeditationTab = document.querySelector('.nav-extended #meditation-tab');
+      const bottomGoalsTab = document.querySelector('.nav-extended #goals-tab');
+      const bottomMedsTab = document.querySelector('.nav-extended #meds-tab');
       
       // Get all content sections
       const dashboardContent = document.getElementById('dashboard-content');
@@ -2271,19 +2271,27 @@
       }
       
       // More tab to show/hide extended navigation
+      console.log('More tab reference:', bottomMoreTab);
+      console.log('Extended nav reference:', extendedNav);
       if (bottomMoreTab) {
         bottomMoreTab.addEventListener('click', function(event) {
           event.preventDefault();
+          console.log('More tab clicked');
           // Toggle extended navigation
           if (extendedNav) {
+            console.log('Current display style:', extendedNav.style.display);
             // Toggle the extended navigation visibility
             if (extendedNav.style.display === 'none' || extendedNav.style.display === '') {
               extendedNav.style.display = 'flex';
               bottomMoreTab.classList.add('active');
+              console.log('Extended nav shown');
             } else {
               extendedNav.style.display = 'none';
               bottomMoreTab.classList.remove('active');
+              console.log('Extended nav hidden');
             }
+          } else {
+            console.log('Extended nav element not found');
           }
         });
       }
