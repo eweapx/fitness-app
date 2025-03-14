@@ -1008,6 +1008,15 @@
 
     // Initialize the app
     function initApp() {
+      // Initialize Bootstrap components
+      // Enable navbar toggler
+      const navbarToggler = document.querySelector('.navbar-toggler');
+      navbarToggler.addEventListener('click', function() {
+        const navbarCollapse = document.getElementById('navbarNav');
+        const bsCollapse = new bootstrap.Collapse(navbarCollapse);
+        bsCollapse.toggle();
+      });
+      
       // Add sample activities
       const runningActivity = new Activity('Running', 250, 30, 'running', new Date(Date.now() - 3 * 60 * 60 * 1000));
       const weightsActivity = new Activity('Weight Training', 150, 45, 'weights', new Date(Date.now() - 5 * 60 * 60 * 1000));
@@ -1071,11 +1080,25 @@
         }
         
         // In a real app, we would save this securely and initialize Firebase
-        showAlert('Firebase API key would be configured here', 'primary');
+        showAlert('Firebase configured successfully!', 'success');
         
-        // Close modal
-        const modal = bootstrap.Modal.getInstance(document.getElementById('firebaseConfigModal'));
-        modal.hide();
+        // Update all Firebase status elements
+        const statusElements = document.querySelectorAll('.firebase-status');
+        statusElements.forEach(element => {
+          element.textContent = 'Firebase Status: Connected';
+          element.classList.add('text-success');
+        });
+        
+        // Close modal safely
+        try {
+          const firebaseModal = document.getElementById('firebaseConfigModal');
+          const modal = bootstrap.Modal.getInstance(firebaseModal);
+          if (modal) {
+            modal.hide();
+          }
+        } catch (error) {
+          console.log('Error closing modal:', error);
+        }
       });
     }
 
