@@ -27,7 +27,7 @@ const server = http.createServer((req, res) => {
   }
   
   // Parse the URL to get the file path
-  let filePath = req.url === '/' ? '/index.html' : req.url;
+  let filePath = req.url === '/' ? '/simple-index.html' : req.url;
   filePath = '.' + filePath;
   
   // Get the file extension to determine content type

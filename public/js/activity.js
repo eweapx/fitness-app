@@ -11,33 +11,42 @@ class Activity {
    * @param {Date} date - Date and time of activity
    */
   constructor(name, calories, duration, type, date = new Date()) {
+    this.id = Date.now().toString();
     this.name = name;
     this.calories = calories;
     this.duration = duration;
     this.type = type;
-    this.date = date;
+    this.date = date instanceof Date ? date : new Date(date);
   }
-  
+
   /**
    * Get a formatted date string
    * @returns {string} Formatted date string
    */
   getFormattedDate() {
-    const options = { month: 'short', day: 'numeric', year: 'numeric' };
+    const options = { 
+      weekday: 'short', 
+      month: 'short', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    };
     return this.date.toLocaleDateString('en-US', options);
   }
-  
+
   /**
    * Validate if the activity has all required fields
    * @returns {boolean} True if the activity is valid
    */
   isValid() {
     return (
-      typeof this.name === 'string' && 
+      this.name && 
       this.name.trim() !== '' && 
-      !isNaN(this.calories) && 
-      !isNaN(this.duration) && 
-      typeof this.type === 'string'
+      this.calories && 
+      Number(this.calories) > 0 &&
+      this.duration && 
+      Number(this.duration) > 0 && 
+      this.type
     );
   }
 }
@@ -48,63 +57,64 @@ class Activity {
 class FitnessTracker {
   constructor() {
     this.activities = [];
-    this.totalSteps = 0;
+    this.steps = 0;
+    this.loadFromLocalStorage();
   }
-  
+
   /**
    * Add a new activity to the tracker
    * @param {Activity} activity - The activity to add
    * @returns {boolean} True if the activity was added successfully
    */
   addActivity(activity) {
-    if (!(activity instanceof Activity) || !activity.isValid()) {
-      return false;
+    if (activity.isValid()) {
+      this.activities.push(activity);
+      this.saveToLocalStorage();
+      return true;
     }
-    
-    this.activities.push(activity);
-    this.saveToLocalStorage();
-    return true;
+    return false;
   }
-  
+
   /**
    * Get all activities
    * @returns {Array} List of activities
    */
   getActivities() {
-    return [...this.activities];
+    return this.activities;
   }
-  
+
   /**
    * Get total calories burned
    * @returns {number} Total calories burned
    */
   getTotalCalories() {
-    return this.activities.reduce((total, activity) => total + activity.calories, 0);
+    return this.activities.reduce((total, activity) => {
+      return total + Number(activity.calories);
+    }, 0);
   }
-  
+
   /**
    * Get total steps
    * @returns {number} Total steps
    */
   getTotalSteps() {
-    return this.totalSteps;
+    return this.steps;
   }
-  
+
   /**
    * Update step count
    * @param {number} steps - Number of steps to add
    * @returns {boolean} True if steps were added successfully
    */
   addSteps(steps) {
-    if (isNaN(steps) || steps <= 0) {
-      return false;
+    if (steps && Number(steps) > 0) {
+      this.steps += Number(steps);
+      this.saveToLocalStorage();
+      return true;
     }
-    
-    this.totalSteps += steps;
-    this.saveToLocalStorage();
-    return true;
+    return false;
   }
-  
+
   /**
    * Get the number of activities logged
    * @returns {number} Number of activities logged
@@ -112,73 +122,50 @@ class FitnessTracker {
   getActivitiesCount() {
     return this.activities.length;
   }
-  
+
   /**
    * Save fitness data to localStorage
    */
   saveToLocalStorage() {
-    try {
-      // Save activities
-      localStorage.setItem('fitnessActivities', JSON.stringify(this.activities));
-      
-      // Save steps count
-      localStorage.setItem('totalSteps', this.totalSteps.toString());
-    } catch (error) {
-      console.error('Error saving to localStorage:', error);
-    }
+    localStorage.setItem('fitnessActivities', JSON.stringify(this.activities));
+    localStorage.setItem('fitnessSteps', this.steps);
   }
-  
+
   /**
    * Load fitness data from localStorage
    */
   loadFromLocalStorage() {
     try {
-      // Load activities
-      const storedActivities = localStorage.getItem('fitnessActivities');
-      if (storedActivities) {
-        const activityData = JSON.parse(storedActivities);
-        
-        // Reset and recreate activities
-        this.activities = [];
-        
-        activityData.forEach(activityObj => {
-          const activity = new Activity(
-            activityObj.name,
-            activityObj.calories,
-            activityObj.duration,
-            activityObj.type,
-            new Date(activityObj.date)
+      const savedActivities = localStorage.getItem('fitnessActivities');
+      const savedSteps = localStorage.getItem('fitnessSteps');
+      
+      if (savedActivities) {
+        const parsedActivities = JSON.parse(savedActivities);
+        this.activities = parsedActivities.map(activity => {
+          return new Activity(
+            activity.name,
+            activity.calories,
+            activity.duration,
+            activity.type,
+            new Date(activity.date)
           );
-          
-          this.activities.push(activity);
         });
       }
       
-      // Load steps count
-      const storedSteps = localStorage.getItem('totalSteps');
-      if (storedSteps) {
-        this.totalSteps = parseInt(storedSteps) || 0;
+      if (savedSteps) {
+        this.steps = Number(savedSteps);
       }
     } catch (error) {
-      console.error('Error loading from localStorage:', error);
+      console.error('Error loading fitness data from localStorage:', error);
     }
   }
-  
+
   /**
    * Clear all fitness tracking data
    */
   reset() {
     this.activities = [];
-    this.totalSteps = 0;
-    localStorage.removeItem('fitnessActivities');
-    localStorage.removeItem('totalSteps');
+    this.steps = 0;
+    this.saveToLocalStorage();
   }
 }
-
-// Create a global instance for the application
-const tracker = new FitnessTracker();
-
-// Initialize the tracker by loading from localStorage
-document.addEventListener('DOMContentLoaded', () => {
-  tracker.loadFromLocalStorage();
-});

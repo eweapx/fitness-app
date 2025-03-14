@@ -1,19 +1,18 @@
-/**
- * Main application file that integrates all modules
- * and provides the UI interaction logic
- */
+// Initialize the trackers
+const fitnessTracker = new FitnessTracker();
+const habitTracker = new HabitTracker();
 
-// Wait for the DOM to be fully loaded
+// Set up event listeners when the document is ready
 document.addEventListener('DOMContentLoaded', function() {
   console.log('Health & Wellness App Initializing...');
   
-  // Initialize both trackers
+  // Initialize trackers by loading data from localStorage
   initializeTrackers();
   
-  // Set up event listeners for the UI
+  // Set up event listeners for all forms and interactive elements
   setupEventListeners();
   
-  // Update the dashboard with current data
+  // Update the dashboard with initial data
   updateDashboard();
 });
 
@@ -21,16 +20,9 @@ document.addEventListener('DOMContentLoaded', function() {
  * Initialize trackers by loading data from localStorage
  */
 function initializeTrackers() {
-  // These are global instances declared in their respective files
-  if (typeof tracker !== 'undefined') {
-    tracker.loadFromLocalStorage();
-    console.log('Fitness tracker loaded', tracker.getActivitiesCount(), 'activities');
-  }
-  
-  if (typeof habitTracker !== 'undefined') {
-    habitTracker.loadFromLocalStorage();
-    console.log('Habit tracker loaded', habitTracker.getHabits().length, 'habits');
-  }
+  // Load data from localStorage via the tracker classes
+  console.log('Fitness tracker loaded', fitnessTracker.getActivitiesCount(), 'activities');
+  console.log('Habit tracker loaded', habitTracker.getHabits().length, 'habits');
 }
 
 /**
@@ -60,22 +52,6 @@ function setupEventListeners() {
   if (checkInForm) {
     checkInForm.addEventListener('submit', handleCheckInFormSubmit);
   }
-  
-  // Delete habit buttons
-  document.addEventListener('click', function(event) {
-    if (event.target.classList.contains('delete-habit-btn')) {
-      const habitId = event.target.dataset.habitId;
-      deleteHabit(habitId);
-    }
-  });
-  
-  // Workout plan start buttons
-  document.addEventListener('click', function(event) {
-    if (event.target.classList.contains('start-workout-btn')) {
-      const workoutId = event.target.dataset.workoutId;
-      startWorkout(workoutId);
-    }
-  });
 }
 
 /**
@@ -85,35 +61,31 @@ function setupEventListeners() {
 function handleActivityFormSubmit(event) {
   event.preventDefault();
   
-  const nameInput = document.getElementById('activity-name');
-  const caloriesInput = document.getElementById('activity-calories');
-  const durationInput = document.getElementById('activity-duration');
-  const typeInput = document.getElementById('activity-type');
+  // Get form values
+  const name = document.getElementById('activity-name').value;
+  const calories = document.getElementById('activity-calories').value;
+  const duration = document.getElementById('activity-duration').value;
+  const type = document.getElementById('activity-type').value;
   
-  if (nameInput && caloriesInput && durationInput && typeInput) {
-    const name = nameInput.value.trim();
-    const calories = parseInt(caloriesInput.value);
-    const duration = parseInt(durationInput.value);
-    const type = typeInput.value;
+  // Create and add the activity
+  const activity = new Activity(name, calories, duration, type);
+  
+  if (fitnessTracker.addActivity(activity)) {
+    // Close the modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('logActivityModal'));
+    modal.hide();
     
-    if (name && !isNaN(calories) && !isNaN(duration) && type) {
-      const activity = new Activity(name, calories, duration, type);
-      
-      if (tracker.addActivity(activity)) {
-        // Reset form
-        event.target.reset();
-        
-        // Update UI
-        updateDashboard();
-        
-        // Show success message
-        showMessage('Activity added successfully!', 'success');
-      } else {
-        showMessage('Failed to add activity. Please check your inputs.', 'danger');
-      }
-    } else {
-      showMessage('Please fill in all fields correctly.', 'warning');
-    }
+    // Reset the form
+    event.target.reset();
+    
+    // Update the dashboard
+    updateDashboard();
+    
+    // Show success message
+    showMessage('Activity logged successfully!', 'success');
+  } else {
+    // Show error message
+    showMessage('Please fill in all required fields correctly.', 'danger');
   }
 }
 
@@ -124,27 +96,25 @@ function handleActivityFormSubmit(event) {
 function handleStepsFormSubmit(event) {
   event.preventDefault();
   
-  const stepsInput = document.getElementById('steps-count-input');
+  // Get steps value
+  const steps = document.getElementById('steps-count-input').value;
   
-  if (stepsInput) {
-    const steps = parseInt(stepsInput.value);
+  if (fitnessTracker.addSteps(steps)) {
+    // Close the modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('addStepsModal'));
+    modal.hide();
     
-    if (!isNaN(steps) && steps > 0) {
-      if (tracker.addSteps(steps)) {
-        // Reset form
-        event.target.reset();
-        
-        // Update UI
-        updateDashboard();
-        
-        // Show success message
-        showMessage('Steps added successfully!', 'success');
-      } else {
-        showMessage('Failed to add steps. Please try again.', 'danger');
-      }
-    } else {
-      showMessage('Please enter a valid number of steps.', 'warning');
-    }
+    // Reset the form
+    event.target.reset();
+    
+    // Update the dashboard
+    updateDashboard();
+    
+    // Show success message
+    showMessage('Steps added successfully!', 'success');
+  } else {
+    // Show error message
+    showMessage('Please enter a valid number of steps.', 'danger');
   }
 }
 
@@ -155,51 +125,43 @@ function handleStepsFormSubmit(event) {
 function handleHabitFormSubmit(event) {
   event.preventDefault();
   
-  const nameInput = document.getElementById('habit-name');
-  const descriptionInput = document.getElementById('habit-description');
-  const frequencyInput = document.getElementById('habit-frequency');
-  const categoryInput = document.getElementById('habit-category');
-  const triggerInput = document.getElementById('habit-trigger');
-  const alternativeInput = document.getElementById('habit-alternative');
-  const reminderTimeInput = document.getElementById('habit-reminder-time');
+  // Get form values
+  const name = document.getElementById('habit-name').value;
+  const description = document.getElementById('habit-description').value;
+  const frequency = document.getElementById('habit-frequency').value;
+  const category = document.getElementById('habit-category').value;
+  const trigger = document.getElementById('habit-trigger').value;
+  const alternative = document.getElementById('habit-alternative').value;
+  const reminderTime = document.getElementById('habit-reminder-time').value;
   
-  if (nameInput && frequencyInput && categoryInput) {
-    const name = nameInput.value.trim();
-    const description = descriptionInput ? descriptionInput.value.trim() : '';
-    const frequency = frequencyInput.value;
-    const category = categoryInput.value;
-    const trigger = triggerInput ? triggerInput.value.trim() : '';
-    const alternative = alternativeInput ? alternativeInput.value.trim() : '';
-    const reminderTime = reminderTimeInput ? reminderTimeInput.value : '';
+  // Create and add the habit
+  const habit = new BadHabit(
+    null, // id will be generated automatically
+    name,
+    description,
+    frequency,
+    category,
+    trigger,
+    alternative,
+    reminderTime
+  );
+  
+  if (habitTracker.addHabit(habit)) {
+    // Close the modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('addHabitModal'));
+    modal.hide();
     
-    if (name && frequency && category) {
-      const habit = new BadHabit(
-        null, // ID will be generated
-        name,
-        description,
-        frequency,
-        category,
-        trigger,
-        alternative,
-        reminderTime
-      );
-      
-      if (habitTracker.addHabit(habit)) {
-        // Reset form
-        event.target.reset();
-        
-        // Update UI
-        updateHabitsList();
-        updateDashboard();
-        
-        // Show success message
-        showMessage('Habit added successfully!', 'success');
-      } else {
-        showMessage('Failed to add habit. Please check your inputs.', 'danger');
-      }
-    } else {
-      showMessage('Please fill in all required fields.', 'warning');
-    }
+    // Reset the form
+    event.target.reset();
+    
+    // Update the dashboard
+    updateDashboard();
+    
+    // Show success message
+    showMessage('Habit added successfully!', 'success');
+  } else {
+    // Show error message
+    showMessage('Please fill in all required fields.', 'danger');
   }
 }
 
@@ -210,36 +172,34 @@ function handleHabitFormSubmit(event) {
 function handleCheckInFormSubmit(event) {
   event.preventDefault();
   
-  const habitIdInput = document.getElementById('check-in-habit-id');
-  const successInput = document.getElementById('check-in-success');
-  const dateInput = document.getElementById('check-in-date');
+  // Get form values
+  const habitId = document.getElementById('check-in-habit-id').value;
+  const dateStr = document.getElementById('check-in-date').value;
+  const success = document.querySelector('input[name="check-in-success"]:checked').value === 'true';
   
-  if (habitIdInput && successInput) {
-    const habitId = habitIdInput.value;
-    const success = successInput.value === 'true';
-    const date = dateInput && dateInput.value 
-      ? new Date(dateInput.value) 
-      : new Date();
+  // Create date object
+  const date = new Date(dateStr);
+  
+  // Record the check-in
+  const result = habitTracker.recordCheckIn(habitId, date, success);
+  
+  if (result) {
+    // Close the modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('check-in-modal'));
+    modal.hide();
     
-    if (habitId) {
-      const result = habitTracker.recordCheckIn(habitId, date, success);
-      
-      if (result) {
-        // Reset form
-        event.target.reset();
-        
-        // Update UI
-        updateHabitsList();
-        updateDashboard();
-        
-        // Show success message
-        showMessage('Check-in recorded successfully!', 'success');
-      } else {
-        showMessage('Failed to record check-in. Please try again.', 'danger');
-      }
-    } else {
-      showMessage('Please select a habit to check in.', 'warning');
-    }
+    // Update the dashboard
+    updateDashboard();
+    
+    // Show success message
+    const message = success 
+      ? `Great job! You've maintained a streak of ${result.currentStreak} days.` 
+      : 'Check-in recorded. Keep trying, you can do it!';
+    
+    showMessage(message, success ? 'success' : 'warning');
+  } else {
+    // Show error message
+    showMessage('Error recording check-in. Please try again.', 'danger');
   }
 }
 
@@ -248,255 +208,18 @@ function handleCheckInFormSubmit(event) {
  * @param {string} habitId - ID of the habit to delete
  */
 function deleteHabit(habitId) {
-  if (confirm('Are you sure you want to delete this habit? This action cannot be undone.')) {
+  if (confirm('Are you sure you want to delete this habit tracking? This cannot be undone.')) {
     if (habitTracker.deleteHabit(habitId)) {
-      // Update UI
-      updateHabitsList();
+      // Update the dashboard
       updateDashboard();
       
       // Show success message
-      showMessage('Habit deleted successfully!', 'success');
+      showMessage('Habit deleted successfully.', 'success');
     } else {
-      showMessage('Failed to delete habit. Please try again.', 'danger');
+      // Show error message
+      showMessage('Error deleting habit. Please try again.', 'danger');
     }
   }
-}
-
-/**
- * Start a workout plan
- * @param {string} workoutId - ID of the workout to start
- */
-function startWorkout(workoutId) {
-  // This would integrate with the workout plans module
-  console.log('Starting workout:', workoutId);
-  showMessage('Workout started! Let\'s get moving!', 'success');
-}
-
-/**
- * Update the dashboard with current data
- */
-function updateDashboard() {
-  // Update fitness stats
-  if (typeof tracker !== 'undefined') {
-    updateFitnessStats();
-    updateActivitiesList();
-  }
-  
-  // Update habit stats
-  if (typeof habitTracker !== 'undefined') {
-    updateHabitStats();
-    updateHabitsList();
-  }
-}
-
-/**
- * Update fitness statistics on the dashboard
- */
-function updateFitnessStats() {
-  const stepsCount = document.getElementById('steps-count');
-  const caloriesCount = document.getElementById('calories-count');
-  const activitiesCount = document.getElementById('activities-count');
-  
-  if (stepsCount) {
-    stepsCount.textContent = tracker.getTotalSteps().toLocaleString();
-  }
-  
-  if (caloriesCount) {
-    caloriesCount.textContent = tracker.getTotalCalories().toLocaleString();
-  }
-  
-  if (activitiesCount) {
-    activitiesCount.textContent = tracker.getActivitiesCount().toLocaleString();
-  }
-}
-
-/**
- * Update the activities list on the dashboard
- */
-function updateActivitiesList() {
-  const activitiesList = document.getElementById('activities-list');
-  const noActivitiesMsg = document.getElementById('no-activities');
-  
-  if (activitiesList) {
-    const activities = tracker.getActivities();
-    
-    // Clear current list
-    activitiesList.innerHTML = '';
-    
-    if (activities.length === 0) {
-      if (noActivitiesMsg) {
-        noActivitiesMsg.style.display = 'block';
-      }
-    } else {
-      if (noActivitiesMsg) {
-        noActivitiesMsg.style.display = 'none';
-      }
-      
-      // Sort activities by date (newest first)
-      activities.sort((a, b) => new Date(b.date) - new Date(a.date));
-      
-      // Add activities to the list
-      activities.forEach(activity => {
-        const activityElement = createActivityElement(activity);
-        activitiesList.appendChild(activityElement);
-      });
-    }
-  }
-}
-
-/**
- * Update habit statistics on the dashboard
- */
-function updateHabitStats() {
-  const habitsCount = document.getElementById('habits-count');
-  const currentStreakCount = document.getElementById('current-streak-count');
-  const successRateCount = document.getElementById('success-rate-count');
-  
-  if (habitsCount || currentStreakCount || successRateCount) {
-    const stats = habitTracker.getOverallProgress();
-    
-    if (habitsCount) {
-      habitsCount.textContent = stats.totalHabits.toLocaleString();
-    }
-    
-    if (currentStreakCount) {
-      // Find the maximum current streak across all habits
-      const maxCurrentStreak = habitTracker.getHabits().reduce(
-        (max, habit) => Math.max(max, habit.streak.current), 0
-      );
-      currentStreakCount.textContent = maxCurrentStreak.toLocaleString();
-    }
-    
-    if (successRateCount) {
-      successRateCount.textContent = stats.successRate.toFixed(1) + '%';
-    }
-  }
-}
-
-/**
- * Update the habits list on the dashboard
- */
-function updateHabitsList() {
-  const habitsList = document.getElementById('habits-list');
-  const noHabitsMsg = document.getElementById('no-habits');
-  
-  if (habitsList) {
-    const habits = habitTracker.getHabits();
-    
-    // Clear current list
-    habitsList.innerHTML = '';
-    
-    if (habits.length === 0) {
-      if (noHabitsMsg) {
-        noHabitsMsg.style.display = 'block';
-      }
-    } else {
-      if (noHabitsMsg) {
-        noHabitsMsg.style.display = 'none';
-      }
-      
-      // Sort habits by name
-      habits.sort((a, b) => a.name.localeCompare(b.name));
-      
-      // Add habits to the list
-      habits.forEach(habit => {
-        const habitElement = createHabitElement(habit);
-        habitsList.appendChild(habitElement);
-      });
-    }
-  }
-}
-
-/**
- * Create a habit element to display
- * @param {BadHabit} habit - The habit to create an element for
- * @returns {HTMLElement} The created element
- */
-function createHabitElement(habit) {
-  const habitElement = document.createElement('div');
-  habitElement.className = 'habit-item mb-3 p-3 border rounded';
-  habitElement.dataset.habitId = habit.id;
-  
-  // Get the category icon
-  let categoryIcon = 'bi-question-circle';
-  let categoryColor = '#6c757d';
-  
-  switch (habit.category.toLowerCase()) {
-    case 'screen':
-      categoryIcon = 'bi-phone';
-      categoryColor = '#e74c3c';
-      break;
-    case 'food':
-      categoryIcon = 'bi-cup-hot';
-      categoryColor = '#f39c12';
-      break;
-    case 'productivity':
-      categoryIcon = 'bi-hourglass';
-      categoryColor = '#3498db';
-      break;
-    case 'health':
-      categoryIcon = 'bi-heart';
-      categoryColor = '#2ecc71';
-      break;
-    case 'spending':
-      categoryIcon = 'bi-cash-coin';
-      categoryColor = '#9b59b6';
-      break;
-  }
-  
-  // Calculate days since start
-  const daysSinceStart = habit.getDaysSinceStart();
-  
-  habitElement.innerHTML = `
-    <div class="d-flex justify-content-between align-items-start">
-      <div class="d-flex">
-        <div class="habit-icon me-3" style="color: ${categoryColor}">
-          <i class="${categoryIcon} fs-4"></i>
-        </div>
-        <div>
-          <h5 class="mb-1">${habit.name}</h5>
-          <div class="text-muted small mb-2">${habit.description || 'No description'}</div>
-          <div class="d-flex flex-wrap mt-2">
-            <span class="badge bg-secondary me-2 mb-1">${habit.frequency}</span>
-            <span class="badge bg-info me-2 mb-1">${daysSinceStart} days</span>
-            <span class="badge bg-success me-2 mb-1">${habit.streak.current} day streak</span>
-          </div>
-        </div>
-      </div>
-      <div>
-        <button class="btn btn-sm btn-outline-danger delete-habit-btn" data-habit-id="${habit.id}">
-          <i class="bi bi-trash"></i>
-        </button>
-      </div>
-    </div>
-    
-    <div class="mt-3">
-      <div class="progress" style="height: 8px;">
-        <div class="progress-bar bg-success" role="progressbar" 
-             style="width: ${habit.streak.current * 10}%;" 
-             aria-valuenow="${habit.streak.current}" 
-             aria-valuemin="0" 
-             aria-valuemax="10"></div>
-      </div>
-      <div class="d-flex justify-content-between mt-1">
-        <small class="text-muted">Current streak: ${habit.streak.current} days</small>
-        <small class="text-muted">Longest: ${habit.streak.longest} days</small>
-      </div>
-    </div>
-    
-    <div class="mt-3">
-      <button class="btn btn-sm btn-primary check-in-btn" 
-              onclick="openCheckInModal('${habit.id}', '${habit.name}')">
-        <i class="bi bi-check2-circle me-1"></i> Check-in
-      </button>
-      <button class="btn btn-sm btn-outline-secondary view-details-btn"
-              onclick="viewHabitDetails('${habit.id}')">
-        <i class="bi bi-graph-up me-1"></i> View Progress
-      </button>
-    </div>
-  `;
-  
-  return habitElement;
 }
 
 /**
@@ -505,32 +228,379 @@ function createHabitElement(habit) {
  * @param {string} habitName - Name of the habit to display
  */
 function openCheckInModal(habitId, habitName) {
-  const modal = document.getElementById('check-in-modal');
-  const habitIdInput = document.getElementById('check-in-habit-id');
-  const modalTitle = document.querySelector('#check-in-modal .modal-title');
+  // Set the habit ID in the hidden field
+  document.getElementById('check-in-habit-id').value = habitId;
   
-  if (modal && habitIdInput && modalTitle) {
-    habitIdInput.value = habitId;
-    modalTitle.textContent = `Check-in: ${habitName}`;
-    
-    // Open the modal using Bootstrap's modal method
-    const bsModal = new bootstrap.Modal(modal);
-    bsModal.show();
+  // Update the modal title
+  const modalTitle = document.querySelector('#check-in-modal .modal-title');
+  modalTitle.textContent = `Check-in for: ${habitName}`;
+  
+  // Set today's date as default
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  document.getElementById('check-in-date').value = `${yyyy}-${mm}-${dd}`;
+  
+  // Show the modal
+  const modal = new bootstrap.Modal(document.getElementById('check-in-modal'));
+  modal.show();
+}
+
+/**
+ * Update the dashboard with current data
+ */
+function updateDashboard() {
+  // Update fitness statistics
+  updateFitnessStats();
+  
+  // Update activities list
+  updateActivitiesList();
+  
+  // Update habit statistics
+  updateHabitStats();
+  
+  // Update habits list
+  updateHabitsList();
+}
+
+/**
+ * Update fitness statistics on the dashboard
+ */
+function updateFitnessStats() {
+  // Update steps count
+  const stepsCountElement = document.getElementById('steps-count');
+  if (stepsCountElement) {
+    stepsCountElement.textContent = fitnessTracker.getTotalSteps().toLocaleString();
+  }
+  
+  // Update calories count
+  const caloriesCountElement = document.getElementById('calories-count');
+  if (caloriesCountElement) {
+    caloriesCountElement.textContent = fitnessTracker.getTotalCalories().toLocaleString();
+  }
+  
+  // Update activities count
+  const activitiesCountElement = document.getElementById('activities-count');
+  if (activitiesCountElement) {
+    activitiesCountElement.textContent = fitnessTracker.getActivitiesCount().toLocaleString();
   }
 }
 
 /**
- * View detailed progress for a habit
- * @param {string} habitId - ID of the habit to view
+ * Update the activities list on the dashboard
  */
-function viewHabitDetails(habitId) {
-  const habit = habitTracker.getHabitById(habitId);
+function updateActivitiesList() {
+  // Get elements
+  const activitiesListElement = document.getElementById('activities-list');
+  const noActivitiesElement = document.getElementById('no-activities');
+  const allActivitiesListElement = document.getElementById('all-activities-list');
+  const noAllActivitiesElement = document.getElementById('no-all-activities');
   
-  if (habit) {
-    // This would open a detailed view of the habit progress
-    console.log('Viewing details for habit:', habit.name);
-    alert(`Detailed progress view for ${habit.name} will be implemented in a future update.`);
+  // Get activities
+  const activities = fitnessTracker.getActivities();
+  
+  // Check if we have activities
+  if (activities.length > 0) {
+    // Hide "no activities" message on the dashboard
+    if (noActivitiesElement) {
+      noActivitiesElement.style.display = 'none';
+    }
+    
+    // Hide "no activities" message on the activities tab
+    if (noAllActivitiesElement) {
+      noAllActivitiesElement.style.display = 'none';
+    }
+    
+    // Update dashboard activities list (recent 3)
+    if (activitiesListElement) {
+      activitiesListElement.innerHTML = '';
+      
+      // Display the 3 most recent activities
+      const recentActivities = [...activities].sort((a, b) => b.date - a.date).slice(0, 3);
+      
+      recentActivities.forEach(activity => {
+        const activityElement = document.createElement('div');
+        activityElement.className = 'activity-item d-flex align-items-center mb-3 p-2 border-bottom';
+        
+        // Determine icon class based on activity type
+        let iconClass = 'bi-activity';
+        let iconBg = 'bg-primary';
+        
+        if (activity.type === 'running') {
+          iconClass = 'bi-emoji-smile';
+          iconBg = 'bg-success';
+        } else if (activity.type === 'cycling') {
+          iconClass = 'bi-bicycle';
+          iconBg = 'bg-info';
+        } else if (activity.type === 'weights') {
+          iconClass = 'bi-vinyl';
+          iconBg = 'bg-danger';
+        } else if (activity.type === 'swimming') {
+          iconClass = 'bi-water';
+          iconBg = 'bg-warning';
+        }
+        
+        activityElement.innerHTML = `
+          <div class="activity-icon ${iconBg} text-white">
+            <i class="bi ${iconClass}"></i>
+          </div>
+          <div>
+            <h6 class="mb-0">${activity.name}</h6>
+            <div class="text-muted small d-flex">
+              <span class="me-3"><i class="bi bi-stopwatch me-1"></i> ${activity.duration} min</span>
+              <span><i class="bi bi-fire me-1"></i> ${activity.calories} cal</span>
+            </div>
+            <div class="text-muted small">${activity.getFormattedDate()}</div>
+          </div>
+        `;
+        
+        activitiesListElement.appendChild(activityElement);
+      });
+    }
+    
+    // Update all activities list
+    if (allActivitiesListElement) {
+      allActivitiesListElement.innerHTML = '';
+      
+      // Sort by date (newest first)
+      const sortedActivities = [...activities].sort((a, b) => b.date - a.date);
+      
+      sortedActivities.forEach(activity => {
+        const activityElement = document.createElement('div');
+        activityElement.className = 'activity-item d-flex align-items-center mb-3 p-2 border-bottom';
+        
+        // Determine icon class based on activity type
+        let iconClass = 'bi-activity';
+        let iconBg = 'bg-primary';
+        
+        if (activity.type === 'running') {
+          iconClass = 'bi-emoji-smile';
+          iconBg = 'bg-success';
+        } else if (activity.type === 'cycling') {
+          iconClass = 'bi-bicycle';
+          iconBg = 'bg-info';
+        } else if (activity.type === 'weights') {
+          iconClass = 'bi-vinyl';
+          iconBg = 'bg-danger';
+        } else if (activity.type === 'swimming') {
+          iconClass = 'bi-water';
+          iconBg = 'bg-warning';
+        }
+        
+        activityElement.innerHTML = `
+          <div class="activity-icon ${iconBg} text-white">
+            <i class="bi ${iconClass}"></i>
+          </div>
+          <div class="flex-grow-1">
+            <h6 class="mb-0">${activity.name}</h6>
+            <div class="text-muted small d-flex">
+              <span class="me-3"><i class="bi bi-stopwatch me-1"></i> ${activity.duration} min</span>
+              <span><i class="bi bi-fire me-1"></i> ${activity.calories} cal</span>
+            </div>
+            <div class="text-muted small">${activity.getFormattedDate()}</div>
+          </div>
+        `;
+        
+        allActivitiesListElement.appendChild(activityElement);
+      });
+    }
+  } else {
+    // Show "no activities" message on the dashboard
+    if (noActivitiesElement) {
+      noActivitiesElement.style.display = 'block';
+    }
+    
+    // Show "no activities" message on the activities tab
+    if (noAllActivitiesElement) {
+      noAllActivitiesElement.style.display = 'block';
+    }
+    
+    // Clear activities lists
+    if (activitiesListElement) {
+      activitiesListElement.innerHTML = '';
+    }
+    
+    if (allActivitiesListElement) {
+      allActivitiesListElement.innerHTML = '';
+    }
   }
+}
+
+/**
+ * Update habit statistics on the dashboard
+ */
+function updateHabitStats() {
+  // Get overall progress
+  const progress = habitTracker.getOverallProgress();
+  
+  // Update habits count
+  const habitsCountElement = document.getElementById('habits-count');
+  if (habitsCountElement) {
+    habitsCountElement.textContent = progress.totalHabits.toLocaleString();
+  }
+  
+  // Update current streak count
+  const currentStreakElement = document.getElementById('current-streak-count');
+  if (currentStreakElement) {
+    currentStreakElement.textContent = progress.avgCurrentStreak.toLocaleString();
+  }
+  
+  // Update success rate
+  const successRateElement = document.getElementById('success-rate-count');
+  if (successRateElement) {
+    successRateElement.textContent = `${progress.successRate}%`;
+  }
+}
+
+/**
+ * Update the habits list on the dashboard
+ */
+function updateHabitsList() {
+  // Get elements
+  const habitsListElement = document.getElementById('habits-list');
+  const noHabitsElement = document.getElementById('no-habits');
+  const allHabitsListElement = document.getElementById('all-habits-list');
+  const noAllHabitsElement = document.getElementById('no-all-habits');
+  
+  // Get habits
+  const habits = habitTracker.getHabits();
+  
+  // Check if we have habits
+  if (habits.length > 0) {
+    // Hide "no habits" message on the dashboard
+    if (noHabitsElement) {
+      noHabitsElement.style.display = 'none';
+    }
+    
+    // Hide "no habits" message on the habits tab
+    if (noAllHabitsElement) {
+      noAllHabitsElement.style.display = 'none';
+    }
+    
+    // Update dashboard habits list (recent 3)
+    if (habitsListElement) {
+      habitsListElement.innerHTML = '';
+      
+      // Display up to 3 habits
+      const displayHabits = habits.slice(0, 3);
+      
+      displayHabits.forEach(habit => {
+        const habitElement = createHabitElement(habit);
+        habitsListElement.appendChild(habitElement);
+      });
+    }
+    
+    // Update all habits list
+    if (allHabitsListElement) {
+      allHabitsListElement.innerHTML = '';
+      
+      habits.forEach(habit => {
+        const habitElement = createHabitElement(habit, true);
+        allHabitsListElement.appendChild(habitElement);
+      });
+    }
+  } else {
+    // Show "no habits" message on the dashboard
+    if (noHabitsElement) {
+      noHabitsElement.style.display = 'block';
+    }
+    
+    // Show "no habits" message on the habits tab
+    if (noAllHabitsElement) {
+      noAllHabitsElement.style.display = 'block';
+    }
+    
+    // Clear habits lists
+    if (habitsListElement) {
+      habitsListElement.innerHTML = '';
+    }
+    
+    if (allHabitsListElement) {
+      allHabitsListElement.innerHTML = '';
+    }
+  }
+}
+
+/**
+ * Create a habit element to display
+ * @param {BadHabit} habit - The habit to create an element for
+ * @param {boolean} showDetails - Whether to show additional details
+ * @returns {HTMLElement} The created element
+ */
+function createHabitElement(habit, showDetails = false) {
+  const habitElement = document.createElement('div');
+  habitElement.className = 'habit-item d-flex align-items-center mb-3 p-2 border-bottom';
+  
+  // Determine icon class based on habit category
+  let iconClass = 'bi-exclamation-triangle';
+  let iconBg = 'bg-secondary';
+  
+  if (habit.category === 'screen') {
+    iconClass = 'bi-phone';
+    iconBg = 'bg-info';
+  } else if (habit.category === 'food') {
+    iconClass = 'bi-cup-straw';
+    iconBg = 'bg-danger';
+  } else if (habit.category === 'productivity') {
+    iconClass = 'bi-alarm';
+    iconBg = 'bg-warning';
+  } else if (habit.category === 'health') {
+    iconClass = 'bi-heart';
+    iconBg = 'bg-danger';
+  } else if (habit.category === 'spending') {
+    iconClass = 'bi-cash-coin';
+    iconBg = 'bg-success';
+  }
+  
+  // Create the basic habit item
+  let habitHTML = `
+    <div class="habit-icon ${iconBg} text-white">
+      <i class="bi ${iconClass}"></i>
+    </div>
+    <div class="flex-grow-1">
+      <div class="d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">${habit.name}</h6>
+        <div>
+          <span class="badge bg-primary me-2">${habit.currentStreak} days</span>
+          <button class="btn btn-sm btn-outline-success me-1" onclick="openCheckInModal('${habit.id}', '${habit.name}')">
+            <i class="bi bi-check-circle"></i> Check-in
+          </button>
+          <button class="btn btn-sm btn-outline-danger" onclick="deleteHabit('${habit.id}')">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      </div>
+      <div class="text-muted small">Tracking since ${habit.getFormattedStartDate()}</div>
+  `;
+  
+  // Add additional details if requested
+  if (showDetails) {
+    habitHTML += `
+      <div class="mt-2">
+        <div class="mb-1">
+          <strong>Why quit:</strong> ${habit.description || 'Not specified'}
+        </div>
+        <div class="mb-1">
+          <strong>Frequency:</strong> ${habit.frequency}
+        </div>
+        <div class="mb-1">
+          <strong>Trigger:</strong> ${habit.trigger || 'Not specified'}
+        </div>
+        <div class="mb-1">
+          <strong>Alternative:</strong> ${habit.alternative || 'Not specified'}
+        </div>
+        <div class="progress mt-2" style="height: 10px;">
+          <div class="progress-bar bg-success" role="progressbar" style="width: ${habit.currentStreak * 10}%"></div>
+        </div>
+      </div>
+    `;
+  }
+  
+  habitHTML += '</div>';
+  habitElement.innerHTML = habitHTML;
+  
+  return habitElement;
 }
 
 /**
@@ -540,25 +610,13 @@ function viewHabitDetails(habitId) {
  */
 function showMessage(message, type = 'info') {
   // Create toast element
-  const toastContainer = document.getElementById('toast-container');
+  const toastElement = document.createElement('div');
+  toastElement.className = `toast align-items-center text-white bg-${type} border-0`;
+  toastElement.setAttribute('role', 'alert');
+  toastElement.setAttribute('aria-live', 'assertive');
+  toastElement.setAttribute('aria-atomic', 'true');
   
-  if (!toastContainer) {
-    // Create a toast container if it doesn't exist
-    const container = document.createElement('div');
-    container.id = 'toast-container';
-    container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
-    document.body.appendChild(container);
-  }
-  
-  const toastId = 'toast-' + Date.now();
-  const toast = document.createElement('div');
-  toast.className = `toast align-items-center text-white bg-${type} border-0`;
-  toast.setAttribute('role', 'alert');
-  toast.setAttribute('aria-live', 'assertive');
-  toast.setAttribute('aria-atomic', 'true');
-  toast.id = toastId;
-  
-  toast.innerHTML = `
+  toastElement.innerHTML = `
     <div class="d-flex">
       <div class="toast-body">
         ${message}
@@ -567,14 +625,16 @@ function showMessage(message, type = 'info') {
     </div>
   `;
   
-  document.getElementById('toast-container').appendChild(toast);
+  // Add the toast to the container
+  const toastContainer = document.getElementById('toast-container');
+  toastContainer.appendChild(toastElement);
   
-  // Use Bootstrap's toast method to show the toast
-  const bsToast = new bootstrap.Toast(toast);
-  bsToast.show();
+  // Initialize and show the toast
+  const toast = new bootstrap.Toast(toastElement, { autohide: true, delay: 3000 });
+  toast.show();
   
   // Remove the toast after it's hidden
-  toast.addEventListener('hidden.bs.toast', function() {
-    document.getElementById(toastId).remove();
+  toastElement.addEventListener('hidden.bs.toast', function() {
+    toastElement.remove();
   });
 }
