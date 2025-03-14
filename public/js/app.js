@@ -1668,6 +1668,11 @@ function syncConnection(connectionId) {
               workout.type,
               workout.date
             );
+            
+            // Store the source information for this activity
+            activity.sourceConnection = workout.sourceConnection || connection.id;
+            activity.sourceId = workout.sourceId;
+            
             fitnessTracker.addActivity(activity);
           });
         }
@@ -1987,8 +1992,12 @@ function handleDeleteActivity(activityId) {
 function setupSwipeToDelete(element, itemId) {
   let touchStartX = 0;
   let touchEndX = 0;
+  let touchStartY = 0;
+  let touchEndY = 0;
   let initialTransform = 'translateX(0px)';
   let deleteThreshold = 100; // How far to swipe to trigger delete
+  let isSwiping = false;
+  let touchTarget = null;
   
   // Add a delete button that will be revealed on swipe
   const deleteButton = document.createElement('div');
@@ -2022,47 +2031,90 @@ function setupSwipeToDelete(element, itemId) {
     // Store the activity ID on the delete button
     deleteButton.dataset.itemId = itemId;
     
+    // Find the view details button to exclude it from swipe handling
+    const viewDetailsBtn = element.querySelector('.view-details-btn');
+    
     // Touch event handlers
     element.addEventListener('touchstart', function(e) {
+      // Don't initiate swipe if we're touching the view details button
+      touchTarget = e.target;
+      
+      // Check if touch started on or inside the view details button
+      if (viewDetailsBtn && (viewDetailsBtn === touchTarget || viewDetailsBtn.contains(touchTarget))) {
+        return;
+      }
+      
       touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
       initialTransform = cardContainer.style.transform || 'translateX(0px)';
+      isSwiping = false;
     }, { passive: true });
     
     element.addEventListener('touchmove', function(e) {
-      touchEndX = e.touches[0].clientX;
-      const swipeDistance = touchStartX - touchEndX;
-      
-      // Only allow swiping left (negative values)
-      if (swipeDistance > 0) {
-        cardContainer.style.transform = `translateX(-${swipeDistance}px)`;
-        
-        // Show delete button with appropriate opacity
-        const opacity = Math.min(swipeDistance / deleteThreshold, 1);
-        deleteButton.style.opacity = opacity;
+      // Don't handle swipe if we started on the view details button
+      if (viewDetailsBtn && (viewDetailsBtn === touchTarget || viewDetailsBtn.contains(touchTarget))) {
+        return;
       }
-    }, { passive: true });
-    
-    element.addEventListener('touchend', function() {
-      const swipeDistance = touchStartX - touchEndX;
       
-      if (swipeDistance > deleteThreshold) {
-        // Swiped far enough to delete
-        cardContainer.style.transform = 'translateX(-100%)';
-        deleteButton.style.opacity = 1;
+      touchEndX = e.touches[0].clientX;
+      touchEndY = e.touches[0].clientY;
+      
+      // Determine if this is a horizontal swipe (and not a vertical scroll)
+      const xDiff = touchStartX - touchEndX;
+      const yDiff = Math.abs(touchStartY - touchEndY);
+      
+      // Only treat as swipe if horizontal movement is greater than vertical
+      // and if we're moving left (negative values)
+      if (xDiff > 10 && xDiff > yDiff) {
+        isSwiping = true;
         
-        // Delete after animation completes
-        setTimeout(() => {
-          handleDeleteActivity(itemId);
-        }, 300);
-      } else {
-        // Not swiped far enough, reset position
-        cardContainer.style.transform = initialTransform;
-        deleteButton.style.opacity = 0;
+        // Only allow swiping left (negative values)
+        if (xDiff > 0) {
+          // Prevent scrolling when swiping horizontally
+          e.preventDefault();
+          
+          cardContainer.style.transform = `translateX(-${xDiff}px)`;
+          
+          // Show delete button with appropriate opacity
+          const opacity = Math.min(xDiff / deleteThreshold, 1);
+          deleteButton.style.opacity = opacity;
+        }
+      }
+    }, { passive: false });  // Set passive to false to allow preventDefault
+    
+    element.addEventListener('touchend', function(e) {
+      // Don't handle swipe if we started on the view details button
+      if (viewDetailsBtn && (viewDetailsBtn === touchTarget || viewDetailsBtn.contains(touchTarget))) {
+        return;
+      }
+      
+      // Only process if we were actually swiping horizontally
+      if (isSwiping) {
+        const swipeDistance = touchStartX - touchEndX;
+        
+        if (swipeDistance > deleteThreshold) {
+          // Swiped far enough to delete
+          cardContainer.style.transform = 'translateX(-100%)';
+          deleteButton.style.opacity = 1;
+          
+          // Delete after animation completes
+          setTimeout(() => {
+            handleDeleteActivity(itemId);
+          }, 300);
+        } else {
+          // Not swiped far enough, reset position
+          cardContainer.style.transform = initialTransform;
+          deleteButton.style.opacity = 0;
+        }
+        
+        // Reset swiping flag
+        isSwiping = false;
       }
     }, { passive: true });
     
     // Add click handler to delete button
-    deleteButton.addEventListener('click', function() {
+    deleteButton.addEventListener('click', function(e) {
+      e.stopPropagation();
       const itemToDelete = this.dataset.itemId;
       handleDeleteActivity(itemToDelete);
     });

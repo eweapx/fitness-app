@@ -10,13 +10,17 @@ class Activity {
    * @param {string} type - Type of activity (running, cycling, weights, swimming)
    * @param {Date} date - Date and time of activity
    */
-  constructor(name, calories, duration, type, date = new Date(), id = null) {
+  constructor(name, calories, duration, type, date = new Date(), id = null, sourceConnection = null, sourceId = null) {
     this.id = id || Date.now().toString();
     this.name = name;
     this.calories = calories;
     this.duration = duration;
     this.type = type;
     this.date = date instanceof Date ? date : new Date(date);
+    
+    // Track if this activity is from a health connection
+    this.sourceConnection = sourceConnection; // ID of the health connection this activity came from
+    this.sourceId = sourceId; // ID of the activity in the original health data source
   }
 
   /**
@@ -143,14 +147,19 @@ class FitnessTracker {
     
     if (activityIndex === -1) return false;
     
-    // Create updated activity object
+    // Get the original activity
+    const originalActivity = this.activities[activityIndex];
+    
+    // Create updated activity object preserving source information
     const updatedActivity = new Activity(
-      updates.name || this.activities[activityIndex].name,
-      updates.calories || this.activities[activityIndex].calories,
-      updates.duration || this.activities[activityIndex].duration,
-      updates.type || this.activities[activityIndex].type,
-      updates.date || this.activities[activityIndex].date,
-      id
+      updates.name || originalActivity.name,
+      updates.calories || originalActivity.calories,
+      updates.duration || originalActivity.duration,
+      updates.type || originalActivity.type,
+      updates.date || originalActivity.date,
+      id,
+      originalActivity.sourceConnection,
+      originalActivity.sourceId
     );
     
     if (updatedActivity.isValid()) {
@@ -204,7 +213,9 @@ class FitnessTracker {
             activity.duration,
             activity.type,
             new Date(activity.date),
-            activity.id
+            activity.id,
+            activity.sourceConnection,
+            activity.sourceId
           );
           // Ensure the activity ID is preserved
           newActivity.id = activity.id || newActivity.id;
