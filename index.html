@@ -1008,14 +1008,24 @@
 
     // Initialize the app
     function initApp() {
-      // Initialize Bootstrap components
+      // Initialize Bootstrap components safely
       // Enable navbar toggler
       const navbarToggler = document.querySelector('.navbar-toggler');
-      navbarToggler.addEventListener('click', function() {
-        const navbarCollapse = document.getElementById('navbarNav');
-        const bsCollapse = new bootstrap.Collapse(navbarCollapse);
-        bsCollapse.toggle();
-      });
+      if (navbarToggler) {
+        navbarToggler.addEventListener('click', function() {
+          const navbarCollapse = document.getElementById('navbarNav');
+          if (navbarCollapse && typeof bootstrap !== 'undefined') {
+            try {
+              const bsCollapse = new bootstrap.Collapse(navbarCollapse);
+              bsCollapse.toggle();
+            } catch (error) {
+              console.log('Error toggling navbar:', error);
+              // Fallback for navbar toggle
+              navbarCollapse.classList.toggle('show');
+            }
+          }
+        });
+      }
       
       // Add sample activities
       const runningActivity = new Activity('Running', 250, 30, 'running', new Date(Date.now() - 3 * 60 * 60 * 1000));
@@ -1035,71 +1045,133 @@
       renderActivities();
       
       // Event handlers
-      document.getElementById('save-activity').addEventListener('click', function() {
-        const nameInput = document.getElementById('activity-name');
-        const caloriesInput = document.getElementById('activity-calories');
-        const durationInput = document.getElementById('activity-duration');
-        const activityType = document.querySelector('input[name="activity-type"]:checked').value;
-        
-        // Validate inputs
-        if (!nameInput.value || !caloriesInput.value || !durationInput.value) {
-          showAlert('Please fill in all fields', 'danger');
-          return;
-        }
-        
-        // Create new activity
-        const newActivity = new Activity(
-          nameInput.value,
-          parseInt(caloriesInput.value),
-          parseInt(durationInput.value),
-          activityType
-        );
-        
-        // Add activity and close modal
-        addActivity(newActivity);
-        
-        // Close modal and reset form
-        const modal = bootstrap.Modal.getInstance(document.getElementById('logActivityModal'));
-        modal.hide();
-        document.getElementById('activity-form').reset();
-      });
+      const saveActivityBtn = document.getElementById('save-activity');
+      if (saveActivityBtn) {
+        saveActivityBtn.addEventListener('click', function() {
+          try {
+            const nameInput = document.getElementById('activity-name');
+            const caloriesInput = document.getElementById('activity-calories');
+            const durationInput = document.getElementById('activity-duration');
+            const activityTypeEl = document.querySelector('input[name="activity-type"]:checked');
+            
+            if (!activityTypeEl) {
+              showAlert('Please select an activity type', 'danger');
+              return;
+            }
+            
+            const activityType = activityTypeEl.value;
+            
+            // Validate inputs
+            if (!nameInput || !caloriesInput || !durationInput) {
+              showAlert('Form elements not found. Please try again.', 'danger');
+              return;
+            }
+            
+            if (!nameInput.value || !caloriesInput.value || !durationInput.value) {
+              showAlert('Please fill in all fields', 'danger');
+              return;
+            }
+            
+            // Create new activity
+            const newActivity = new Activity(
+              nameInput.value,
+              parseInt(caloriesInput.value),
+              parseInt(durationInput.value),
+              activityType
+            );
+            
+            // Add activity and close modal
+            addActivity(newActivity);
+            
+            // Close modal and reset form
+            try {
+              const modalEl = document.getElementById('logActivityModal');
+              if (modalEl && typeof bootstrap !== 'undefined') {
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) {
+                  modal.hide();
+                }
+              }
+              document.getElementById('activity-form').reset();
+            } catch (error) {
+              console.log('Error closing modal:', error);
+              // Even if modal doesn't close, we still want to show success message
+              showAlert('Activity logged successfully!', 'success');
+            }
+          } catch (error) {
+            console.log('Error saving activity:', error);
+            showAlert('An error occurred while saving the activity. Please try again.', 'danger');
+          }
+        });
+      }
       
       // Configure Firebase button
-      document.getElementById('configure-firebase').addEventListener('click', function() {
-        const firebaseModal = new bootstrap.Modal(document.getElementById('firebaseConfigModal'));
-        firebaseModal.show();
-      });
+      const configFirebaseBtn = document.getElementById('configure-firebase');
+      if (configFirebaseBtn) {
+        configFirebaseBtn.addEventListener('click', function() {
+          try {
+            const firebaseModalEl = document.getElementById('firebaseConfigModal');
+            if (firebaseModalEl && typeof bootstrap !== 'undefined') {
+              const firebaseModal = new bootstrap.Modal(firebaseModalEl);
+              firebaseModal.show();
+            }
+          } catch (error) {
+            console.log('Error showing Firebase modal:', error);
+            showAlert('Could not open Firebase configuration. Please try again.', 'warning');
+          }
+        });
+      }
       
       // Save Firebase key
-      document.getElementById('save-firebase-key').addEventListener('click', function() {
-        const apiKey = document.getElementById('firebase-api-key').value;
-        
-        if (!apiKey) {
-          showAlert('Please enter a valid API key', 'danger');
-          return;
-        }
-        
-        // In a real app, we would save this securely and initialize Firebase
-        showAlert('Firebase configured successfully!', 'success');
-        
-        // Update all Firebase status elements
-        const statusElements = document.querySelectorAll('.firebase-status');
-        statusElements.forEach(element => {
-          element.textContent = 'Firebase Status: Connected';
-          element.classList.add('text-success');
-        });
-        
-        // Close modal safely
-        try {
-          const firebaseModal = document.getElementById('firebaseConfigModal');
-          const modal = bootstrap.Modal.getInstance(firebaseModal);
-          if (modal) {
-            modal.hide();
+      const saveFirebaseKeyBtn = document.getElementById('save-firebase-key');
+      if (saveFirebaseKeyBtn) {
+        saveFirebaseKeyBtn.addEventListener('click', function() {
+          try {
+            const apiKeyInput = document.getElementById('firebase-api-key');
+            if (!apiKeyInput) {
+              showAlert('Firebase API key input not found', 'danger');
+              return;
+            }
+            
+            const apiKey = apiKeyInput.value;
+            
+            if (!apiKey) {
+              showAlert('Please enter a valid API key', 'danger');
+              return;
+            }
+            
+            // In a real app, we would save this securely and initialize Firebase
+            showAlert('Firebase configured successfully!', 'success');
+            
+            // Update all Firebase status elements
+            try {
+              const statusElements = document.querySelectorAll('.firebase-status');
+              statusElements.forEach(element => {
+                element.textContent = 'Firebase Status: Connected';
+                element.classList.add('text-success');
+              });
+            } catch (error) {
+              console.log('Error updating status elements:', error);
+            }
+            
+            // Close modal safely
+            try {
+              const firebaseModal = document.getElementById('firebaseConfigModal');
+              if (firebaseModal && typeof bootstrap !== 'undefined') {
+                const modal = bootstrap.Modal.getInstance(firebaseModal);
+                if (modal) {
+                  modal.hide();
+                }
+              }
+            } catch (error) {
+              console.log('Error closing modal:', error);
+            }
+          } catch (error) {
+            console.log('Error saving Firebase key:', error);
+            showAlert('An error occurred while configuring Firebase. Please try again.', 'danger');
           }
-        } catch (error) {
-          console.log('Error closing modal:', error);
-        }
-      });
+        });
+      }
     }
 
     // Run the app when DOM is loaded
