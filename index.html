@@ -135,7 +135,7 @@
               This section will allow you to create and manage your workout routines.
             </div>
             
-            <button class="btn btn-primary w-100 mt-3">
+            <button class="btn btn-primary w-100 mt-3" data-bs-toggle="modal" data-bs-target="#workoutModal">
               Create New Workout Plan
             </button>
           </div>
@@ -153,7 +153,7 @@
               This section will allow you to log your meals and track your nutrition intake.
             </div>
             
-            <button class="btn btn-primary w-100 mt-3">
+            <button class="btn btn-primary w-100 mt-3" data-bs-toggle="modal" data-bs-target="#mealModal">
               Log a Meal
             </button>
           </div>
@@ -252,6 +252,103 @@
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
             <button type="button" class="btn btn-primary" id="save-steps">Save Steps</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Workout Plan Modal -->
+    <div class="modal fade" id="workoutModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Create Workout Plan</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="workout-form">
+              <div class="mb-3">
+                <label for="workout-name" class="form-label">Workout Name</label>
+                <input type="text" class="form-control" id="workout-name" placeholder="e.g., Morning Cardio">
+              </div>
+              <div class="mb-3">
+                <label for="workout-description" class="form-label">Description</label>
+                <textarea class="form-control" id="workout-description" rows="3" placeholder="Brief description of the workout..."></textarea>
+              </div>
+              <div class="mb-3">
+                <label for="workout-frequency" class="form-label">Frequency per Week</label>
+                <select class="form-select" id="workout-frequency">
+                  <option value="1">1x per week</option>
+                  <option value="2">2x per week</option>
+                  <option value="3" selected>3x per week</option>
+                  <option value="4">4x per week</option>
+                  <option value="5">5x per week</option>
+                  <option value="6">6x per week</option>
+                  <option value="7">7x per week</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="workout-difficulty" class="form-label">Difficulty Level</label>
+                <div class="range">
+                  <input type="range" class="form-range" min="1" max="5" id="workout-difficulty">
+                  <div class="d-flex justify-content-between">
+                    <span>Beginner</span>
+                    <span>Intermediate</span>
+                    <span>Advanced</span>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" id="save-workout">Save Workout</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Meal Modal -->
+    <div class="modal fade" id="mealModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Log a Meal</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="meal-form">
+              <div class="mb-3">
+                <label for="meal-name" class="form-label">Meal Name</label>
+                <input type="text" class="form-control" id="meal-name" placeholder="e.g., Breakfast, Lunch, Dinner, Snack">
+              </div>
+              <div class="mb-3">
+                <label for="meal-description" class="form-label">Description</label>
+                <input type="text" class="form-control" id="meal-description" placeholder="e.g., Grilled Chicken Salad">
+              </div>
+              <div class="mb-3">
+                <label for="meal-calories" class="form-label">Calories</label>
+                <input type="number" class="form-control" id="meal-calories" placeholder="e.g., 500">
+              </div>
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label for="meal-protein" class="form-label">Protein (g)</label>
+                  <input type="number" class="form-control" id="meal-protein" placeholder="e.g., 30">
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label for="meal-carbs" class="form-label">Carbs (g)</label>
+                  <input type="number" class="form-control" id="meal-carbs" placeholder="e.g., 50">
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label for="meal-fat" class="form-label">Fat (g)</label>
+                  <input type="number" class="form-control" id="meal-fat" placeholder="e.g., 15">
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" id="save-meal">Save Meal</button>
           </div>
         </div>
       </div>
@@ -539,6 +636,68 @@
             modal.hide();
             document.getElementById('activity-form').reset();
           });
+        });
+      }
+      
+      // Save workout button
+      const saveWorkoutBtn = document.getElementById('save-workout');
+      if (saveWorkoutBtn) {
+        saveWorkoutBtn.addEventListener('click', function() {
+          const nameInput = document.getElementById('workout-name');
+          const descriptionInput = document.getElementById('workout-description');
+          const frequencyInput = document.getElementById('workout-frequency');
+          const difficultyInput = document.getElementById('workout-difficulty');
+          
+          const name = nameInput.value.trim();
+          const description = descriptionInput.value.trim();
+          const frequency = parseInt(frequencyInput.value);
+          const difficulty = parseInt(difficultyInput.value);
+          
+          if (!name || !description) {
+            alert('Please fill in all required fields');
+            return;
+          }
+          
+          // Here we would normally send data to the server
+          // but for demo purposes, just show success message
+          
+          // Close modal and reset form
+          const modal = bootstrap.Modal.getInstance(document.getElementById('workoutModal'));
+          modal.hide();
+          document.getElementById('workout-form').reset();
+          
+          // Show success alert
+          alert('Workout plan created successfully!');
+        });
+      }
+      
+      // Save meal button
+      const saveMealBtn = document.getElementById('save-meal');
+      if (saveMealBtn) {
+        saveMealBtn.addEventListener('click', function() {
+          const nameInput = document.getElementById('meal-name');
+          const descriptionInput = document.getElementById('meal-description');
+          const caloriesInput = document.getElementById('meal-calories');
+          
+          const name = nameInput.value.trim();
+          const description = descriptionInput.value.trim();
+          const calories = parseInt(caloriesInput.value);
+          
+          if (!name || !description || isNaN(calories)) {
+            alert('Please fill in all required fields');
+            return;
+          }
+          
+          // Here we would normally send data to the server
+          // but for demo purposes, just show success message
+          
+          // Close modal and reset form
+          const modal = bootstrap.Modal.getInstance(document.getElementById('mealModal'));
+          modal.hide();
+          document.getElementById('meal-form').reset();
+          
+          // Show success alert
+          alert('Meal logged successfully!');
         });
       }
     }
