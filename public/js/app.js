@@ -1368,19 +1368,37 @@ function initializeScrollWheel(inputId, maxValue) {
     transition: transform 0.2s ease-out;
   `;
   
-  // Add number options to the wheel
-  for (let i = 0; i <= maxValue; i++) {
-    const option = document.createElement('div');
-    option.className = 'scroll-wheel-option';
-    option.textContent = i;
-    option.dataset.value = i;
-    option.style.cssText = `
-      height: 40px;
-      line-height: 40px;
-      font-size: 20px;
-      user-select: none;
-    `;
-    wheel.appendChild(option);
+  // Special handling for weight input - use 5 pound increments
+  if (inputId === 'other-weight-input') {
+    // Add number options to the wheel in 5-pound increments
+    for (let i = 0; i <= maxValue; i += 5) {
+      const option = document.createElement('div');
+      option.className = 'scroll-wheel-option';
+      option.textContent = i;
+      option.dataset.value = i;
+      option.style.cssText = `
+        height: 40px;
+        line-height: 40px;
+        font-size: 20px;
+        user-select: none;
+      `;
+      wheel.appendChild(option);
+    }
+  } else {
+    // For other inputs (reps, sets) use standard increments of 1
+    for (let i = 0; i <= maxValue; i++) {
+      const option = document.createElement('div');
+      option.className = 'scroll-wheel-option';
+      option.textContent = i;
+      option.dataset.value = i;
+      option.style.cssText = `
+        height: 40px;
+        line-height: 40px;
+        font-size: 20px;
+        user-select: none;
+      `;
+      wheel.appendChild(option);
+    }
   }
   
   container.appendChild(wheel);
@@ -1426,9 +1444,27 @@ function initializeScrollWheel(inputId, maxValue) {
       container.style.display = 'none';
       input.style.display = 'block';
     } else {
+      // Ensure input value is preserved
+      const currentValue = parseInt(input.value) || 0;
+      
+      // Show the scroll wheel and update its position
       container.style.display = 'block';
       input.style.display = 'none';
-      updateScrollWheelPosition(input, parseInt(input.value) || 0);
+      
+      // Ensure the wheel is properly positioned and values are visible
+      updateScrollWheelPosition(input, currentValue);
+      
+      // Make sure all number options are visible and properly highlighted
+      input.scrollWheel.options.forEach(option => {
+        // Make sure all options are visible
+        option.style.visibility = 'visible'; 
+        // Highlight the selected value
+        if (parseInt(option.dataset.value) === currentValue) {
+          option.classList.add('selected-value');
+        } else {
+          option.classList.remove('selected-value');
+        }
+      });
     }
   });
   
@@ -1457,7 +1493,16 @@ function initializeScrollWheel(inputId, maxValue) {
     const offset = newY % input.scrollWheel.optionHeight;
     const index = Math.round((newY - offset) / -input.scrollWheel.optionHeight);
     
-    let value = Math.max(0, Math.min(maxValue, index));
+    let value;
+    
+    // Special handling for weight input - snap to 5-pound increments
+    if (input.id === 'other-weight-input') {
+      // Convert index to a value in 5-pound increments
+      value = Math.max(0, Math.min(maxValue, index * 5));
+    } else {
+      // For other inputs use standard values
+      value = Math.max(0, Math.min(maxValue, index));
+    }
     
     // Update the visual position of the wheel
     wheel.style.transform = `translateY(${newY}px)`;
@@ -1468,9 +1513,12 @@ function initializeScrollWheel(inputId, maxValue) {
     }
     input.scrollWheel.currentValue = value;
     
-    // Highlight the current value
+    // Highlight the current value and ensure all options are visible
     const options = input.scrollWheel.options;
     options.forEach(option => {
+      // Ensure all options remain visible while scrolling
+      option.style.visibility = 'visible';
+      
       if (parseInt(option.dataset.value) === value) {
         option.classList.add('selected-value');
       } else {
@@ -1522,9 +1570,12 @@ function updateScrollWheelPosition(input, value) {
     input.value = value;
   }
   
-  // Make sure selected value is highlighted
+  // Make sure selected value is highlighted and all options are visible
   const options = input.scrollWheel.options;
   options.forEach(option => {
+    // Ensure all options are visible during and after scrolling
+    option.style.visibility = 'visible';
+    
     if (parseInt(option.dataset.value) === value) {
       option.classList.add('selected-value');
     } else {
@@ -2772,10 +2823,10 @@ function initializeWorkoutForm() {
     });
   });
   
-  // Initialize scroll wheels
-  initializeScrollWheel('other-weight-input', 200);
-  initializeScrollWheel('sets-input', 20);
-  initializeScrollWheel('reps-input', 100);
+  // Initialize scroll wheels with higher ranges
+  initializeScrollWheel('other-weight-input', 1000); // Weight can go up to 1000 lbs
+  initializeScrollWheel('sets-input', 50); // Sets can go up to 50
+  initializeScrollWheel('reps-input', 50); // Reps can go up to 50
   
   // Double tap to switch input mode
   setupDoubleTapToggle('other-weight-input');
