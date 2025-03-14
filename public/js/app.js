@@ -74,6 +74,9 @@ document.addEventListener('DOMContentLoaded', function() {
   // Set up authentication system
   setupAuthSystem();
   
+  // Initialize the health snapshot features
+  initializeHealthSnapshot();
+  
   // Sync data from all health connections if any exist
   if (healthConnectionManager.getConnections().length > 0) {
     syncAllHealthConnections();
@@ -187,6 +190,24 @@ function setupEventListeners() {
   const addConnectionForm = document.getElementById('add-connection-form');
   if (addConnectionForm) {
     addConnectionForm.addEventListener('submit', handleConnectionFormSubmit);
+  }
+  
+  // Health Snapshot form
+  const healthSnapshotForm = document.getElementById('health-snapshot-form');
+  if (healthSnapshotForm) {
+    healthSnapshotForm.addEventListener('submit', handleHealthSnapshotFormSubmit);
+  }
+  
+  // Capture Snapshot button
+  const captureSnapshotBtn = document.getElementById('capture-snapshot-btn');
+  if (captureSnapshotBtn) {
+    captureSnapshotBtn.addEventListener('click', openHealthSnapshotModal);
+  }
+  
+  // Water intake slider
+  const waterIntakeSlider = document.getElementById('water-intake');
+  if (waterIntakeSlider) {
+    waterIntakeSlider.addEventListener('input', updateWaterIntakeValue);
   }
   
   // Connection type selector
@@ -624,6 +645,7 @@ function updateDashboard() {
   updateSleepChart();
   updateActivityChart();
   updateConnectionsView();
+  updateHealthSnapshotWidget();
   
   // Set up global click handler to reset any partially swiped cards
   setupGlobalClickHandlers();
@@ -2297,6 +2319,177 @@ function updateAuthUI(isLoggedIn) {
     // Show auth buttons, hide user profile
     authButtons.style.display = 'block';
     userProfile.style.display = 'none';
+  }
+}
+
+/**
+ * Set up swipe-to-delete functionality for an element
+ * @param {HTMLElement} element - The element to enable swipe-to-delete on
+ * @param {string} itemId - ID of the item to delete when swiped
+ */
+/**
+ * Initialize the health snapshot features
+ */
+function initializeHealthSnapshot() {
+  // Initialize the water intake slider value display
+  updateWaterIntakeValue();
+  
+  // Update the snapshot widget with the most recent data
+  updateHealthSnapshotWidget();
+}
+
+/**
+ * Update the water intake value display when the slider changes
+ */
+function updateWaterIntakeValue() {
+  const slider = document.getElementById('water-intake');
+  const valueDisplay = document.getElementById('water-intake-value');
+  
+  if (slider && valueDisplay) {
+    valueDisplay.textContent = slider.value;
+    
+    // Update the value display when the slider changes
+    slider.addEventListener('input', function() {
+      valueDisplay.textContent = this.value;
+    });
+  }
+}
+
+/**
+ * Open the health snapshot modal
+ */
+function openHealthSnapshotModal() {
+  // Set default values
+  document.getElementById('water-intake').value = 0;
+  updateWaterIntakeValue();
+  
+  // Clear previous values
+  document.getElementById('heart-rate').value = '';
+  document.getElementById('energy-level').selectedIndex = 0;
+  document.getElementById('hydration').selectedIndex = 0;
+  document.getElementById('mood').selectedIndex = 0;
+  document.getElementById('snapshot-notes').value = '';
+  document.getElementById('include-location').checked = false;
+  
+  // Clear any previously selected stress level
+  const stressRadios = document.querySelectorAll('input[name="stress-level"]');
+  stressRadios.forEach(radio => radio.checked = false);
+  
+  // Show the modal
+  const modal = new bootstrap.Modal(document.getElementById('healthSnapshotModal'));
+  modal.show();
+}
+
+/**
+ * Handle the health snapshot form submission
+ * @param {Event} event - Form submission event
+ */
+function handleHealthSnapshotFormSubmit(event) {
+  event.preventDefault();
+  
+  // Get values from the form
+  const heartRate = parseInt(document.getElementById('heart-rate').value);
+  const energyLevel = parseInt(document.getElementById('energy-level').value);
+  const hydration = document.getElementById('hydration').value;
+  const waterIntake = parseInt(document.getElementById('water-intake').value);
+  const mood = parseInt(document.getElementById('mood').value);
+  
+  // Get selected stress level
+  let stressLevel = 0;
+  const selectedStressRadio = document.querySelector('input[name="stress-level"]:checked');
+  if (selectedStressRadio) {
+    stressLevel = parseInt(selectedStressRadio.value);
+  }
+  
+  const notes = document.getElementById('snapshot-notes').value;
+  const includeLocation = document.getElementById('include-location').checked;
+  
+  // Get location if requested
+  let location = null;
+  if (includeLocation) {
+    // In a real app, we would use the Geolocation API
+    // For this demo, we'll just use a placeholder
+    location = {
+      latitude: 40.7128,
+      longitude: -74.0060,
+      accuracy: 10,
+      timestamp: new Date()
+    };
+  }
+  
+  // Create a new health snapshot
+  const snapshot = new HealthSnapshot(
+    heartRate,
+    energyLevel,
+    hydration,
+    waterIntake,
+    mood,
+    stressLevel,
+    notes,
+    location
+  );
+  
+  if (healthSnapshotTracker.addSnapshot(snapshot)) {
+    // Update the UI
+    updateHealthSnapshotWidget();
+    
+    // Reset the form
+    event.target.reset();
+    
+    // Hide the modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('healthSnapshotModal'));
+    modal.hide();
+    
+    // Show success message
+    showMessage('Health snapshot captured successfully!', 'success');
+  } else {
+    showMessage('Please fill in all required fields correctly.', 'danger');
+  }
+}
+
+/**
+ * Update the health snapshot widget with the most recent data
+ */
+function updateHealthSnapshotWidget() {
+  // Get the most recent snapshot
+  const recentSnapshot = healthSnapshotTracker.getMostRecentSnapshot();
+  
+  // Get the snapshot button
+  const captureBtn = document.getElementById('capture-snapshot-btn');
+  
+  if (recentSnapshot) {
+    // If there's a recent snapshot, update the button to show when it was taken
+    if (captureBtn) {
+      const timeAgo = getTimeAgo(recentSnapshot.timestamp);
+      captureBtn.innerHTML = `
+        <i class="bi bi-camera"></i> Update Snapshot
+        <span class="d-block small mt-1">Last update: ${timeAgo}</span>
+      `;
+    }
+  }
+}
+
+/**
+ * Get a human-readable string for how long ago a date was
+ * @param {Date} date - The date to check
+ * @returns {string} Human-readable time difference
+ */
+function getTimeAgo(date) {
+  const now = new Date();
+  const diffMs = now - date;
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+  
+  if (diffDay > 0) {
+    return diffDay === 1 ? '1 day ago' : `${diffDay} days ago`;
+  } else if (diffHour > 0) {
+    return diffHour === 1 ? '1 hour ago' : `${diffHour} hours ago`;
+  } else if (diffMin > 0) {
+    return diffMin === 1 ? '1 minute ago' : `${diffMin} minutes ago`;
+  } else {
+    return 'Just now';
   }
 }
 
