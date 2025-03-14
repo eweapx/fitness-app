@@ -3,147 +3,545 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Simple Fitness Tracker</title>
+  <title>Fitness Tracker</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     body {
-      font-family: Arial, sans-serif;
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-    .header {
-      background-color: #007bff;
-      color: white;
-      padding: 15px;
-      margin-bottom: 20px;
-      border-radius: 5px;
+      padding-top: 20px;
     }
     .card {
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      padding: 15px;
       margin-bottom: 20px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-    .stats {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
     .stat-card {
-      background-color: #f8f9fa;
-      border-radius: 5px;
-      padding: 15px;
       text-align: center;
-      flex: 1;
-      margin: 0 10px;
+      padding: 15px;
     }
     .stat-value {
-      font-size: 24px;
+      font-size: 2rem;
       font-weight: bold;
       color: #007bff;
-      margin: 10px 0;
     }
-    button {
-      background-color: #007bff;
-      color: white;
-      border: none;
-      padding: 10px 15px;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #0069d9;
-    }
-    .activity {
+    .activity-item {
+      padding: 15px;
       border-bottom: 1px solid #eee;
-      padding: 10px 0;
     }
-    .activity-title {
-      font-weight: bold;
+    .activity-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 15px;
+      font-size: 1.5rem;
     }
-    .activity-details {
-      color: #666;
-      font-size: 14px;
+    .nav-tabs .nav-link {
+      border: none;
+      color: #495057;
+      font-weight: 500;
+    }
+    .nav-tabs .nav-link.active {
+      color: #007bff;
+      border-bottom: 3px solid #007bff;
     }
   </style>
 </head>
 <body>
-  <div class="header">
-    <h1>Simple Fitness Tracker</h1>
-  </div>
+  <div class="container">
+    <header class="mb-4">
+      <nav class="navbar navbar-expand-lg navbar-dark bg-primary rounded">
+        <div class="container-fluid">
+          <a class="navbar-brand" href="#">Fitness Tracker</a>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav">
+              <li class="nav-item">
+                <a class="nav-link active" href="#" id="dashboard-tab">Dashboard</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="#" id="workouts-tab">Workouts</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="#" id="nutrition-tab">Nutrition</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="#" id="about-link" data-bs-toggle="modal" data-bs-target="#aboutModal">About</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </nav>
+    </header>
 
-  <div class="stats">
-    <div class="stat-card">
-      <h3>Steps</h3>
-      <div class="stat-value" id="steps-count">5,000</div>
-      <button id="add-steps-btn">Add Steps</button>
-    </div>
-    <div class="stat-card">
-      <h3>Calories</h3>
-      <div class="stat-value" id="calories-count">300</div>
-    </div>
-    <div class="stat-card">
-      <h3>Activities</h3>
-      <div class="stat-value" id="activities-count">2</div>
-      <button id="add-activity-btn">Log Activity</button>
-    </div>
-  </div>
+    <main>
+      <!-- Dashboard Section -->
+      <div id="dashboard-content" class="content-section">
+        <div class="row mb-4">
+          <div class="col-md-4">
+            <div class="card stat-card">
+              <h5>Steps</h5>
+              <div class="stat-value" id="steps-count">5,000</div>
+              <button class="btn btn-sm btn-outline-primary mt-2" id="add-steps-btn" data-bs-toggle="modal" data-bs-target="#stepsModal">+ Add Steps</button>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card stat-card">
+              <h5>Calories Burned</h5>
+              <div class="stat-value" id="calories-count">400</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card stat-card">
+              <h5>Activities</h5>
+              <div class="stat-value" id="activities-count">2</div>
+              <button class="btn btn-sm btn-outline-primary mt-2" data-bs-toggle="modal" data-bs-target="#activityModal">
+                + Log Activity
+              </button>
+            </div>
+          </div>
+        </div>
 
-  <div class="card">
-    <h2>Recent Activities</h2>
-    <div id="activities-list">
-      <div class="activity">
-        <div class="activity-title">Morning Run</div>
-        <div class="activity-details">250 calories · 30 minutes · Running</div>
-        <div class="activity-details">March 14, 2025</div>
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Recent Activities</h5>
+          </div>
+          <div class="card-body">
+            <div id="activities-list">
+              <!-- Activities will be added here dynamically -->
+            </div>
+            <div id="no-activities" style="display: none;">
+              <div class="text-center py-5">
+                <p class="text-muted">No activities logged yet.</p>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#activityModal">
+                  Log Your First Activity
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="activity">
-        <div class="activity-title">Weight Training</div>
-        <div class="activity-details">150 calories · 45 minutes · Weights</div>
-        <div class="activity-details">March 13, 2025</div>
+
+      <!-- Workouts Section (Initially Hidden) -->
+      <div id="workouts-content" class="content-section" style="display: none;">
+        <div class="card">
+          <div class="card-body">
+            <h4 class="mb-4">Your Workout Plans</h4>
+            <div class="alert alert-info">
+              <i class="bi bi-info-circle me-2"></i>
+              This section will allow you to create and manage your workout routines.
+            </div>
+            
+            <button class="btn btn-primary w-100 mt-3">
+              Create New Workout Plan
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Nutrition Section (Initially Hidden) -->
+      <div id="nutrition-content" class="content-section" style="display: none;">
+        <div class="card">
+          <div class="card-body">
+            <h4 class="mb-4">Nutrition Tracker</h4>
+            
+            <div class="alert alert-info mb-4">
+              <i class="bi bi-info-circle me-2"></i>
+              This section will allow you to log your meals and track your nutrition intake.
+            </div>
+            
+            <button class="btn btn-primary w-100 mt-3">
+              Log a Meal
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+    
+    <!-- About Modal -->
+    <div class="modal fade" id="aboutModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">About Fitness Tracker</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p><strong>Platform:</strong> Web</p>
+            <p><strong>Version:</strong> 1.0</p>
+            <p><strong>Created by:</strong> Fitness Team</p>
+            <p>This application helps you track your fitness activities, nutrition, and health metrics.</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Log Activity Modal -->
+    <div class="modal fade" id="activityModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Log Activity</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="activity-form">
+              <div class="mb-3">
+                <label for="activity-name" class="form-label">Activity Name</label>
+                <input type="text" class="form-control" id="activity-name" placeholder="e.g., Morning Run">
+              </div>
+              <div class="mb-3">
+                <label for="activity-calories" class="form-label">Calories Burned</label>
+                <input type="number" class="form-control" id="activity-calories" placeholder="e.g., 200">
+              </div>
+              <div class="mb-3">
+                <label for="activity-duration" class="form-label">Duration (minutes)</label>
+                <input type="number" class="form-control" id="activity-duration" placeholder="e.g., 30">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Activity Type</label>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="activity-type" id="type-running" value="running" checked>
+                  <label class="form-check-label" for="type-running">Running</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="activity-type" id="type-cycling" value="cycling">
+                  <label class="form-check-label" for="type-cycling">Cycling</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="activity-type" id="type-weights" value="weights">
+                  <label class="form-check-label" for="type-weights">Weight Training</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="activity-type" id="type-swimming" value="swimming">
+                  <label class="form-check-label" for="type-swimming">Swimming</label>
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" id="save-activity">Save Activity</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Steps Modal -->
+    <div class="modal fade" id="stepsModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Add Steps</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="steps-form">
+              <div class="mb-3">
+                <label for="steps-input" class="form-label">Number of Steps</label>
+                <input type="number" class="form-control" id="steps-input" placeholder="e.g., 2500">
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" id="save-steps">Save Steps</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  
+  <!-- Bootstrap JS and dependencies -->
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
+  
   <script>
-    // Simple JavaScript to handle button clicks
-    document.getElementById('add-steps-btn').addEventListener('click', function() {
-      const currentSteps = parseInt(document.getElementById('steps-count').textContent.replace(',', ''));
-      const newSteps = currentSteps + 1000;
-      document.getElementById('steps-count').textContent = newSteps.toLocaleString();
-      alert('Added 1,000 steps!');
+    document.addEventListener('DOMContentLoaded', function() {
+      // Initialize UI with placeholder data until the real data loads
+      const placeholderData = {
+        stepsCount: 5000,
+        caloriesBurned: 400,
+        activitiesLogged: 2,
+        activities: [
+          {
+            name: 'Morning Run',
+            calories: 250,
+            duration: 30,
+            type: 'running',
+            date: new Date().toISOString()
+          },
+          {
+            name: 'Weight Training',
+            calories: 150,
+            duration: 45,
+            type: 'weights',
+            date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+          }
+        ]
+      };
+      
+      // Update UI with placeholder data
+      updateUI(placeholderData);
+      
+      // Try to fetch tracking data from the server
+      fetch('/api/tracker')
+        .then(response => response.json())
+        .then(data => {
+          // Initialize UI with real data
+          updateUI(data);
+        })
+        .catch(error => {
+          console.error('Error fetching tracker data:', error);
+          // Keep showing placeholder data
+        });
+      
+      // Set up tab navigation
+      setupTabNavigation();
+      
+      // Setup event listeners
+      setupEventListeners();
     });
-
-    document.getElementById('add-activity-btn').addEventListener('click', function() {
+    
+    // Update UI with tracker data
+    function updateUI(data) {
+      // Update stats
+      document.getElementById('steps-count').textContent = (data.stepsCount || 0).toLocaleString();
+      document.getElementById('calories-count').textContent = (data.caloriesBurned || 0).toLocaleString();
+      document.getElementById('activities-count').textContent = (data.activitiesLogged || 0).toLocaleString();
+      
+      // Update activities list
       const activitiesList = document.getElementById('activities-list');
-      const newActivity = document.createElement('div');
-      newActivity.className = 'activity';
+      activitiesList.innerHTML = '';
       
-      const today = new Date();
-      const dateStr = today.toLocaleDateString('en-US', {
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric'
-      });
+      if (!data.activities || data.activities.length === 0) {
+        document.getElementById('no-activities').style.display = 'block';
+      } else {
+        document.getElementById('no-activities').style.display = 'none';
+        
+        data.activities.forEach(activity => {
+          const activityElement = createActivityElement(activity);
+          activitiesList.appendChild(activityElement);
+        });
+      }
+    }
+    
+    // Create activity element
+    function createActivityElement(activity) {
+      const activityElement = document.createElement('div');
+      activityElement.className = 'activity-item d-flex align-items-center';
       
-      newActivity.innerHTML = `
-        <div class="activity-title">New Activity</div>
-        <div class="activity-details">200 calories · 20 minutes · Exercise</div>
-        <div class="activity-details">${dateStr}</div>
+      // Activity icon and color based on type
+      let iconClass = 'bi-lightning';
+      let iconColor = '#3498db';
+      
+      switch (activity.type) {
+        case 'running':
+          iconClass = 'bi-lightning';
+          iconColor = '#3498db';
+          break;
+        case 'cycling':
+          iconClass = 'bi-bicycle';
+          iconColor = '#e74c3c';
+          break;
+        case 'weights':
+          iconClass = 'bi-trophy';
+          iconColor = '#9b59b6';
+          break;
+        case 'swimming':
+          iconClass = 'bi-water';
+          iconColor = '#2ecc71';
+          break;
+      }
+      
+      activityElement.innerHTML = `
+        <div class="activity-icon" style="background-color: ${iconColor}20;">
+          <i class="${iconClass}" style="color: ${iconColor};"></i>
+        </div>
+        <div>
+          <div class="fw-bold">${activity.name}</div>
+          <div class="text-muted small">${activity.calories} calories · ${activity.duration} min</div>
+          <div class="activity-time">${formatDate(activity.date)}</div>
+        </div>
       `;
       
-      activitiesList.insertBefore(newActivity, activitiesList.firstChild);
+      return activityElement;
+    }
+    
+    // Format date helper
+    function formatDate(dateStr) {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    
+    // Setup tab navigation
+    function setupTabNavigation() {
+      const dashboardTab = document.getElementById('dashboard-tab');
+      const workoutsTab = document.getElementById('workouts-tab');
+      const nutritionTab = document.getElementById('nutrition-tab');
       
-      // Update stats
-      const currentActivities = parseInt(document.getElementById('activities-count').textContent);
-      document.getElementById('activities-count').textContent = currentActivities + 1;
+      const dashboardContent = document.getElementById('dashboard-content');
+      const workoutsContent = document.getElementById('workouts-content');
+      const nutritionContent = document.getElementById('nutrition-content');
       
-      const currentCalories = parseInt(document.getElementById('calories-count').textContent);
-      document.getElementById('calories-count').textContent = currentCalories + 200;
+      // Dashboard tab
+      dashboardTab.addEventListener('click', function(event) {
+        event.preventDefault();
+        setActiveTab(dashboardTab);
+        setActiveContent(dashboardContent);
+      });
       
-      alert('New activity logged!');
-    });
+      // Workouts tab
+      workoutsTab.addEventListener('click', function(event) {
+        event.preventDefault();
+        setActiveTab(workoutsTab);
+        setActiveContent(workoutsContent);
+      });
+      
+      // Nutrition tab
+      nutritionTab.addEventListener('click', function(event) {
+        event.preventDefault();
+        setActiveTab(nutritionTab);
+        setActiveContent(nutritionContent);
+      });
+      
+      // Helper function to set active tab
+      function setActiveTab(tab) {
+        [dashboardTab, workoutsTab, nutritionTab].forEach(t => {
+          t.classList.remove('active');
+        });
+        tab.classList.add('active');
+      }
+      
+      // Helper function to set active content
+      function setActiveContent(content) {
+        [dashboardContent, workoutsContent, nutritionContent].forEach(c => {
+          c.style.display = 'none';
+        });
+        content.style.display = 'block';
+      }
+    }
+    
+    // Setup event listeners
+    function setupEventListeners() {
+      // Save steps button
+      const saveStepsBtn = document.getElementById('save-steps');
+      if (saveStepsBtn) {
+        saveStepsBtn.addEventListener('click', function() {
+          const stepsInput = document.getElementById('steps-input');
+          const steps = parseInt(stepsInput.value);
+          
+          if (!isNaN(steps) && steps > 0) {
+            // Send data to server
+            fetch('/api/steps', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ steps }),
+            })
+            .then(response => response.json())
+            .then(data => {
+              // Update UI
+              updateUI(data);
+              
+              // Close modal and reset form
+              const modal = bootstrap.Modal.getInstance(document.getElementById('stepsModal'));
+              modal.hide();
+              document.getElementById('steps-form').reset();
+              
+              // Show success alert
+              alert('Steps added successfully!');
+            })
+            .catch(error => {
+              console.error('Error adding steps:', error);
+              alert('Failed to add steps. Please try again.');
+            });
+          } else {
+            alert('Please enter a valid number of steps');
+          }
+        });
+      }
+      
+      // Save activity button
+      const saveActivityBtn = document.getElementById('save-activity');
+      if (saveActivityBtn) {
+        saveActivityBtn.addEventListener('click', function() {
+          const nameInput = document.getElementById('activity-name');
+          const caloriesInput = document.getElementById('activity-calories');
+          const durationInput = document.getElementById('activity-duration');
+          const activityTypeEl = document.querySelector('input[name="activity-type"]:checked');
+          
+          const name = nameInput.value.trim();
+          const calories = parseInt(caloriesInput.value);
+          const duration = parseInt(durationInput.value);
+          const type = activityTypeEl.value;
+          
+          if (!name || isNaN(calories) || isNaN(duration)) {
+            alert('Please fill in all fields');
+            return;
+          }
+          
+          // Send data to server
+          fetch('/api/activities', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ name, calories, duration, type }),
+          })
+          .then(response => response.json())
+          .then(data => {
+            // Update UI
+            updateUI(data);
+            
+            // Close modal and reset form
+            const modal = bootstrap.Modal.getInstance(document.getElementById('activityModal'));
+            modal.hide();
+            document.getElementById('activity-form').reset();
+            
+            // Show success alert
+            alert('Activity logged successfully!');
+          })
+          .catch(error => {
+            console.error('Error logging activity:', error);
+            alert('Failed to log activity. Please try again.');
+            
+            // If fetch fails, add activity locally
+            const now = new Date();
+            const placeholder = {
+              stepsCount: parseInt(document.getElementById('steps-count').textContent.replace(/,/g, '')) || 0,
+              caloriesBurned: parseInt(document.getElementById('calories-count').textContent.replace(/,/g, '')) + calories,
+              activitiesLogged: parseInt(document.getElementById('activities-count').textContent.replace(/,/g, '')) + 1,
+              activities: [{
+                name: name,
+                calories: calories,
+                duration: duration,
+                type: type,
+                date: now.toISOString()
+              }]
+            };
+            
+            // Update UI with local data
+            updateUI(placeholder);
+            
+            // Close modal and reset form
+            const modal = bootstrap.Modal.getInstance(document.getElementById('activityModal'));
+            modal.hide();
+            document.getElementById('activity-form').reset();
+          });
+        });
+      }
+    }
   </script>
 </body>
 </html>
