@@ -8,6 +8,7 @@
   <style>
     body {
       padding-top: 20px;
+      padding-bottom: 80px; /* Space for bottom navigation */
     }
     .card {
       margin-bottom: 20px;
@@ -45,6 +46,47 @@
     .nav-tabs .nav-link.active {
       color: #007bff;
       border-bottom: 3px solid #007bff;
+    }
+    
+    /* Bottom Navigation Styles */
+    .bottom-nav {
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+      padding: 10px 0;
+    }
+    
+    .bottom-nav .nav-link {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #6c757d;
+      padding: 8px 0;
+      font-size: 0.85rem;
+    }
+    
+    .bottom-nav .nav-link i {
+      font-size: 1.2rem;
+      margin-bottom: 4px;
+    }
+    
+    .bottom-nav .nav-link.active {
+      color: #0d6efd;
+    }
+    
+    /* Habit tracker styles */
+    .habit-day-indicator {
+      width: 35px;
+      height: 35px;
+      border-radius: 50%;
+      background-color: #e9ecef;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+    }
+    
+    .habit-day-indicator.completed {
+      background-color: #28a745;
+      color: white;
     }
   </style>
 </head>
@@ -227,7 +269,171 @@
           </div>
         </div>
       </div>
+      
+      <!-- Habits Section (Initially Hidden) -->
+      <div id="habits-content" class="content-section" style="display: none;">
+        <div class="card mb-4">
+          <div class="card-body">
+            <h4 class="mb-4">Habit Tracker</h4>
+            <p class="text-muted mb-4">Track daily habits to build consistency and achieve your goals.</p>
+            
+            <!-- Habit progress section -->
+            <div class="row mb-4">
+              <div class="col-md-6 mb-3">
+                <div class="card h-100">
+                  <div class="card-body">
+                    <h5 class="card-title">Weekly Overview</h5>
+                    <div class="d-flex flex-wrap mt-3">
+                      <div class="habit-day-indicator completed me-2 mb-2" data-bs-toggle="tooltip" title="Mon">M</div>
+                      <div class="habit-day-indicator completed me-2 mb-2" data-bs-toggle="tooltip" title="Tue">T</div>
+                      <div class="habit-day-indicator completed me-2 mb-2" data-bs-toggle="tooltip" title="Wed">W</div>
+                      <div class="habit-day-indicator me-2 mb-2" data-bs-toggle="tooltip" title="Thu">T</div>
+                      <div class="habit-day-indicator me-2 mb-2" data-bs-toggle="tooltip" title="Fri">F</div>
+                      <div class="habit-day-indicator me-2 mb-2" data-bs-toggle="tooltip" title="Sat">S</div>
+                      <div class="habit-day-indicator me-2 mb-2" data-bs-toggle="tooltip" title="Sun">S</div>
+                    </div>
+                    <div class="progress mt-3">
+                      <div class="progress-bar bg-success" style="width: 43%" role="progressbar" aria-valuenow="43" aria-valuemin="0" aria-valuemax="100">43%</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6 mb-3">
+                <div class="card h-100">
+                  <div class="card-body">
+                    <h5 class="card-title">Streaks</h5>
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                      <div class="text-center">
+                        <div class="display-6">3</div>
+                        <div class="text-muted small">Current Streak</div>
+                      </div>
+                      <div class="text-center">
+                        <div class="display-6">7</div>
+                        <div class="text-muted small">Best Streak</div>
+                      </div>
+                      <div class="text-center">
+                        <div class="display-6">12</div>
+                        <div class="text-muted small">Total Days</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Habit list section -->
+            <div>
+              <h5 class="mb-3">Your Habits</h5>
+              <div id="no-habits" style="display: none;" class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                You haven't created any habits yet. Add your first habit to get started.
+              </div>
+              
+              <div id="habit-list">
+                <!-- Habit item -->
+                <div class="card mb-3">
+                  <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <div>
+                        <h5 class="card-title mb-1">Morning Meditation</h5>
+                        <div class="text-muted small">Daily • Started 12 days ago</div>
+                      </div>
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="habit-1-toggle" checked>
+                        <label class="form-check-label" for="habit-1-toggle">Completed Today</label>
+                      </div>
+                    </div>
+                    <div class="progress mt-3">
+                      <div class="progress-bar bg-primary" style="width: 75%" role="progressbar">75% Complete</div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Habit item -->
+                <div class="card mb-3">
+                  <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <div>
+                        <h5 class="card-title mb-1">Drink 8 Glasses of Water</h5>
+                        <div class="text-muted small">Daily • Started 5 days ago</div>
+                      </div>
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="habit-2-toggle" checked>
+                        <label class="form-check-label" for="habit-2-toggle">Completed Today</label>
+                      </div>
+                    </div>
+                    <div class="progress mt-3">
+                      <div class="progress-bar bg-primary" style="width: 60%" role="progressbar">60% Complete</div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Habit item -->
+                <div class="card mb-3">
+                  <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <div>
+                        <h5 class="card-title mb-1">Read 20 Pages</h5>
+                        <div class="text-muted small">Daily • Started 8 days ago</div>
+                      </div>
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="habit-3-toggle">
+                        <label class="form-check-label" for="habit-3-toggle">Completed Today</label>
+                      </div>
+                    </div>
+                    <div class="progress mt-3">
+                      <div class="progress-bar bg-primary" style="width: 25%" role="progressbar">25% Complete</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <button class="btn btn-primary w-100 mt-3" data-bs-toggle="modal" data-bs-target="#habitModal">
+              Add New Habit
+            </button>
+          </div>
+        </div>
+      </div>
     </main>
+    
+    <!-- Bottom Navigation Tabs -->
+    <nav class="bottom-nav fixed-bottom bg-white">
+      <div class="container">
+        <div class="row text-center">
+          <div class="col">
+            <a href="#" class="nav-link active" id="dashboard-tab">
+              <i class="bi bi-speedometer2"></i>
+              <span>Dashboard</span>
+            </a>
+          </div>
+          <div class="col">
+            <a href="#" class="nav-link" id="activity-tab">
+              <i class="bi bi-activity"></i>
+              <span>Activity</span>
+            </a>
+          </div>
+          <div class="col">
+            <a href="#" class="nav-link" id="nutrition-tab">
+              <i class="bi bi-egg-fried"></i>
+              <span>Nutrition</span>
+            </a>
+          </div>
+          <div class="col">
+            <a href="#" class="nav-link" id="habits-tab">
+              <i class="bi bi-check2-square"></i>
+              <span>Habits</span>
+            </a>
+          </div>
+          <div class="col">
+            <a href="#" class="nav-link" id="profile-tab" data-bs-toggle="modal" data-bs-target="#profileModal">
+              <i class="bi bi-person"></i>
+              <span>Profile</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </nav>
     
     <!-- About Modal -->
     <div class="modal fade" id="aboutModal" tabindex="-1">
@@ -417,6 +623,68 @@
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
             <button type="button" class="btn btn-primary" id="save-meal">Save Meal</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Habit Modal -->
+    <div class="modal fade" id="habitModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Add New Habit</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="habit-form">
+              <div class="mb-3">
+                <label for="habit-name" class="form-label">Habit Name</label>
+                <input type="text" class="form-control" id="habit-name" placeholder="e.g., Morning Meditation">
+              </div>
+              <div class="mb-3">
+                <label for="habit-description" class="form-label">Description</label>
+                <textarea class="form-control" id="habit-description" rows="2" placeholder="Describe your habit..."></textarea>
+              </div>
+              <div class="mb-3">
+                <label for="habit-frequency" class="form-label">Frequency</label>
+                <select class="form-select" id="habit-frequency">
+                  <option value="daily" selected>Daily</option>
+                  <option value="weekdays">Weekdays</option>
+                  <option value="weekends">Weekends</option>
+                  <option value="weekly">Weekly</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="habit-reminder" class="form-label">Set Reminder</label>
+                <input type="time" class="form-control" id="habit-reminder">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Habit Type</label>
+                <div class="d-flex">
+                  <div class="form-check me-3">
+                    <input class="form-check-input" type="radio" name="habit-type" id="type-fitness" value="fitness" checked>
+                    <label class="form-check-label" for="type-fitness">Fitness</label>
+                  </div>
+                  <div class="form-check me-3">
+                    <input class="form-check-input" type="radio" name="habit-type" id="type-nutrition" value="nutrition">
+                    <label class="form-check-label" for="type-nutrition">Nutrition</label>
+                  </div>
+                  <div class="form-check me-3">
+                    <input class="form-check-input" type="radio" name="habit-type" id="type-wellness" value="wellness">
+                    <label class="form-check-label" for="type-wellness">Wellness</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="habit-type" id="type-other" value="other">
+                    <label class="form-check-label" for="type-other">Other</label>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" id="save-habit">Save Habit</button>
           </div>
         </div>
       </div>
@@ -712,6 +980,16 @@
       } catch (error) {
         console.error('Error initializing chart:', error);
       }
+      
+      // Set up tab navigation for both top bar and bottom navigation
+      setupTabNavigation();
+      
+      // Initialize tooltips for habit tracker
+      var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+      tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+      });
+      
       // Initialize UI with placeholder data until the real data loads
       const placeholderData = {
         stepsCount: 5000,
@@ -887,50 +1165,133 @@
     
     // Setup tab navigation
     function setupTabNavigation() {
+      // Get all tabs (both top navbar and bottom navigation)
       const dashboardTab = document.getElementById('dashboard-tab');
       const workoutsTab = document.getElementById('workouts-tab');
       const nutritionTab = document.getElementById('nutrition-tab');
+      const habitsTab = document.getElementById('habits-tab');
       
+      // Get all bottom nav tabs
+      const bottomDashboardTab = document.querySelector('.bottom-nav #dashboard-tab');
+      const bottomActivityTab = document.querySelector('.bottom-nav #activity-tab');
+      const bottomNutritionTab = document.querySelector('.bottom-nav #nutrition-tab');
+      const bottomHabitsTab = document.querySelector('.bottom-nav #habits-tab');
+      
+      // Get all content sections
       const dashboardContent = document.getElementById('dashboard-content');
       const workoutsContent = document.getElementById('workouts-content');
       const nutritionContent = document.getElementById('nutrition-content');
+      const habitsContent = document.getElementById('habits-content');
       
-      // Dashboard tab
-      dashboardTab.addEventListener('click', function(event) {
-        event.preventDefault();
-        setActiveTab(dashboardTab);
-        setActiveContent(dashboardContent);
-      });
+      // Create tab mapping for easy referencing
+      const contentMap = {
+        'dashboard': dashboardContent,
+        'workouts': workoutsContent,
+        'nutrition': nutritionContent,
+        'habits': habitsContent,
+        'activity': workoutsContent // activity tab in bottom nav shows workout content
+      };
       
-      // Workouts tab
-      workoutsTab.addEventListener('click', function(event) {
-        event.preventDefault();
-        setActiveTab(workoutsTab);
-        setActiveContent(workoutsContent);
-      });
-      
-      // Nutrition tab
-      nutritionTab.addEventListener('click', function(event) {
-        event.preventDefault();
-        setActiveTab(nutritionTab);
-        setActiveContent(nutritionContent);
-      });
-      
-      // Helper function to set active tab
-      function setActiveTab(tab) {
-        [dashboardTab, workoutsTab, nutritionTab].forEach(t => {
-          t.classList.remove('active');
+      // Top navbar tabs
+      if (dashboardTab) {
+        dashboardTab.addEventListener('click', function(event) {
+          event.preventDefault();
+          activateTabAndContent('dashboard');
         });
-        tab.classList.add('active');
       }
       
-      // Helper function to set active content
-      function setActiveContent(content) {
-        [dashboardContent, workoutsContent, nutritionContent].forEach(c => {
-          c.style.display = 'none';
+      if (workoutsTab) {
+        workoutsTab.addEventListener('click', function(event) {
+          event.preventDefault();
+          activateTabAndContent('workouts');
         });
-        content.style.display = 'block';
       }
+      
+      if (nutritionTab) {
+        nutritionTab.addEventListener('click', function(event) {
+          event.preventDefault();
+          activateTabAndContent('nutrition');
+        });
+      }
+      
+      // Bottom navigation tabs
+      if (bottomDashboardTab) {
+        bottomDashboardTab.addEventListener('click', function(event) {
+          event.preventDefault();
+          activateTabAndContent('dashboard');
+        });
+      }
+      
+      if (bottomActivityTab) {
+        bottomActivityTab.addEventListener('click', function(event) {
+          event.preventDefault();
+          activateTabAndContent('activity');
+        });
+      }
+      
+      if (bottomNutritionTab) {
+        bottomNutritionTab.addEventListener('click', function(event) {
+          event.preventDefault();
+          activateTabAndContent('nutrition');
+        });
+      }
+      
+      if (bottomHabitsTab) {
+        bottomHabitsTab.addEventListener('click', function(event) {
+          event.preventDefault();
+          activateTabAndContent('habits');
+        });
+      }
+      
+      // Function to activate tab and content
+      function activateTabAndContent(contentType) {
+        // Hide all content
+        Object.values(contentMap).forEach(content => {
+          if (content) content.style.display = 'none';
+        });
+        
+        // Show selected content
+        if (contentMap[contentType]) {
+          contentMap[contentType].style.display = 'block';
+        }
+        
+        // Update active tab in top navbar
+        const topNavTabs = [dashboardTab, workoutsTab, nutritionTab];
+        topNavTabs.forEach(tab => {
+          if (tab) tab.classList.remove('active');
+        });
+        
+        // Update active tab in bottom nav
+        const bottomNavTabs = [bottomDashboardTab, bottomActivityTab, bottomNutritionTab, bottomHabitsTab];
+        bottomNavTabs.forEach(tab => {
+          if (tab) tab.classList.remove('active');
+        });
+        
+        // Set active tab in top navbar
+        if (contentType === 'dashboard' && dashboardTab) {
+          dashboardTab.classList.add('active');
+        } else if ((contentType === 'workouts' || contentType === 'activity') && workoutsTab) {
+          workoutsTab.classList.add('active');
+        } else if (contentType === 'nutrition' && nutritionTab) {
+          nutritionTab.classList.add('active');
+        }
+        
+        // Set active tab in bottom navbar
+        if (contentType === 'dashboard' && bottomDashboardTab) {
+          bottomDashboardTab.classList.add('active');
+        } else if (contentType === 'activity' && bottomActivityTab) {
+          bottomActivityTab.classList.add('active');
+        } else if (contentType === 'workouts' && bottomActivityTab) {
+          bottomActivityTab.classList.add('active');
+        } else if (contentType === 'nutrition' && bottomNutritionTab) {
+          bottomNutritionTab.classList.add('active');
+        } else if (contentType === 'habits' && bottomHabitsTab) {
+          bottomHabitsTab.classList.add('active');
+        }
+      }
+      
+      // Initialize with dashboard view
+      activateTabAndContent('dashboard');
     }
     
     // Setup event listeners
