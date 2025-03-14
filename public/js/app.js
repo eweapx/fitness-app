@@ -1462,9 +1462,21 @@ function initializeScrollWheel(inputId, maxValue) {
     // Update the visual position of the wheel
     wheel.style.transform = `translateY(${newY}px)`;
     
-    // Update the input value
-    input.value = value;
+    // Update the input value and ensure it's preserved
+    if (input.value !== value.toString()) {
+      input.value = value;
+    }
     input.scrollWheel.currentValue = value;
+    
+    // Highlight the current value
+    const options = input.scrollWheel.options;
+    options.forEach(option => {
+      if (parseInt(option.dataset.value) === value) {
+        option.classList.add('selected-value');
+      } else {
+        option.classList.remove('selected-value');
+      }
+    });
     
     e.preventDefault();
   }, { passive: false });
@@ -1495,7 +1507,7 @@ function initializeScrollWheel(inputId, maxValue) {
  * @param {number} value - The value to display
  */
 function updateScrollWheelPosition(input, value) {
-  if (!input.scrollWheel) return;
+  if (!input || !input.scrollWheel) return;
   
   const { wheel, optionHeight } = input.scrollWheel;
   const position = -(value * optionHeight) + (input.scrollWheel.container.offsetHeight / 2 - optionHeight / 2);
@@ -1504,11 +1516,25 @@ function updateScrollWheelPosition(input, value) {
   wheel.style.transform = `translateY(${position}px)`;
   input.scrollWheel.currentY = position;
   input.scrollWheel.currentValue = value;
-  input.value = value;
+  
+  // Ensure the input value is always set and preserved
+  if (input.value !== value.toString()) {
+    input.value = value;
+  }
+  
+  // Make sure selected value is highlighted
+  const options = input.scrollWheel.options;
+  options.forEach(option => {
+    if (parseInt(option.dataset.value) === value) {
+      option.classList.add('selected-value');
+    } else {
+      option.classList.remove('selected-value');
+    }
+  });
   
   // Remove the transition after it completes
   setTimeout(() => {
-    wheel.style.transition = '';
+    if (wheel) wheel.style.transition = '';
   }, 300);
 }
 
@@ -2632,87 +2658,116 @@ function initializeWorkoutForm() {
   exercisePresets.forEach(preset => {
     preset.addEventListener('click', function(e) {
       e.preventDefault();
+      console.log('Exercise preset clicked:', this.dataset);
       const exerciseName = this.dataset.name;
       activityNameInput.value = exerciseName;
       
       // Check if this is a weight training exercise with additional data
       if (this.dataset.equipment) {
+        console.log('Setting up weight training exercise with equipment:', this.dataset.equipment);
         // Set workout category to weights
-        document.getElementById('workout-weights').checked = true;
-        weightTrainingOptions.style.display = 'block';
-        document.getElementById('activity-type').value = 'weights';
-        
-        // Select the appropriate equipment type
-        const equipment = this.dataset.equipment;
-        document.getElementById(`equipment-${equipment}`).checked = true;
-        
-        // Update UI based on equipment type
-        updateEquipmentOptions(equipment);
-        
-        // Set sets and reps values
-        if (this.dataset.sets) {
-          const setsInput = document.getElementById('sets-input');
-          setsInput.value = this.dataset.sets;
-          updateScrollWheelPosition(setsInput, parseInt(this.dataset.sets));
-        }
-        
-        if (this.dataset.reps) {
-          const repsInput = document.getElementById('reps-input');
-          repsInput.value = this.dataset.reps;
-          updateScrollWheelPosition(repsInput, parseInt(this.dataset.reps));
-        }
-        
-        // Handle weight
-        if (this.dataset.weight && equipment !== 'bodyweight') {
-          const weight = parseFloat(this.dataset.weight);
+        const weightsRadio = document.getElementById('workout-weights');
+        if (weightsRadio) {
+          weightsRadio.checked = true;
+          document.getElementById('activity-type').value = 'weights';
+          weightTrainingOptions.style.display = 'block';
           
-          if (equipment === 'barbell') {
-            // For barbell, calculate which plates to add to match the weight
-            const barWeight = 45; // Standard barbell weight
-            let plateWeight = weight - barWeight;
+          // Select the appropriate equipment type
+          const equipment = this.dataset.equipment;
+          const equipmentRadio = document.getElementById(`equipment-${equipment}`);
+          
+          if (equipmentRadio) {
+            equipmentRadio.checked = true;
             
-            // Clear existing plates
-            document.getElementById('clear-plates-btn').click();
+            // Update UI based on equipment type
+            updateEquipmentOptions(equipment);
             
-            // If there's weight to add beyond the bar
-            if (plateWeight > 0) {
-              // Weight needs to be distributed on both sides
-              plateWeight = plateWeight / 2;
-              
-              // Standard plate weights (descending order)
-              const plateWeights = [45, 35, 25, 15, 10, 5, 2.5];
-              let remainingWeight = plateWeight;
-              
-              // Add plates to match the target weight as closely as possible
-              plateWeights.forEach(pw => {
-                while (remainingWeight >= pw) {
-                  // Find and click the button for this plate weight
-                  const plateButtons = document.querySelectorAll('.plate-btn');
-                  for (const btn of plateButtons) {
-                    if (parseFloat(btn.dataset.weight) === pw) {
-                      btn.click();
-                      break;
-                    }
-                  }
-                  remainingWeight -= pw;
-                }
-              });
+            // Set sets and reps values
+            if (this.dataset.sets) {
+              const setsInput = document.getElementById('sets-input');
+              if (setsInput) {
+                const setsValue = parseInt(this.dataset.sets);
+                setsInput.value = setsValue;
+                console.log('Setting sets to:', setsValue);
+                // Update the scroll wheel
+                updateScrollWheelPosition(setsInput, setsValue);
+              }
             }
-          } else {
-            // For dumbbell or machine, just set the weight input
-            const otherWeightInput = document.getElementById('other-weight-input');
-            otherWeightInput.value = weight;
-            updateScrollWheelPosition(otherWeightInput, weight);
+            
+            if (this.dataset.reps) {
+              const repsInput = document.getElementById('reps-input');
+              if (repsInput) {
+                const repsValue = parseInt(this.dataset.reps);
+                repsInput.value = repsValue;
+                console.log('Setting reps to:', repsValue);
+                // Update the scroll wheel
+                updateScrollWheelPosition(repsInput, repsValue);
+              }
+            }
+            
+            // Handle weight
+            if (this.dataset.weight && equipment !== 'bodyweight') {
+              const weight = parseFloat(this.dataset.weight);
+              console.log('Setting weight to:', weight);
+              
+              if (equipment === 'barbell') {
+                // For barbell, calculate which plates to add to match the weight
+                const barWeight = 45; // Standard barbell weight
+                let plateWeight = weight - barWeight;
+                
+                // Clear existing plates
+                const clearBtn = document.getElementById('clear-plates-btn');
+                if (clearBtn) {
+                  clearBtn.click();
+                
+                  // If there's weight to add beyond the bar
+                  if (plateWeight > 0) {
+                    // Weight needs to be distributed on both sides
+                    plateWeight = plateWeight / 2;
+                    
+                    // Standard plate weights (descending order)
+                    const plateWeights = [45, 35, 25, 15, 10, 5, 2.5];
+                    let remainingWeight = plateWeight;
+                    
+                    // Add plates to match the target weight as closely as possible
+                    plateWeights.forEach(pw => {
+                      while (remainingWeight >= pw) {
+                        // Find and click the button for this plate weight
+                        const plateButtons = document.querySelectorAll('.plate-btn');
+                        for (const btn of plateButtons) {
+                          if (parseFloat(btn.dataset.weight) === pw) {
+                            btn.click();
+                            break;
+                          }
+                        }
+                        remainingWeight -= pw;
+                      }
+                    });
+                  }
+                }
+              } else {
+                // For dumbbell or machine, just set the weight input
+                const otherWeightInput = document.getElementById('other-weight-input');
+                if (otherWeightInput) {
+                  otherWeightInput.value = weight;
+                  updateScrollWheelPosition(otherWeightInput, weight);
+                }
+              }
+            }
           }
+          
+          // Update exercise presets visibility
+          updateExercisePresets('weights');
         }
-        
-        // Update exercise presets visibility
-        updateExercisePresets('weights');
       } else {
         // Assume cardio exercise if no equipment data
-        document.getElementById('workout-cardio').checked = true;
-        weightTrainingOptions.style.display = 'none';
-        updateExercisePresets('cardio');
+        console.log('Setting up cardio exercise');
+        const cardioRadio = document.getElementById('workout-cardio');
+        if (cardioRadio) {
+          cardioRadio.checked = true;
+          weightTrainingOptions.style.display = 'none';
+          updateExercisePresets('cardio');
+        }
       }
     });
   });
