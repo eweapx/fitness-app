@@ -1267,24 +1267,142 @@
           <div class="modal-body">
             <form id="workout-form">
               <div class="mb-3">
-                <label for="workout-name" class="form-label">Workout Name</label>
-                <input type="text" class="form-control" id="workout-name" placeholder="e.g., Morning Cardio">
+                <label for="activity-name" class="form-label">Activity/Exercise Name</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" id="activity-name" placeholder="e.g., Bench Press, Running">
+                  <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    Presets
+                  </button>
+                  <ul class="dropdown-menu dropdown-menu-end exercise-preset-list">
+                    <li><h6 class="dropdown-header">Cardio Exercises</h6></li>
+                    <li><a class="dropdown-item" href="#" data-name="Running">Running</a></li>
+                    <li><a class="dropdown-item" href="#" data-name="Cycling">Cycling</a></li>
+                    <li><a class="dropdown-item" href="#" data-name="Swimming">Swimming</a></li>
+                    <li><a class="dropdown-item" href="#" data-name="Rowing">Rowing</a></li>
+                    <li><div class="dropdown-divider"></div></li>
+                    <li><h6 class="dropdown-header">Weight Training</h6></li>
+                    <li><a class="dropdown-item" href="#" data-name="Bench Press" data-equipment="barbell" data-sets="3" data-reps="5" data-weight="135">Bench Press (135 lb)</a></li>
+                    <li><a class="dropdown-item" href="#" data-name="Squat" data-equipment="barbell" data-sets="3" data-reps="5" data-weight="185">Squat (185 lb)</a></li>
+                    <li><a class="dropdown-item" href="#" data-name="Deadlift" data-equipment="barbell" data-sets="3" data-reps="5" data-weight="225">Deadlift (225 lb)</a></li>
+                    <li><a class="dropdown-item" href="#" data-name="Pull-ups" data-equipment="bodyweight" data-sets="3" data-reps="8">Pull-ups</a></li>
+                    <li><a class="dropdown-item" href="#" data-name="Bicep Curl" data-equipment="dumbbell" data-sets="3" data-reps="12" data-weight="25">Bicep Curl (25 lb)</a></li>
+                  </ul>
+                </div>
               </div>
+              
               <div class="mb-3">
-                <label for="workout-description" class="form-label">Description</label>
-                <textarea class="form-control" id="workout-description" rows="3" placeholder="Brief description of the workout..."></textarea>
+                <label class="form-label d-block">Activity Type</label>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="workout-category" id="workout-cardio" value="cardio" checked>
+                  <label class="form-check-label" for="workout-cardio">Cardio</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="workout-category" id="workout-weights" value="weights">
+                  <label class="form-check-label" for="workout-weights">Weights</label>
+                </div>
               </div>
+              
+              <!-- Hidden input for activity type -->
+              <input type="hidden" id="activity-type" value="running">
+              
+              <!-- Weight training specific options -->
+              <div id="weight-training-options" style="display: none;">
+                <div class="mb-3">
+                  <label class="form-label d-block">Equipment Type</label>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="equipment-type" id="equipment-barbell" value="barbell" checked>
+                    <label class="form-check-label" for="equipment-barbell">Barbell</label>
+                  </div>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="equipment-type" id="equipment-dumbbell" value="dumbbell">
+                    <label class="form-check-label" for="equipment-dumbbell">Dumbbell</label>
+                  </div>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="equipment-type" id="equipment-machine" value="machine">
+                    <label class="form-check-label" for="equipment-machine">Machine</label>
+                  </div>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="equipment-type" id="equipment-bodyweight" value="bodyweight">
+                    <label class="form-check-label" for="equipment-bodyweight">Bodyweight</label>
+                  </div>
+                </div>
+                
+                <!-- Barbell weight selector (plates) -->
+                <div id="barbell-weight-selector" class="mb-3">
+                  <label class="form-label">Barbell Weight <small class="text-muted">(45 lb bar + plates)</small></label>
+                  <div class="d-flex align-items-center mb-2">
+                    <strong>Total: <span id="barbell-total-weight">45</span> lbs</strong>
+                    <button type="button" class="btn btn-sm btn-outline-danger ms-auto" id="clear-plates-btn">Clear Plates</button>
+                  </div>
+                  
+                  <div class="mb-2">
+                    <label class="form-label small">Add plates (per side):</label>
+                    <div class="d-flex flex-wrap gap-1">
+                      <button type="button" class="btn btn-sm btn-outline-primary plate-btn" data-weight="45">45 lb</button>
+                      <button type="button" class="btn btn-sm btn-outline-primary plate-btn" data-weight="35">35 lb</button>
+                      <button type="button" class="btn btn-sm btn-outline-primary plate-btn" data-weight="25">25 lb</button>
+                      <button type="button" class="btn btn-sm btn-outline-primary plate-btn" data-weight="15">15 lb</button>
+                      <button type="button" class="btn btn-sm btn-outline-primary plate-btn" data-weight="10">10 lb</button>
+                      <button type="button" class="btn btn-sm btn-outline-primary plate-btn" data-weight="5">5 lb</button>
+                      <button type="button" class="btn btn-sm btn-outline-primary plate-btn" data-weight="2.5">2.5 lb</button>
+                    </div>
+                  </div>
+                  
+                  <div id="selected-plates-display" class="d-flex flex-wrap gap-1 align-items-center">
+                    <div class="barbell-bar">|</div>
+                    <!-- Plates will be added here -->
+                    <div class="barbell-end">|</div>
+                  </div>
+                </div>
+                
+                <!-- Other weight selector (dumbbell/machine) -->
+                <div id="other-weight-selector" class="mb-3" style="display: none;">
+                  <label for="other-weight-input" class="form-label">Weight (lbs)</label>
+                  <div class="input-container">
+                    <input type="number" class="form-control" id="other-weight-input" min="0" max="1000" step="5" value="50">
+                    <div class="scroll-wheel-container"></div>
+                  </div>
+                  <div class="form-text">Double-tap to switch input method</div>
+                </div>
+                
+                <!-- Sets and reps -->
+                <div class="row">
+                  <div class="col-6">
+                    <div class="mb-3">
+                      <label for="sets-input" class="form-label">Sets</label>
+                      <div class="input-container">
+                        <input type="number" class="form-control" id="sets-input" min="1" max="50" value="3">
+                        <div class="scroll-wheel-container"></div>
+                      </div>
+                      <div class="form-text">Double-tap to switch input method</div>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="mb-3">
+                      <label for="reps-input" class="form-label">Reps</label>
+                      <div class="input-container">
+                        <input type="number" class="form-control" id="reps-input" min="1" max="50" value="10">
+                        <div class="scroll-wheel-container"></div>
+                      </div>
+                      <div class="form-text">Double-tap to switch input method</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
               <div class="mb-3">
-                <label for="workout-frequency" class="form-label">Frequency per Week</label>
-                <select class="form-select" id="workout-frequency">
-                  <option value="1">1x per week</option>
-                  <option value="2">2x per week</option>
-                  <option value="3" selected>3x per week</option>
-                  <option value="4">4x per week</option>
-                  <option value="5">5x per week</option>
-                  <option value="6">6x per week</option>
-                  <option value="7">7x per week</option>
-                </select>
+                <label for="workout-duration" class="form-label">Duration (minutes)</label>
+                <input type="number" class="form-control" id="workout-duration" min="1" max="300" placeholder="e.g., 30">
+              </div>
+              
+              <div class="mb-3">
+                <label for="workout-calories" class="form-label">Calories Burned (estimated)</label>
+                <input type="number" class="form-control" id="workout-calories" min="1" placeholder="e.g., 300">
+              </div>
+              
+              <div class="mb-3">
+                <label for="workout-notes" class="form-label">Notes</label>
+                <textarea class="form-control" id="workout-notes" rows="2" placeholder="Optional notes..."></textarea>
               </div>
               <div class="mb-3">
                 <label for="workout-difficulty" class="form-label">Difficulty Level</label>
