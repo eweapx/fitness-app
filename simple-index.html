@@ -114,6 +114,41 @@
     <main>
       <!-- Dashboard Section -->
       <div id="dashboard-content" class="content-section">
+        <!-- Health Snapshot Widget -->
+        <div class="card mb-4 shadow-sm">
+          <div class="card-body">
+            <div class="row align-items-center">
+              <div class="col-md-8">
+                <h4 class="mb-1">Quick Health Snapshot</h4>
+                <p class="text-muted mb-3">Capture your health metrics right now with one tap</p>
+                <div class="d-flex flex-wrap gap-2 mb-2">
+                  <span class="badge rounded-pill bg-primary-subtle text-primary p-2">
+                    <i class="bi bi-heart-pulse"></i> Heart Rate
+                  </span>
+                  <span class="badge rounded-pill bg-success-subtle text-success p-2">
+                    <i class="bi bi-activity"></i> Energy Level
+                  </span>
+                  <span class="badge rounded-pill bg-info-subtle text-info p-2">
+                    <i class="bi bi-cup-hot"></i> Hydration
+                  </span>
+                  <span class="badge rounded-pill bg-warning-subtle text-warning p-2">
+                    <i class="bi bi-emoji-smile"></i> Mood
+                  </span>
+                  <span class="badge rounded-pill bg-danger-subtle text-danger p-2">
+                    <i class="bi bi-lightning-charge"></i> Stress Level
+                  </span>
+                </div>
+              </div>
+              <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                <button id="capture-snapshot-btn" class="btn btn-primary btn-lg">
+                  <i class="bi bi-camera"></i> Capture Now
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Stats Row -->
         <div class="row">
           <div class="col-md-4">
             <div class="card stat-card">
@@ -519,6 +554,140 @@
         </div>
       </div>
     </nav>
+    
+    <!-- Health Snapshot Modal -->
+    <div class="modal fade" id="healthSnapshotModal" tabindex="-1" aria-labelledby="healthSnapshotModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="healthSnapshotModalLabel">Quick Health Snapshot</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="health-snapshot-form">
+              <div class="row">
+                <!-- Heart Rate -->
+                <div class="col-md-6 mb-3">
+                  <label for="heart-rate" class="form-label">
+                    <i class="bi bi-heart-pulse text-primary"></i> Heart Rate (BPM)
+                  </label>
+                  <input type="number" class="form-control" id="heart-rate" placeholder="60-100" min="30" max="220">
+                  <div class="form-text">Normal resting heart rate: 60-100 BPM</div>
+                </div>
+                
+                <!-- Energy Level -->
+                <div class="col-md-6 mb-3">
+                  <label for="energy-level" class="form-label">
+                    <i class="bi bi-activity text-success"></i> Energy Level
+                  </label>
+                  <select class="form-select" id="energy-level">
+                    <option value="" selected disabled>Select your energy level</option>
+                    <option value="5">5 - Very Energetic</option>
+                    <option value="4">4 - Energetic</option>
+                    <option value="3">3 - Average</option>
+                    <option value="2">2 - Tired</option>
+                    <option value="1">1 - Very Tired</option>
+                  </select>
+                </div>
+                
+                <!-- Hydration -->
+                <div class="col-md-6 mb-3">
+                  <label for="hydration" class="form-label">
+                    <i class="bi bi-cup-hot text-info"></i> Hydration
+                  </label>
+                  <select class="form-select" id="hydration">
+                    <option value="" selected disabled>How hydrated do you feel?</option>
+                    <option value="well_hydrated">Well Hydrated</option>
+                    <option value="hydrated">Hydrated</option>
+                    <option value="slightly_thirsty">Slightly Thirsty</option>
+                    <option value="thirsty">Thirsty</option>
+                    <option value="very_thirsty">Very Thirsty</option>
+                  </select>
+                  <div class="form-text">Water consumed today in glasses:</div>
+                  <div class="d-flex mt-1">
+                    <input type="range" class="form-range" id="water-intake" min="0" max="10" value="0">
+                    <span class="ms-2" id="water-intake-value">0</span>
+                  </div>
+                </div>
+                
+                <!-- Mood -->
+                <div class="col-md-6 mb-3">
+                  <label for="mood" class="form-label">
+                    <i class="bi bi-emoji-smile text-warning"></i> Mood
+                  </label>
+                  <select class="form-select" id="mood">
+                    <option value="" selected disabled>How are you feeling?</option>
+                    <option value="5">😄 Very Happy</option>
+                    <option value="4">🙂 Happy</option>
+                    <option value="3">😐 Neutral</option>
+                    <option value="2">🙁 Sad</option>
+                    <option value="1">😞 Very Sad</option>
+                  </select>
+                </div>
+                
+                <!-- Stress Level -->
+                <div class="col-md-6 mb-3">
+                  <label for="stress-level" class="form-label">
+                    <i class="bi bi-lightning-charge text-danger"></i> Stress Level
+                  </label>
+                  <div class="text-center mb-2">
+                    <div class="btn-group" role="group" aria-label="Stress level">
+                      <input type="radio" class="btn-check" name="stress-level" id="stress-1" value="1">
+                      <label class="btn btn-outline-secondary" for="stress-1">1</label>
+                      
+                      <input type="radio" class="btn-check" name="stress-level" id="stress-2" value="2">
+                      <label class="btn btn-outline-secondary" for="stress-2">2</label>
+                      
+                      <input type="radio" class="btn-check" name="stress-level" id="stress-3" value="3">
+                      <label class="btn btn-outline-secondary" for="stress-3">3</label>
+                      
+                      <input type="radio" class="btn-check" name="stress-level" id="stress-4" value="4">
+                      <label class="btn btn-outline-secondary" for="stress-4">4</label>
+                      
+                      <input type="radio" class="btn-check" name="stress-level" id="stress-5" value="5">
+                      <label class="btn btn-outline-secondary" for="stress-5">5</label>
+                    </div>
+                  </div>
+                  <div class="d-flex justify-content-between">
+                    <span class="small">Low Stress</span>
+                    <span class="small">High Stress</span>
+                  </div>
+                </div>
+                
+                <!-- Notes -->
+                <div class="col-md-6 mb-3">
+                  <label for="snapshot-notes" class="form-label">
+                    <i class="bi bi-journal-text"></i> Quick Notes
+                  </label>
+                  <textarea class="form-control" id="snapshot-notes" rows="3" placeholder="Any additional notes about how you're feeling..."></textarea>
+                </div>
+                
+                <!-- Location -->
+                <div class="col-12 mb-3">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="include-location">
+                    <label class="form-check-label" for="include-location">
+                      <i class="bi bi-geo-alt"></i> Include my current location
+                    </label>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> All snapshot data is stored securely and only accessible to you.
+              </div>
+              
+              <div class="text-end">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary">
+                  <i class="bi bi-save"></i> Save Snapshot
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
     
     <!-- About Modal -->
     <div class="modal fade" id="aboutModal" tabindex="-1">
