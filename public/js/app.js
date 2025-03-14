@@ -656,10 +656,12 @@ function updateActivitiesList() {
     const activityElement = document.createElement('div');
     activityElement.className = 'card mb-2 activity-card';
     activityElement.dataset.activityId = activity.id;
+    
+    // Create the inner structure with separate card content and info button
     activityElement.innerHTML = `
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-center">
-          <div>
+          <div class="activity-info">
             <h6 class="mb-1">${activity.name}</h6>
             <p class="text-muted mb-0 small">${activity.getFormattedDate()} | ${activity.duration} mins | ${activity.type}</p>
           </div>
@@ -676,12 +678,17 @@ function updateActivitiesList() {
     // Add swipe functionality
     setupSwipeToDelete(activityElement, activity.id);
     
-    // Add view details button functionality
+    // Add view details button functionality - keep this independent of the swipe
     const viewButton = activityElement.querySelector('.view-details-btn');
     if (viewButton) {
       viewButton.addEventListener('click', (e) => {
-        e.stopPropagation(); // Prevent the swipe from triggering
+        e.preventDefault(); // Prevent default behavior
+        e.stopPropagation(); // Stop event propagation
+        // Prevent any potential touch event from continuing
+        if (e.cancelable) e.preventDefault();
+        // Open the activity modal
         openActivityModal(activity.id);
+        return false;
       });
     }
     
