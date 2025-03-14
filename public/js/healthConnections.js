@@ -342,6 +342,3 @@ class HealthConnectionManager {
     return stats;
   }
 }
-
-// Initialize the health connection manager
-const healthConnectionManager = new HealthConnectionManager();

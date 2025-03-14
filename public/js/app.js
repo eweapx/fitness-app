@@ -25,6 +25,11 @@ const sleepTracker = new SleepTracker();
 sleepTracker.loadFromLocalStorage();
 console.log('Sleep tracker loaded', sleepTracker.getSleepRecords().length, 'records');
 
+// Initialize the health connection manager
+const healthConnectionManager = new HealthConnectionManager();
+healthConnectionManager.loadFromLocalStorage();
+console.log('Health connections loaded', healthConnectionManager.getConnections().length, 'connections');
+
 // Set up event listeners once the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', function() {
   // Set up event listeners for all forms
@@ -582,11 +587,11 @@ function updateHabitStats() {
   const currentStreakCount = document.getElementById('current-streak-count');
   const successRateCount = document.getElementById('success-rate-count');
   
-  const stats = habitTracker.getOverallProgress();
+  const stats = habitTracker.getOverallProgress() || { currentStreak: 0, bestStreak: 0, successRate: 0 };
   
   if (habitsCount) habitsCount.textContent = habitTracker.getHabits().length.toString();
-  if (currentStreakCount) currentStreakCount.textContent = stats.currentStreak.toString();
-  if (successRateCount) successRateCount.textContent = `${Math.round(stats.successRate)}%`;
+  if (currentStreakCount) currentStreakCount.textContent = (stats.currentStreak || 0).toString();
+  if (successRateCount) successRateCount.textContent = `${Math.round(stats.successRate || 0)}%`;
 }
 
 /**
