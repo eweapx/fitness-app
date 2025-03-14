@@ -79,6 +79,9 @@
           <a class="nav-link" id="habits-tab" href="#">Bad Habits</a>
         </li>
         <li class="nav-item">
+          <a class="nav-link" id="sleep-tab" href="#">Sleep</a>
+        </li>
+        <li class="nav-item">
           <a class="nav-link" id="about-tab" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal">About</a>
         </li>
       </ul>
@@ -304,28 +307,34 @@
     <nav class="bottom-nav d-md-none">
       <div class="container">
         <div class="row">
-          <div class="col-3">
+          <div class="col">
             <a class="nav-link active" id="bottom-dashboard-tab" href="#">
               <i class="bi bi-speedometer2"></i>
               Dashboard
             </a>
           </div>
-          <div class="col-3">
+          <div class="col">
             <a class="nav-link" id="bottom-activity-tab" href="#">
               <i class="bi bi-activity"></i>
               Activities
             </a>
           </div>
-          <div class="col-3">
+          <div class="col">
             <a class="nav-link" id="bottom-nutrition-tab" href="#">
               <i class="bi bi-egg-fried"></i>
               Nutrition
             </a>
           </div>
-          <div class="col-3">
+          <div class="col">
             <a class="nav-link" id="bottom-habits-tab" href="#">
               <i class="bi bi-x-circle"></i>
               Habits
+            </a>
+          </div>
+          <div class="col">
+            <a class="nav-link" id="bottom-sleep-tab" href="#">
+              <i class="bi bi-moon-stars"></i>
+              Sleep
             </a>
           </div>
         </div>
@@ -614,18 +623,21 @@
       const activityTab = document.getElementById('activity-tab');
       const nutritionTab = document.getElementById('nutrition-tab');
       const habitsTab = document.getElementById('habits-tab');
+      const sleepTab = document.getElementById('sleep-tab');
       
       // Bottom navigation
       const bottomDashboardTab = document.getElementById('bottom-dashboard-tab');
       const bottomActivityTab = document.getElementById('bottom-activity-tab');
       const bottomNutritionTab = document.getElementById('bottom-nutrition-tab');
       const bottomHabitsTab = document.getElementById('bottom-habits-tab');
+      const bottomSleepTab = document.getElementById('bottom-sleep-tab');
       
       // Content sections
       const dashboardContent = document.getElementById('dashboard-content');
       const activityContent = document.getElementById('activity-content');
       const nutritionContent = document.getElementById('nutrition-content');
       const habitsContent = document.getElementById('habits-content');
+      const sleepContent = document.getElementById('sleep-content');
       
       function showContent(contentId) {
         // Hide all content sections
