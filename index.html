@@ -136,6 +136,81 @@
     .content-section {
       padding-bottom: 100px;
     }
+    /* Workout styles */
+    #workout-session-view {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 1050;
+      background-color: #fff;
+      overflow-y: auto;
+    }
+    
+    .filter-scroll {
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none; /* Firefox */
+    }
+    
+    .filter-scroll::-webkit-scrollbar {
+      display: none; /* Chrome, Safari, Opera */
+    }
+    
+    .set-row {
+      background-color: #f8f9fa;
+      border-radius: 8px;
+      padding: 8px;
+      margin-bottom: 8px;
+    }
+    
+    .set-number {
+      width: 25px;
+      text-align: center;
+      font-weight: bold;
+    }
+    
+    .weight-input, .reps-input {
+      width: 60px;
+    }
+    
+    .previous-weight {
+      width: 60px;
+      font-size: 0.75rem;
+      line-height: 1.2;
+    }
+    
+    .rest-timer {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      z-index: 1060;
+      background-color: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 10px 15px;
+      border-radius: 20px;
+      font-size: 1.2rem;
+    }
+    
+    .exercise-list {
+      max-height: 250px;
+      overflow-y: auto;
+    }
+    
+    .exercise-item {
+      cursor: pointer;
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .exercise-item:hover {
+      background-color: #f8f9fa;
+    }
+    
+    .complete-set-checkbox {
+      width: 24px;
+      height: 24px;
+    }
   </style>
 </head>
 <body>
@@ -238,7 +313,7 @@
 
       <!-- Workouts Section (Initially Hidden) -->
       <div id="workouts-content" class="content-section" style="display: none;">
-        <div class="card">
+        <div class="card mb-4">
           <div class="card-body">
             <h4 class="mb-4">Your Workout Plans</h4>
             
@@ -254,9 +329,32 @@
               </div>
             </div>
             
-            <button class="btn btn-primary w-100 mt-3" data-bs-toggle="modal" data-bs-target="#workoutModal">
-              Create New Workout Plan
-            </button>
+            <div class="row mt-3">
+              <div class="col-md-6 mb-2">
+                <button id="create-empty-workout" class="btn btn-outline-primary w-100">
+                  <i class="bi bi-plus-circle me-2"></i>Start Empty Workout
+                </button>
+              </div>
+              <div class="col-md-6 mb-2">
+                <button class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#workoutModal">
+                  <i class="bi bi-clipboard-plus me-2"></i>Create Workout Plan
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Recent workouts -->
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0">Recent Workouts</h5>
+          </div>
+          <div class="card-body">
+            <div id="recent-workouts-list">
+              <div class="text-center py-3 text-muted">
+                No recent workouts found.
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -2001,6 +2099,7 @@
   <script src="public/js/healthConnections.js"></script>
   <script src="public/js/healthSnapshot.js"></script>
   <script src="public/js/user.js"></script>
+  <script src="public/js/workout.js"></script>
   <script src="public/js/app.js"></script>
   
   <script>
