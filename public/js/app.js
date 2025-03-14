@@ -2406,16 +2406,16 @@ function setupAuthSystem() {
   
   // Login form handling
   const loginForm = document.getElementById('login-form');
-  const loginErrorElement = document.getElementById('login-error');
+  const loginErrorElement = loginForm ? document.getElementById('login-error') : null;
   
   // Registration form handling
   const registerForm = document.getElementById('register-form');
-  const registerErrorElement = document.getElementById('register-error');
+  const registerErrorElement = registerForm ? document.getElementById('register-error') : null;
   
   // Profile settings form
   const profileSettingsForm = document.getElementById('profile-settings-form');
-  const settingsNameInput = document.getElementById('settings-name');
-  const settingsEmailInput = document.getElementById('settings-email');
+  const settingsNameInput = profileSettingsForm ? document.getElementById('settings-name') : null;
+  const settingsEmailInput = profileSettingsForm ? document.getElementById('settings-email') : null;
   
   // Preferences form
   const preferencesForm = document.getElementById('preferences-settings-form');
@@ -2509,7 +2509,7 @@ function setupAuthSystem() {
   }
   
   // Profile settings form submission
-  if (profileSettingsForm) {
+  if (profileSettingsForm && settingsNameInput && settingsEmailInput) {
     profileSettingsForm.addEventListener('submit', function(event) {
       event.preventDefault();
       
@@ -2522,7 +2522,10 @@ function setupAuthSystem() {
         authManager.saveToLocalStorage();
         
         // Update UI
-        userNameElement.textContent = name;
+        const userNameElement = document.getElementById('user-name');
+        if (userNameElement) {
+          userNameElement.textContent = name;
+        }
         
         // Show success message
         showMessage('Profile updated successfully', 'success');
@@ -2642,20 +2645,21 @@ function updateAuthUI(isLoggedIn) {
   const userProfile = document.getElementById('user-profile');
   const userNameElement = document.getElementById('user-name');
   
+  // Check if elements exist before trying to access them
   if (isLoggedIn) {
     // Show user profile, hide auth buttons
-    authButtons.style.display = 'none';
-    userProfile.style.display = 'block';
+    if (authButtons) authButtons.style.display = 'none';
+    if (userProfile) userProfile.style.display = 'block';
     
     // Update user name
     const currentUser = authManager.getCurrentUser();
-    if (currentUser) {
+    if (currentUser && userNameElement) {
       userNameElement.textContent = currentUser.name;
     }
   } else {
     // Show auth buttons, hide user profile
-    authButtons.style.display = 'block';
-    userProfile.style.display = 'none';
+    if (authButtons) authButtons.style.display = 'block';
+    if (userProfile) userProfile.style.display = 'none';
   }
 }
 
