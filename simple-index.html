@@ -62,7 +62,28 @@
 <body>
   <div class="container">
     <header class="mb-4">
-      <h1 class="text-center mb-3">Health & Wellness Tracker</h1>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="text-center mb-0">Health & Wellness Tracker</h1>
+        
+        <!-- User Authentication Buttons -->
+        <div id="auth-buttons">
+          <button class="btn btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#loginModal">Log In</button>
+          <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#registerModal">Sign Up</button>
+        </div>
+        
+        <!-- User Profile (Hidden by default) -->
+        <div id="user-profile" style="display: none;" class="dropdown">
+          <button class="btn btn-outline-primary dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-person-circle me-1"></i>
+            <span id="user-name">User</span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+            <li><a class="dropdown-item" href="#" id="profile-settings"><i class="bi bi-gear me-2"></i>Settings</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="#" id="logout-button"><i class="bi bi-box-arrow-right me-2"></i>Log Out</a></li>
+          </ul>
+        </div>
+      </div>
       
       <!-- Top Navigation -->
       <ul class="nav nav-pills nav-fill mb-4">
