@@ -669,7 +669,8 @@ function updateActivitiesList() {
       
       sortedActivities.forEach(activity => {
         const activityElement = document.createElement('div');
-        activityElement.className = 'card mb-2';
+        activityElement.className = 'card mb-2 activity-card';
+        activityElement.dataset.activityId = activity.id;
         activityElement.innerHTML = `
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center">
@@ -683,6 +684,9 @@ function updateActivitiesList() {
             </div>
           </div>
         `;
+        
+        // Make the activity card clickable
+        activityElement.addEventListener('click', () => openActivityModal(activity.id));
         
         allActivitiesList.appendChild(activityElement);
       });
@@ -1723,4 +1727,177 @@ function showMessage(message, type = 'info') {
   toastElement.addEventListener('hidden.bs.toast', function() {
     toastElement.remove();
   });
+}
+
+/**
+ * Open activity modal for viewing and editing an activity
+ * @param {string} activityId - ID of the activity to edit
+ */
+function openActivityModal(activityId) {
+  // Get the activity from the fitness tracker
+  const activity = fitnessTracker.getActivityById(activityId);
+  
+  if (!activity) {
+    showMessage('Activity not found', 'danger');
+    return;
+  }
+  
+  // Create a modal if it doesn't exist
+  let modal = document.getElementById('editActivityModal');
+  
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.id = 'editActivityModal';
+    modal.tabIndex = '-1';
+    modal.setAttribute('aria-labelledby', 'editActivityModalLabel');
+    modal.setAttribute('aria-hidden', 'true');
+    
+    // Set up modal HTML
+    modal.innerHTML = `
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="editActivityModalLabel">Edit Activity</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="editActivityForm">
+              <input type="hidden" id="edit-activity-id">
+              <div class="mb-3">
+                <label for="edit-activity-name" class="form-label">Activity Name</label>
+                <input type="text" class="form-control" id="edit-activity-name" required>
+              </div>
+              <div class="mb-3">
+                <label for="edit-activity-calories" class="form-label">Calories Burned</label>
+                <input type="number" class="form-control" id="edit-activity-calories" min="0" required>
+              </div>
+              <div class="mb-3">
+                <label for="edit-activity-duration" class="form-label">Duration (minutes)</label>
+                <input type="number" class="form-control" id="edit-activity-duration" min="1" required>
+              </div>
+              <div class="mb-3">
+                <label for="edit-activity-type" class="form-label">Type</label>
+                <select class="form-select" id="edit-activity-type" required>
+                  <option value="running">Running</option>
+                  <option value="cycling">Cycling</option>
+                  <option value="swimming">Swimming</option>
+                  <option value="weights">Weights</option>
+                  <option value="yoga">Yoga</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="edit-activity-date" class="form-label">Date</label>
+                <input type="datetime-local" class="form-control" id="edit-activity-date" required>
+              </div>
+              <div class="d-flex justify-content-between">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <button type="button" class="btn btn-danger" id="delete-activity-btn">Delete Activity</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+  }
+  
+  // Add event listeners for form submission and delete button
+  const form = document.getElementById('editActivityForm');
+  if (form) {
+    // Remove existing event listeners if any by cloning and replacing
+    const newForm = form.cloneNode(true);
+    form.parentNode.replaceChild(newForm, form);
+    newForm.addEventListener('submit', handleEditActivityFormSubmit);
+  }
+  
+  const deleteBtn = document.getElementById('delete-activity-btn');
+  if (deleteBtn) {
+    // Remove existing event listeners if any by cloning and replacing
+    const newBtn = deleteBtn.cloneNode(true);
+    deleteBtn.parentNode.replaceChild(newBtn, deleteBtn);
+    newBtn.addEventListener('click', () => handleDeleteActivity(activity.id));
+  }
+  
+  // Populate the form with activity data
+  document.getElementById('edit-activity-id').value = activity.id;
+  document.getElementById('edit-activity-name').value = activity.name;
+  document.getElementById('edit-activity-calories').value = activity.calories;
+  document.getElementById('edit-activity-duration').value = activity.duration;
+  document.getElementById('edit-activity-type').value = activity.type;
+  
+  // Format the date for datetime-local input
+  const activityDate = new Date(activity.date);
+  const formattedDate = activityDate.toISOString().slice(0, 16);
+  document.getElementById('edit-activity-date').value = formattedDate;
+  
+  // Open the modal
+  const bsModal = new bootstrap.Modal(document.getElementById('editActivityModal'));
+  bsModal.show();
+}
+
+/**
+ * Handle the edit activity form submission
+ * @param {Event} event - Form submission event
+ */
+function handleEditActivityFormSubmit(event) {
+  event.preventDefault();
+  
+  const activityId = document.getElementById('edit-activity-id').value;
+  const name = document.getElementById('edit-activity-name').value;
+  const calories = Number(document.getElementById('edit-activity-calories').value);
+  const duration = Number(document.getElementById('edit-activity-duration').value);
+  const type = document.getElementById('edit-activity-type').value;
+  const date = new Date(document.getElementById('edit-activity-date').value);
+  
+  // Update the activity
+  const success = fitnessTracker.updateActivity(activityId, {
+    name,
+    calories,
+    duration,
+    type,
+    date
+  });
+  
+  if (success) {
+    // Close the modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('editActivityModal'));
+    modal.hide();
+    
+    // Update the UI
+    updateFitnessStats();
+    updateActivitiesList();
+    updateActivityChart();
+    
+    showMessage('Activity updated successfully', 'success');
+  } else {
+    showMessage('Error updating activity', 'danger');
+  }
+}
+
+/**
+ * Handle deleting an activity
+ * @param {string} activityId - ID of the activity to delete
+ */
+function handleDeleteActivity(activityId) {
+  if (confirm('Are you sure you want to delete this activity?')) {
+    const success = fitnessTracker.deleteActivity(activityId);
+    
+    if (success) {
+      // Close the modal
+      const modal = bootstrap.Modal.getInstance(document.getElementById('editActivityModal'));
+      modal.hide();
+      
+      // Update the UI
+      updateFitnessStats();
+      updateActivitiesList();
+      updateActivityChart();
+      
+      showMessage('Activity deleted successfully', 'success');
+    } else {
+      showMessage('Error deleting activity', 'danger');
+    }
+  }
 }

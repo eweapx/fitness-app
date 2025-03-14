@@ -10,8 +10,8 @@ class Activity {
    * @param {string} type - Type of activity (running, cycling, weights, swimming)
    * @param {Date} date - Date and time of activity
    */
-  constructor(name, calories, duration, type, date = new Date()) {
-    this.id = Date.now().toString();
+  constructor(name, calories, duration, type, date = new Date(), id = null) {
+    this.id = id || Date.now().toString();
     this.name = name;
     this.calories = calories;
     this.duration = duration;
