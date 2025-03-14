@@ -1838,7 +1838,7 @@ function openActivityModal(activityId) {
               </div>
               <div class="d-flex justify-content-between">
                 <button type="submit" class="btn btn-primary">Save Changes</button>
-                <button type="button" class="btn btn-danger" id="delete-activity-btn">Delete Activity</button>
+                <button type="button" class="btn btn-danger" id="delete-activity-btn" onclick="return false;">Delete Activity</button>
               </div>
             </form>
           </div>
@@ -1852,27 +1852,28 @@ function openActivityModal(activityId) {
   // Get modal element after it's been added to the DOM
   modal = document.getElementById('editActivityModal');
   
-  // Add event listeners for form submission and delete button
+  // Add event listeners for form submission 
   const form = document.getElementById('editActivityForm');
   if (form) {
-    // Clear existing event listeners
+    // Clear existing event listeners by cloning
     const newForm = form.cloneNode(true);
     form.parentNode.replaceChild(newForm, form);
-    // Add new event listener
+    
+    // Add event listener for form submission
     newForm.addEventListener('submit', handleEditActivityFormSubmit);
-  }
-  
-  const deleteBtn = document.getElementById('delete-activity-btn');
-  if (deleteBtn) {
-    // Clear existing event listeners
-    const newBtn = deleteBtn.cloneNode(true);
-    deleteBtn.parentNode.replaceChild(newBtn, deleteBtn);
-    // Use a specific ID for the delete operation
-    const activityIdForDelete = activity.id;
-    // Add new event listener
-    newBtn.addEventListener('click', function() {
-      handleDeleteActivity(activityIdForDelete);
-    });
+    
+    // Add direct onclick handler to the delete button (more reliable than event listeners)
+    const deleteBtn = newForm.querySelector('#delete-activity-btn');
+    if (deleteBtn) {
+      // Store the activity ID directly on the button for reference
+      deleteBtn.setAttribute('data-activity-id', activity.id);
+      // Direct onclick handler
+      deleteBtn.onclick = function() {
+        const activityId = this.getAttribute('data-activity-id');
+        handleDeleteActivity(activityId);
+        return false; // Prevent form submission
+      };
+    }
   }
   
   // Populate the form with activity data
