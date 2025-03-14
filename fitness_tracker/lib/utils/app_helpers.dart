@@ -1,281 +1,310 @@
 import 'dart:math';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-/// Utility class with helper methods for the app
+/// Utility class with helper methods for formatting and conversions
 class AppHelpers {
-  // Prevent instantiation
-  AppHelpers._();
-  
-  // Format a DateTime based on the specified format
-  static String formatDate(DateTime date, String format) {
-    return DateFormat(format).format(date);
+  /// Format a number with commas for thousands
+  static String formatNumber(int number) {
+    final formatter = NumberFormat('#,###');
+    return formatter.format(number);
   }
   
-  // Calculate age from birthdate
-  static int calculateAge(DateTime birthDate) {
-    final today = DateTime.now();
-    int age = today.year - birthDate.year;
-    final monthDiff = today.month - birthDate.month;
+  /// Format duration in minutes to a readable format (e.g., "8h 30m")
+  static String formatDuration(int minutes) {
+    final hours = minutes ~/ 60;
+    final mins = minutes % 60;
     
-    if (monthDiff < 0 || (monthDiff == 0 && today.day < birthDate.day)) {
-      age--;
+    if (hours > 0 && mins > 0) {
+      return '${hours}h ${mins}m';
+    } else if (hours > 0) {
+      return '${hours}h';
+    } else {
+      return '${mins}m';
     }
-    
-    return age;
   }
   
-  // Convert pounds to kilograms
+  /// Convert milliliters to US fluid ounces
+  static double mlToOz(double ml) {
+    return ml / 29.5735;
+  }
+  
+  /// Convert US fluid ounces to milliliters
+  static double ozToMl(double oz) {
+    return oz * 29.5735;
+  }
+  
+  /// Format a DateTime to a string using the specified format
+  static String formatDateTime(DateTime dateTime, String format) {
+    return DateFormat(format).format(dateTime);
+  }
+  
+  /// Format a TimeOfDay to a string (12h or 24h format)
+  static String formatTimeOfDay(TimeOfDay timeOfDay, bool use24HourFormat) {
+    final hour = timeOfDay.hour;
+    final minute = timeOfDay.minute.toString().padLeft(2, '0');
+    
+    if (use24HourFormat) {
+      return '${hour.toString().padLeft(2, '0')}:$minute';
+    } else {
+      final period = hour < 12 ? 'AM' : 'PM';
+      final hourIn12HourFormat = hour % 12 == 0 ? 12 : hour % 12;
+      return '$hourIn12HourFormat:$minute $period';
+    }
+  }
+  
+  /// Convert miles to kilometers
+  static double milesToKm(double miles) {
+    return miles * 1.60934;
+  }
+  
+  /// Convert kilometers to miles
+  static double kmToMiles(double km) {
+    return km / 1.60934;
+  }
+  
+  /// Convert pounds to kilograms
   static double lbsToKg(double lbs) {
-    return lbs * 0.45359237;
+    return lbs * 0.453592;
   }
   
-  // Convert kilograms to pounds
+  /// Convert kilograms to pounds
   static double kgToLbs(double kg) {
-    return kg * 2.20462262;
+    return kg / 0.453592;
   }
   
-  // Convert feet and inches to centimeters
-  static int ftInToCm(int feet, int inches) {
-    return ((feet * 12) + inches) * 2.54.round();
+  /// Convert feet to centimeters
+  static double ftToCm(double ft) {
+    return ft * 30.48;
   }
   
-  // Convert centimeters to feet and inches
-  static Map<String, int> cmToFtIn(int cm) {
-    final totalInches = (cm / 2.54).round();
-    final feet = totalInches ~/ 12;
-    final inches = totalInches % 12;
+  /// Convert centimeters to feet
+  static double cmToFt(double cm) {
+    return cm / 30.48;
+  }
+  
+  /// Convert Fahrenheit to Celsius
+  static double fToC(double fahrenheit) {
+    return (fahrenheit - 32) * 5 / 9;
+  }
+  
+  /// Convert Celsius to Fahrenheit
+  static double cToF(double celsius) {
+    return (celsius * 9 / 5) + 32;
+  }
+  
+  /// Convert imperial height (ft and inches) to cm
+  /// Format: '5\'11"' -> 180.34 cm
+  static double imperialHeightToCm(String heightStr) {
+    // Remove any spaces and split by feet and inches
+    final cleanStr = heightStr.replaceAll(' ', '');
+    final feetMatch = RegExp(r"(\d+)'").firstMatch(cleanStr);
+    final inchesMatch = RegExp(r'(\d+)"').firstMatch(cleanStr);
     
-    return {
-      'feet': feet,
-      'inches': inches,
-    };
-  }
-  
-  // Parse a height string like "5'10"" to centimeters
-  static int imperialHeightToCm(String heightStr) {
-    try {
-      heightStr = heightStr.replaceAll('"', '');
-      final parts = heightStr.split("'");
-      
-      if (parts.length != 2) {
-        return 175; // Default
-      }
-      
-      final feet = int.tryParse(parts[0].trim()) ?? 5;
-      final inches = int.tryParse(parts[1].trim()) ?? 10;
-      
-      return ftInToCm(feet, inches);
-    } catch (e) {
-      return 175; // Default to 5'9" in cm
+    var feetValue = 0;
+    var inchesValue = 0;
+    
+    if (feetMatch != null) {
+      feetValue = int.parse(feetMatch.group(1) ?? '0');
     }
-  }
-  
-  // Format height based on unit system
-  static String formatHeight(int cm, bool useMetric) {
-    if (useMetric) {
-      return '$cm cm';
-    } else {
-      final imperial = cmToFtIn(cm);
-      return "${imperial['feet']}'${imperial['inches']}\"";
+    
+    if (inchesMatch != null) {
+      inchesValue = int.parse(inchesMatch.group(1) ?? '0');
     }
+    
+    // Convert to cm
+    return (feetValue * 30.48) + (inchesValue * 2.54);
   }
   
-  // Format weight based on unit system
-  static String formatWeight(double kg, bool useMetric) {
-    if (useMetric) {
-      return '${kg.toStringAsFixed(1)} kg';
-    } else {
-      final lbs = kgToLbs(kg);
-      return '${lbs.toStringAsFixed(1)} lbs';
-    }
-  }
-  
-  // Calculate BMI (Body Mass Index)
-  static double calculateBMI(double weightKg, int heightCm) {
+  /// Calculate Body Mass Index (BMI)
+  /// Formula: weight (kg) / (height (m))^2
+  static double calculateBMI(double weightKg, double heightCm) {
+    // Convert height from cm to meters
     final heightM = heightCm / 100;
+    
+    // Calculate BMI
     return weightKg / (heightM * heightM);
   }
   
-  // Get BMI category
+  /// Get BMI category based on BMI value
   static String getBMICategory(double bmi) {
     if (bmi < 18.5) {
       return 'Underweight';
-    } else if (bmi < 25) {
-      return 'Normal weight';
-    } else if (bmi < 30) {
+    } else if (bmi >= 18.5 && bmi < 25) {
+      return 'Normal';
+    } else if (bmi >= 25 && bmi < 30) {
       return 'Overweight';
     } else {
       return 'Obese';
     }
   }
   
-  // Calculate Basal Metabolic Rate (BMR) using Mifflin-St Jeor Equation
-  static int calculateBasalMetabolicRate(
-    int age, 
-    String gender, 
-    double weightKg, 
-    int heightCm,
-  ) {
-    if (gender == 'Male') {
-      return (10 * weightKg + 6.25 * heightCm - 5 * age + 5).round();
+  /// Calculate Basal Metabolic Rate (BMR) using the Mifflin-St Jeor Equation
+  /// For men: BMR = 10W + 6.25H - 5A + 5
+  /// For women: BMR = 10W + 6.25H - 5A - 161
+  /// W = weight in kg, H = height in cm, A = age in years
+  static double calculateBasalMetabolicRate({
+    required double weightKg,
+    required double heightCm,
+    required int age,
+    required String gender,
+  }) {
+    double bmr;
+    
+    if (gender.toLowerCase() == 'male') {
+      bmr = (10 * weightKg) + (6.25 * heightCm) - (5 * age) + 5;
     } else {
-      return (10 * weightKg + 6.25 * heightCm - 5 * age - 161).round();
+      bmr = (10 * weightKg) + (6.25 * heightCm) - (5 * age) - 161;
     }
+    
+    return bmr;
   }
   
-  // Calculate Total Daily Energy Expenditure (TDEE)
-  static int calculateTotalDailyEnergyExpenditure(
-    int bmr, 
-    String activityLevel,
-  ) {
-    double multiplier;
+  /// Calculate Total Daily Energy Expenditure (TDEE)
+  /// TDEE = BMR * activity factor
+  static double calculateTotalDailyEnergyExpenditure(double bmr, String activityLevel) {
+    double activityFactor;
     
-    switch (activityLevel) {
-      case 'Sedentary':
-        multiplier = 1.2;
+    switch (activityLevel.toLowerCase()) {
+      case 'sedentary':
+        activityFactor = 1.2; // Little or no exercise
         break;
-      case 'Lightly Active':
-        multiplier = 1.375;
+      case 'light':
+        activityFactor = 1.375; // Light exercise 1-3 days/week
         break;
-      case 'Moderately Active':
-        multiplier = 1.55;
+      case 'moderate':
+        activityFactor = 1.55; // Moderate exercise 3-5 days/week
         break;
-      case 'Very Active':
-        multiplier = 1.725;
+      case 'active':
+        activityFactor = 1.725; // Heavy exercise 6-7 days/week
         break;
-      case 'Extremely Active':
-        multiplier = 1.9;
+      case 'very active':
+        activityFactor = 1.9; // Very heavy exercise, physical job
         break;
       default:
-        multiplier = 1.55; // Default to moderately active
+        activityFactor = 1.2; // Default to sedentary
     }
     
-    return (bmr * multiplier).round();
+    return bmr * activityFactor;
   }
   
-  // Calculate calories burned for an activity
-  static int calculateCaloriesBurned(
-    String activity, 
-    double weightKg, 
-    int durationMinutes,
-  ) {
-    // MET (Metabolic Equivalent of Task) values
-    final Map<String, double> metValues = {
-      'walking': 3.5,
-      'running': 8.0,
-      'cycling': 7.0,
-      'swimming': 6.0,
-      'yoga': 3.0,
-      'strength_training': 5.0,
-      'dancing': 4.5,
-      'hiking': 6.0,
-      'rowing': 7.0,
-      'basketball': 6.5,
-      'soccer': 7.0,
-      'tennis': 7.0,
-      'jumping_rope': 10.0,
-      'elliptical': 5.0,
-      'stair_climbing': 4.0,
-      'pilates': 3.5,
-      'calisthenics': 4.0,
-      'stretching': 2.5,
+  /// Format a value to a specified number of decimal places
+  static String formatDecimal(double value, int decimalPlaces) {
+    return value.toStringAsFixed(decimalPlaces);
+  }
+  
+  /// Calculate ideal weight range based on BMI of 18.5-24.9
+  static Map<String, double> calculateIdealWeightRange(double heightCm) {
+    final heightM = heightCm / 100;
+    final minWeight = 18.5 * heightM * heightM;
+    final maxWeight = 24.9 * heightM * heightM;
+    
+    return {
+      'min': minWeight,
+      'max': maxWeight,
     };
-    
-    // Use default if activity not found
-    final met = metValues[activity.toLowerCase()] ?? 4.0;
-    
-    // Formula: Calories = MET × weight (kg) × duration (hours)
-    final durationHours = durationMinutes / 60;
-    return (met * weightKg * durationHours).round();
   }
   
-  // Convert steps to calories (rough estimate)
-  static int stepsToCalories(int steps, double weightKg) {
-    // Rough estimate: 0.04 calories per step per kg of body weight
-    return (steps * 0.04 * (weightKg / 70)).round();
-  }
-  
-  // Convert steps to distance in kilometers (rough estimate)
-  static double stepsToDistance(int steps, int heightCm) {
-    // Calculate stride length (approximately 0.414 × height in cm)
-    final strideLength = 0.414 * heightCm / 100; // in meters
-    
-    // Calculate distance
-    return steps * strideLength / 1000; // in kilometers
-  }
-  
-  // Convert distance to steps (rough estimate)
-  static int distanceToSteps(double distanceKm, int heightCm) {
-    // Calculate stride length (approximately 0.414 × height in cm)
-    final strideLength = 0.414 * heightCm / 100; // in meters
-    
-    // Calculate steps
-    return (distanceKm * 1000 / strideLength).round();
-  }
-  
-  // Get a random motivational quote
-  static String getRandomMotivationalQuote() {
-    final quotes = [
-      "The only bad workout is the one that didn't happen.",
-      "It's going to be a journey. It's not a sprint to get in shape.",
-      "The difference between try and triumph is just a little umph!",
-      "Strength does not come from physical capacity. It comes from an indomitable will.",
-      "The body achieves what the mind believes.",
-      "Your body can stand almost anything. It's your mind that you have to convince.",
-      "The only way to define your limits is by going beyond them.",
-      "You don't have to be great to start, but you have to start to be great.",
-      "No matter how slow you go, you're still lapping everyone on the couch.",
-      "The best way to predict your future is to create it.",
-      "The hard days are the best because that's when champions are made.",
-      "Believe in yourself and all that you are. Know that there is something inside you that is greater than any obstacle.",
-      "Your health is an investment, not an expense.",
-      "If you want something you've never had, you must be willing to do something you've never done.",
-      "The only person you should try to be better than is the person you were yesterday.",
-    ];
-    
-    final random = Random();
-    return quotes[random.nextInt(quotes.length)];
-  }
-  
-  // Get day of the week from a DateTime
-  static String getDayOfWeek(DateTime date) {
-    return DateFormat('EEEE').format(date);
-  }
-  
-  // Format seconds to mm:ss format
-  static String formatSecondsToMinutesSeconds(int seconds) {
-    final mins = (seconds ~/ 60).toString().padLeft(2, '0');
-    final secs = (seconds % 60).toString().padLeft(2, '0');
-    return '$mins:$secs';
-  }
-  
-  // Format seconds to hh:mm:ss format
-  static String formatSecondsToHoursMinutesSeconds(int seconds) {
-    final hours = (seconds ~/ 3600).toString().padLeft(2, '0');
-    final mins = ((seconds % 3600) ~/ 60).toString().padLeft(2, '0');
-    final secs = (seconds % 60).toString().padLeft(2, '0');
-    return '$hours:$mins:$secs';
-  }
-  
-  // Generate a random color
-  static int getRandomColor() {
-    final random = Random();
-    return (0xFF000000 + random.nextInt(0xFFFFFF));
-  }
-  
-  // Calculate water needed based on weight
-  static double calculateWaterNeeded(double weightKg) {
-    // Recommendation: 30-35 ml per kg of body weight
-    return weightKg * 0.033; // in liters
-  }
-  
-  // Format water amount
-  static String formatWaterAmount(double liters) {
-    if (liters < 1) {
-      final ml = (liters * 1000).round();
-      return '$ml ml';
+  /// Calculate body fat percentage using the Navy method
+  /// A different formula is used for men and women
+  static double calculateBodyFatPercentage({
+    required String gender,
+    required double waistCm,
+    required double heightCm,
+    double? neckCm,
+    double? hipsCm,
+  }) {
+    if (gender.toLowerCase() == 'male') {
+      if (neckCm == null) return 0;
+      // Men: 86.010 × log10(waist - neck) - 70.041 × log10(height) + 36.76
+      return 86.010 * (log(waistCm - neckCm) / log(10)) - 
+             70.041 * (log(heightCm) / log(10)) + 36.76;
     } else {
-      return '${liters.toStringAsFixed(1)} L';
+      if (neckCm == null || hipsCm == null) return 0;
+      // Women: 163.205 × log10(waist + hips - neck) - 97.684 × log10(height) - 78.387
+      return 163.205 * (log(waistCm + hipsCm - neckCm) / log(10)) - 
+             97.684 * (log(heightCm) / log(10)) - 78.387;
+    }
+  }
+  
+  /// Calculate calorie needs for weight loss/gain
+  static Map<String, int> calculateCalorieGoals(double tdee) {
+    return {
+      'maintain': tdee.round(),
+      'mild_loss': (tdee - 250).round(),
+      'loss': (tdee - 500).round(),
+      'extreme_loss': (tdee - 1000).round(),
+      'mild_gain': (tdee + 250).round(),
+      'gain': (tdee + 500).round(),
+      'fast_gain': (tdee + 1000).round(),
+    };
+  }
+  
+  /// Calculate macronutrient split based on goals
+  static Map<String, Map<String, int>> calculateMacroSplit(double tdee, String goal) {
+    int calories;
+    
+    switch (goal.toLowerCase()) {
+      case 'fat loss':
+        calories = (tdee - 500).round();
+        // Higher protein, moderate fat, lower carb
+        return {
+          'balanced': {
+            'protein': ((calories * 0.3) / 4).round(),
+            'carbs': ((calories * 0.4) / 4).round(),
+            'fat': ((calories * 0.3) / 9).round(),
+          },
+          'low_carb': {
+            'protein': ((calories * 0.4) / 4).round(),
+            'carbs': ((calories * 0.2) / 4).round(),
+            'fat': ((calories * 0.4) / 9).round(),
+          },
+          'high_protein': {
+            'protein': ((calories * 0.45) / 4).round(),
+            'carbs': ((calories * 0.35) / 4).round(),
+            'fat': ((calories * 0.2) / 9).round(),
+          },
+        };
+      case 'muscle gain':
+        calories = (tdee + 500).round();
+        // Higher protein, higher carb, moderate fat
+        return {
+          'balanced': {
+            'protein': ((calories * 0.25) / 4).round(),
+            'carbs': ((calories * 0.5) / 4).round(),
+            'fat': ((calories * 0.25) / 9).round(),
+          },
+          'high_carb': {
+            'protein': ((calories * 0.3) / 4).round(),
+            'carbs': ((calories * 0.55) / 4).round(),
+            'fat': ((calories * 0.15) / 9).round(),
+          },
+          'high_protein': {
+            'protein': ((calories * 0.35) / 4).round(),
+            'carbs': ((calories * 0.45) / 4).round(),
+            'fat': ((calories * 0.2) / 9).round(),
+          },
+        };
+      default: // Maintenance
+        calories = tdee.round();
+        // Balanced macros
+        return {
+          'balanced': {
+            'protein': ((calories * 0.25) / 4).round(),
+            'carbs': ((calories * 0.45) / 4).round(),
+            'fat': ((calories * 0.3) / 9).round(),
+          },
+          'low_carb': {
+            'protein': ((calories * 0.3) / 4).round(),
+            'carbs': ((calories * 0.3) / 4).round(),
+            'fat': ((calories * 0.4) / 9).round(),
+          },
+          'high_protein': {
+            'protein': ((calories * 0.35) / 4).round(),
+            'carbs': ((calories * 0.4) / 4).round(),
+            'fat': ((calories * 0.25) / 9).round(),
+          },
+        };
     }
   }
 }

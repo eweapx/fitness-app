@@ -23,7 +23,9 @@ class UserProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get isLoggedIn => _user != null;
+  bool get isAuthenticated => _user != null;
   String get userId => _user?.uid ?? '';
+  String? get userEmail => _user?.email;
   
   // Constructor - initialize auth state
   UserProvider() {

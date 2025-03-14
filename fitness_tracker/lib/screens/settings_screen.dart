@@ -284,7 +284,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             SwitchListTile(
               title: const Text('Daily Reminders'),
               subtitle: Text(
-                'Remind me at ${settingsProvider.reminderTime.format(context)}',
+                'Remind me at ${AppHelpers.formatTimeOfDay(settingsProvider.reminderTime, settingsProvider.timeFormat == '24h')}',
               ),
               value: settingsProvider.reminderEnabled,
               onChanged: (value) {
@@ -297,7 +297,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             ListTile(
               title: const Text('Reminder Time'),
-              subtitle: Text(settingsProvider.reminderTime.format(context)),
+              subtitle: Text(AppHelpers.formatTimeOfDay(settingsProvider.reminderTime, settingsProvider.timeFormat == '24h')),
               trailing: IconButton(
                 icon: const Icon(Icons.access_time),
                 onPressed: settingsProvider.reminderEnabled

@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// Provider to manage application settings
 class SettingsProvider extends ChangeNotifier {
-  // Default values
+  // Default values - General settings
   bool _useMetricUnits = true;
   bool _enableNotifications = true;
   bool _darkMode = false;
@@ -11,6 +11,16 @@ class SettingsProvider extends ChangeNotifier {
   String _dateFormat = 'yyyy-MM-dd';
   int _reminderTime = 20 * 60; // Default 8:00 PM in minutes from midnight
   List<String> _activeDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  
+  // Default values - Goals
+  int _stepGoal = 10000;
+  int _waterGoal = 2000; // in ml
+  int _calorieGoal = 2000;
+  int _sleepGoal = 480; // 8 hours in minutes
+  
+  // Default values - Reminders
+  bool _reminderEnabled = false;
+  ThemeMode _themeMode = ThemeMode.light;
   
   // Keys for SharedPreferences
   static const String _useMetricUnitsKey = 'use_metric_units';
@@ -20,15 +30,34 @@ class SettingsProvider extends ChangeNotifier {
   static const String _dateFormatKey = 'date_format';
   static const String _reminderTimeKey = 'reminder_time';
   static const String _activeDaysKey = 'active_days';
+  static const String _stepGoalKey = 'step_goal';
+  static const String _waterGoalKey = 'water_goal';
+  static const String _calorieGoalKey = 'calorie_goal';
+  static const String _sleepGoalKey = 'sleep_goal';
+  static const String _reminderEnabledKey = 'reminder_enabled';
+  static const String _themeModeKey = 'theme_mode';
 
-  // Getters
+  // Getters - General settings
   bool get useMetricUnits => _useMetricUnits;
   bool get enableNotifications => _enableNotifications;
   bool get darkMode => _darkMode;
+  bool get isDarkMode => _darkMode || _themeMode == ThemeMode.dark;
   String get timeFormat => _timeFormat;
   String get dateFormat => _dateFormat;
-  int get reminderTime => _reminderTime;
+  int get reminderTimeMinutes => _reminderTime;
   List<String> get activeDays => _activeDays;
+  
+  // Getters - Goals
+  int get stepGoal => _stepGoal;
+  int get waterGoal => _waterGoal;
+  int get calorieGoal => _calorieGoal;
+  int get sleepGoal => _sleepGoal;
+  
+  // Getters - Reminders
+  bool get reminderEnabled => _reminderEnabled;
+  
+  // Get the theme mode based on dark mode setting
+  ThemeMode get themeMode => _themeMode;
 
   // Return formatted reminder time
   String get formattedReminderTime {
@@ -47,6 +76,7 @@ class SettingsProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       
+      // Load General settings
       _useMetricUnits = prefs.getBool(_useMetricUnitsKey) ?? true;
       _enableNotifications = prefs.getBool(_enableNotificationsKey) ?? true;
       _darkMode = prefs.getBool(_darkModeKey) ?? false;
@@ -55,6 +85,23 @@ class SettingsProvider extends ChangeNotifier {
       _reminderTime = prefs.getInt(_reminderTimeKey) ?? 20 * 60; // Default 8:00 PM
       _activeDays = prefs.getStringList(_activeDaysKey) ?? 
         ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      
+      // Load theme mode
+      final themeModeIndex = prefs.getInt(_themeModeKey);
+      if (themeModeIndex != null && themeModeIndex >= 0 && themeModeIndex <= 2) {
+        _themeMode = ThemeMode.values[themeModeIndex];
+      } else {
+        _themeMode = _darkMode ? ThemeMode.dark : ThemeMode.light;
+      }
+      
+      // Load Goals
+      _stepGoal = prefs.getInt(_stepGoalKey) ?? 10000;
+      _waterGoal = prefs.getInt(_waterGoalKey) ?? 2000;
+      _calorieGoal = prefs.getInt(_calorieGoalKey) ?? 2000;
+      _sleepGoal = prefs.getInt(_sleepGoalKey) ?? 480;
+      
+      // Load Reminders
+      _reminderEnabled = prefs.getBool(_reminderEnabledKey) ?? false;
       
       notifyListeners();
     } catch (e) {
@@ -197,6 +244,124 @@ class SettingsProvider extends ChangeNotifier {
     await setActiveDays(newDays);
   }
 
+  // Set theme mode (light, dark, system)
+  Future<void> setThemeMode(ThemeMode mode) async {
+    if (_themeMode == mode) return;
+    
+    _themeMode = mode;
+    
+    // Update dark mode based on theme mode for backward compatibility
+    if (mode == ThemeMode.dark) {
+      _darkMode = true;
+    } else if (mode == ThemeMode.light) {
+      _darkMode = false;
+    }
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_themeModeKey, mode.index);
+      await prefs.setBool(_darkModeKey, _darkMode);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error saving theme mode: $e');
+    }
+  }
+  
+  // Set step goal
+  Future<void> setStepGoal(int steps) async {
+    if (_stepGoal == steps) return;
+    
+    _stepGoal = steps;
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_stepGoalKey, steps);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error saving step goal: $e');
+    }
+  }
+  
+  // Set water goal (in ml)
+  Future<void> setWaterGoal(int ml) async {
+    if (_waterGoal == ml) return;
+    
+    _waterGoal = ml;
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_waterGoalKey, ml);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error saving water goal: $e');
+    }
+  }
+  
+  // Set calorie goal
+  Future<void> setCalorieGoal(int calories) async {
+    if (_calorieGoal == calories) return;
+    
+    _calorieGoal = calories;
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_calorieGoalKey, calories);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error saving calorie goal: $e');
+    }
+  }
+  
+  // Set sleep goal (in minutes)
+  Future<void> setSleepGoal(int minutes) async {
+    if (_sleepGoal == minutes) return;
+    
+    _sleepGoal = minutes;
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_sleepGoalKey, minutes);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error saving sleep goal: $e');
+    }
+  }
+  
+  // Set reminder enabled/disabled and time
+  Future<void> setReminder(bool enabled, [TimeOfDay? time]) async {
+    bool changed = _reminderEnabled != enabled;
+    
+    _reminderEnabled = enabled;
+    
+    if (time != null) {
+      final newTime = time.hour * 60 + time.minute;
+      if (_reminderTime != newTime) {
+        _reminderTime = newTime;
+        changed = true;
+      }
+    }
+    
+    if (!changed) return;
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_reminderEnabledKey, enabled);
+      if (time != null) {
+        await prefs.setInt(_reminderTimeKey, _reminderTime);
+      }
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error saving reminder settings: $e');
+    }
+  }
+  
+  // Format TimeOfDay for display
+  TimeOfDay get reminderTime {
+    final hours = _reminderTime ~/ 60;
+    final minutes = _reminderTime % 60;
+    return TimeOfDay(hour: hours, minute: minutes);
+  }
+
   // Reset all settings to defaults
   Future<void> resetToDefaults() async {
     try {
@@ -209,14 +374,26 @@ class SettingsProvider extends ChangeNotifier {
       await prefs.remove(_dateFormatKey);
       await prefs.remove(_reminderTimeKey);
       await prefs.remove(_activeDaysKey);
+      await prefs.remove(_stepGoalKey);
+      await prefs.remove(_waterGoalKey);
+      await prefs.remove(_calorieGoalKey);
+      await prefs.remove(_sleepGoalKey);
+      await prefs.remove(_reminderEnabledKey);
+      await prefs.remove(_themeModeKey);
       
       _useMetricUnits = true;
       _enableNotifications = true;
       _darkMode = false;
+      _themeMode = ThemeMode.light;
       _timeFormat = '24h';
       _dateFormat = 'yyyy-MM-dd';
       _reminderTime = 20 * 60; // Default 8:00 PM
       _activeDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      _stepGoal = 10000;
+      _waterGoal = 2000;
+      _calorieGoal = 2000;
+      _sleepGoal = 480;
+      _reminderEnabled = false;
       
       notifyListeners();
     } catch (e) {

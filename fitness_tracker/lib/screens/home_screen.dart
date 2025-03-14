@@ -1,15 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/user_provider.dart';
-import '../providers/settings_provider.dart';
-import '../themes/app_text_styles.dart';
+import '../screens/activity/activity_screen.dart';
+import '../screens/nutrition/nutrition_screen.dart';
+import '../screens/sleep/sleep_screen.dart';
+import '../screens/stats/stats_screen.dart';
+import '../themes/app_colors.dart';
 import '../utils/app_constants.dart';
-
-import 'activity/activity_screen.dart';
-import 'nutrition/nutrition_screen.dart';
-import 'sleep/sleep_screen.dart';
-import 'stats/stats_screen.dart';
-import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -26,16 +21,15 @@ class _HomeScreenState extends State<HomeScreen> {
     const NutritionScreen(),
     const SleepScreen(),
     const StatsScreen(),
-    const SettingsScreen(),
   ];
   
   @override
   Widget build(BuildContext context) {
-    final userProvider = Provider.of<UserProvider>(context);
-    final settingsProvider = Provider.of<SettingsProvider>(context);
-    
     return Scaffold(
-      body: _screens[_currentIndex],
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _screens,
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) {
@@ -44,106 +38,135 @@ class _HomeScreenState extends State<HomeScreen> {
           });
         },
         type: BottomNavigationBarType.fixed,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        selectedItemColor: Theme.of(context).colorScheme.primary,
+        unselectedItemColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.directions_run),
             label: 'Activity',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.restaurant_menu),
+            icon: Icon(Icons.restaurant),
             label: 'Nutrition',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.hotel),
+            icon: Icon(Icons.nightlight),
             label: 'Sleep',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.bar_chart),
             label: 'Stats',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
+        ],
+      ),
+      appBar: AppBar(
+        title: Text(
+          AppConstants.appName,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onPrimary,
+          ),
+        ),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () {
+              // Navigate to profile screen
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              // Navigate to settings screen
+            },
           ),
         ],
       ),
-    );
-  }
-}
-
-// Placeholder screens that will be implemented in separate files
-class ActivityScreen extends StatelessWidget {
-  const ActivityScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Activity'),
-      ),
-      body: Center(
-        child: Text(
-          'Activity Tracking Screen',
-          style: AppTextStyles.heading2,
-        ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // Show add activity/meal/sleep dialog
+          _showAddDialog(context);
+        },
+        child: const Icon(Icons.add),
       ),
     );
   }
-}
-
-class NutritionScreen extends StatelessWidget {
-  const NutritionScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Nutrition'),
-      ),
-      body: Center(
-        child: Text(
-          'Nutrition Tracking Screen',
-          style: AppTextStyles.heading2,
-        ),
-      ),
-    );
-  }
-}
-
-class SleepScreen extends StatelessWidget {
-  const SleepScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Sleep'),
-      ),
-      body: Center(
-        child: Text(
-          'Sleep Tracking Screen',
-          style: AppTextStyles.heading2,
-        ),
-      ),
-    );
-  }
-}
-
-class StatsScreen extends StatelessWidget {
-  const StatsScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Statistics'),
-      ),
-      body: Center(
-        child: Text(
-          'Statistics Screen',
-          style: AppTextStyles.heading2,
-        ),
-      ),
+  
+  void _showAddDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Add New Entry'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(
+                  Icons.directions_run,
+                  color: AppColors.primary,
+                ),
+                title: const Text('Add Activity'),
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _currentIndex = 0;
+                  });
+                  // Show activity form
+                },
+              ),
+              ListTile(
+                leading: Icon(
+                  Icons.restaurant,
+                  color: AppColors.accent,
+                ),
+                title: const Text('Add Meal'),
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _currentIndex = 1;
+                  });
+                  // Show meal form
+                },
+              ),
+              ListTile(
+                leading: Icon(
+                  Icons.nightlight,
+                  color: AppColors.deepSleep,
+                ),
+                title: const Text('Add Sleep'),
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _currentIndex = 2;
+                  });
+                  // Show sleep form
+                },
+              ),
+              ListTile(
+                leading: Icon(
+                  Icons.local_drink,
+                  color: AppColors.water,
+                ),
+                title: const Text('Add Water'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // Show water form
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('Cancel'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
