@@ -64,6 +64,7 @@ dependencies:
   # UI Components
   flutter_slidable: ^3.0.1
   url_launcher: ^6.2.5
+  google_fonts: ^6.1.0
 
 dev_dependencies:
   flutter_test:

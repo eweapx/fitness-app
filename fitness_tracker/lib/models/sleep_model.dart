@@ -1,208 +1,251 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 
-/// Enum representing different sleep quality levels
-enum SleepQuality {
-  poor,
-  fair, 
-  good,
-  excellent
-}
-
-/// Extension to provide helper methods for SleepQuality enum
-extension SleepQualityExtension on SleepQuality {
-  String get displayName {
-    switch (this) {
-      case SleepQuality.poor:
-        return 'Poor';
-      case SleepQuality.fair:
-        return 'Fair';
-      case SleepQuality.good:
-        return 'Good';
-      case SleepQuality.excellent:
-        return 'Excellent';
-    }
-  }
-  
-  int get value {
-    switch (this) {
-      case SleepQuality.poor:
-        return 1;
-      case SleepQuality.fair:
-        return 2;
-      case SleepQuality.good:
-        return 3;
-      case SleepQuality.excellent:
-        return 4;
-    }
-  }
-  
-  static SleepQuality fromString(String value) {
-    return SleepQuality.values.firstWhere(
-      (quality) => quality.toString().split('.').last.toLowerCase() == value.toLowerCase(),
-      orElse: () => SleepQuality.fair,
-    );
-  }
-  
-  static SleepQuality fromValue(int value) {
-    switch (value) {
-      case 1:
-        return SleepQuality.poor;
-      case 2:
-        return SleepQuality.fair;
-      case 3:
-        return SleepQuality.good;
-      case 4:
-        return SleepQuality.excellent;
-      default:
-        return SleepQuality.fair;
-    }
-  }
-}
-
-/// Model class for sleep entries
-class SleepEntry {
+class SleepModel {
   final String id;
   final String userId;
-  final DateTime date;
-  final DateTime bedTime;
-  final DateTime wakeTime;
+  final DateTime startTime;
+  final DateTime endTime;
   final int durationMinutes;
-  final SleepQuality quality;
   final int? deepSleepMinutes;
   final int? lightSleepMinutes;
   final int? remSleepMinutes;
   final int? awakeMinutes;
-  final List<String>? factors; // External factors affecting sleep
+  final int? quality; // 1-100 scale
   final String? notes;
-  final bool isSynced;
+  final Map<String, dynamic>? additionalData;
   final DateTime createdAt;
-  final DateTime? updatedAt;
-  
-  SleepEntry({
+  final DateTime updatedAt;
+
+  SleepModel({
     required this.id,
     required this.userId,
-    required this.date,
-    required this.bedTime,
-    required this.wakeTime,
+    required this.startTime,
+    required this.endTime,
     required this.durationMinutes,
-    required this.quality,
     this.deepSleepMinutes,
     this.lightSleepMinutes,
     this.remSleepMinutes,
     this.awakeMinutes,
-    this.factors,
+    this.quality,
     this.notes,
-    this.isSynced = false,
+    this.additionalData,
     required this.createdAt,
-    this.updatedAt,
+    required this.updatedAt,
   });
-  
-  /// Create a SleepEntry from Firestore document
-  factory SleepEntry.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    
-    List<String>? factors;
-    if (data['factors'] != null) {
-      factors = List<String>.from(data['factors']);
-    }
-    
-    return SleepEntry(
-      id: doc.id,
-      userId: data['userId'] ?? '',
-      date: (data['date'] as Timestamp).toDate(),
-      bedTime: (data['bedTime'] as Timestamp).toDate(),
-      wakeTime: (data['wakeTime'] as Timestamp).toDate(),
-      durationMinutes: data['durationMinutes'] ?? 0,
-      quality: SleepQualityExtension.fromString(data['quality'] ?? 'fair'),
-      deepSleepMinutes: data['deepSleepMinutes'],
-      lightSleepMinutes: data['lightSleepMinutes'],
-      remSleepMinutes: data['remSleepMinutes'],
-      awakeMinutes: data['awakeMinutes'],
-      factors: factors,
-      notes: data['notes'],
-      isSynced: data['isSynced'] ?? false,
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
-      updatedAt: data['updatedAt'] != null 
-          ? (data['updatedAt'] as Timestamp).toDate() 
-          : null,
-    );
-  }
-  
-  /// Convert SleepEntry to a map for Firestore
-  Map<String, dynamic> toFirestore() {
-    return {
-      'userId': userId,
-      'date': Timestamp.fromDate(date),
-      'bedTime': Timestamp.fromDate(bedTime),
-      'wakeTime': Timestamp.fromDate(wakeTime),
-      'durationMinutes': durationMinutes,
-      'quality': quality.toString().split('.').last,
-      'deepSleepMinutes': deepSleepMinutes,
-      'lightSleepMinutes': lightSleepMinutes,
-      'remSleepMinutes': remSleepMinutes,
-      'awakeMinutes': awakeMinutes,
-      'factors': factors,
-      'notes': notes,
-      'isSynced': isSynced,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
-    };
-  }
-  
-  /// Create a copy with updated fields
-  SleepEntry copyWith({
-    String? id,
-    String? userId,
-    DateTime? date,
-    DateTime? bedTime,
-    DateTime? wakeTime,
-    int? durationMinutes,
-    SleepQuality? quality,
+
+  // Create a new sleep entry with a unique ID
+  factory SleepModel.create({
+    required String userId,
+    required DateTime startTime,
+    required DateTime endTime,
     int? deepSleepMinutes,
     int? lightSleepMinutes,
     int? remSleepMinutes,
     int? awakeMinutes,
-    List<String>? factors,
+    int? quality,
     String? notes,
-    bool? isSynced,
-    DateTime? createdAt,
-    DateTime? updatedAt,
+    Map<String, dynamic>? additionalData,
   }) {
-    return SleepEntry(
-      id: id ?? this.id,
-      userId: userId ?? this.userId,
-      date: date ?? this.date,
-      bedTime: bedTime ?? this.bedTime,
-      wakeTime: wakeTime ?? this.wakeTime,
-      durationMinutes: durationMinutes ?? this.durationMinutes,
-      quality: quality ?? this.quality,
+    final now = DateTime.now();
+    
+    // Calculate duration in minutes
+    final durationMinutes = endTime.difference(startTime).inMinutes;
+    
+    return SleepModel(
+      id: FirebaseFirestore.instance.collection('sleep').doc().id,
+      userId: userId,
+      startTime: startTime,
+      endTime: endTime,
+      durationMinutes: durationMinutes,
+      deepSleepMinutes: deepSleepMinutes,
+      lightSleepMinutes: lightSleepMinutes,
+      remSleepMinutes: remSleepMinutes,
+      awakeMinutes: awakeMinutes,
+      quality: quality,
+      notes: notes,
+      additionalData: additionalData,
+      createdAt: now,
+      updatedAt: now,
+    );
+  }
+
+  // Create a sleep entry with only duration
+  factory SleepModel.createWithDuration({
+    required String userId,
+    required DateTime date,
+    required int durationMinutes,
+    int? quality,
+    String? notes,
+  }) {
+    final now = DateTime.now();
+    
+    // Set the start time to 10:00 PM on the provided date
+    final startTime = DateTime(date.year, date.month, date.day, 22, 0);
+    
+    // Calculate the end time based on the duration
+    final endTime = startTime.add(Duration(minutes: durationMinutes));
+    
+    return SleepModel(
+      id: FirebaseFirestore.instance.collection('sleep').doc().id,
+      userId: userId,
+      startTime: startTime,
+      endTime: endTime,
+      durationMinutes: durationMinutes,
+      quality: quality,
+      notes: notes,
+      createdAt: now,
+      updatedAt: now,
+    );
+  }
+
+  // Convert a SleepModel to a Map for Firestore
+  Map<String, dynamic> toMap() {
+    return {
+      'userId': userId,
+      'startTime': Timestamp.fromDate(startTime),
+      'endTime': Timestamp.fromDate(endTime),
+      'durationMinutes': durationMinutes,
+      'deepSleepMinutes': deepSleepMinutes,
+      'lightSleepMinutes': lightSleepMinutes,
+      'remSleepMinutes': remSleepMinutes,
+      'awakeMinutes': awakeMinutes,
+      'quality': quality,
+      'notes': notes,
+      'additionalData': additionalData,
+      'createdAt': Timestamp.fromDate(createdAt),
+      'updatedAt': Timestamp.fromDate(updatedAt),
+    };
+  }
+
+  // Create a SleepModel from Firestore
+  factory SleepModel.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return SleepModel(
+      id: doc.id,
+      userId: data['userId'] ?? '',
+      startTime: data['startTime'] != null
+          ? (data['startTime'] as Timestamp).toDate()
+          : DateTime.now(),
+      endTime: data['endTime'] != null
+          ? (data['endTime'] as Timestamp).toDate()
+          : DateTime.now(),
+      durationMinutes: data['durationMinutes'] ?? 0,
+      deepSleepMinutes: data['deepSleepMinutes'],
+      lightSleepMinutes: data['lightSleepMinutes'],
+      remSleepMinutes: data['remSleepMinutes'],
+      awakeMinutes: data['awakeMinutes'],
+      quality: data['quality'],
+      notes: data['notes'],
+      additionalData: data['additionalData'],
+      createdAt: data['createdAt'] != null
+          ? (data['createdAt'] as Timestamp).toDate()
+          : DateTime.now(),
+      updatedAt: data['updatedAt'] != null
+          ? (data['updatedAt'] as Timestamp).toDate()
+          : DateTime.now(),
+    );
+  }
+
+  // Create a copy of SleepModel with updated fields
+  SleepModel copyWith({
+    DateTime? startTime,
+    DateTime? endTime,
+    int? durationMinutes,
+    int? deepSleepMinutes,
+    int? lightSleepMinutes,
+    int? remSleepMinutes,
+    int? awakeMinutes,
+    int? quality,
+    String? notes,
+    Map<String, dynamic>? additionalData,
+  }) {
+    // If start or end time changes, recalculate duration
+    final newStartTime = startTime ?? this.startTime;
+    final newEndTime = endTime ?? this.endTime;
+    final calculatedDuration = newEndTime.difference(newStartTime).inMinutes;
+    
+    // Use provided duration or calculated one
+    final newDuration = durationMinutes ?? calculatedDuration;
+    
+    return SleepModel(
+      id: id,
+      userId: userId,
+      startTime: newStartTime,
+      endTime: newEndTime,
+      durationMinutes: newDuration,
       deepSleepMinutes: deepSleepMinutes ?? this.deepSleepMinutes,
       lightSleepMinutes: lightSleepMinutes ?? this.lightSleepMinutes,
       remSleepMinutes: remSleepMinutes ?? this.remSleepMinutes,
       awakeMinutes: awakeMinutes ?? this.awakeMinutes,
-      factors: factors ?? this.factors,
+      quality: quality ?? this.quality,
       notes: notes ?? this.notes,
-      isSynced: isSynced ?? this.isSynced,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
+      additionalData: additionalData ?? this.additionalData,
+      createdAt: createdAt,
+      updatedAt: DateTime.now(),
     );
   }
-  
-  /// Calculate sleep efficiency percentage (time asleep vs. time in bed)
-  double get sleepEfficiency {
-    if (durationMinutes == 0) return 0;
-    final asleepMinutes = durationMinutes - (awakeMinutes ?? 0);
-    return (asleepMinutes / durationMinutes) * 100;
+
+  // Get a formatted date for the sleep start
+  String getFormattedDate() {
+    return DateFormat('MMM d, yyyy').format(startTime);
   }
-  
-  /// Check if sleep duration meets recommended guidelines
-  bool get meetsRecommendedDuration {
-    // Most adults need 7-9 hours (420-540 minutes)
-    return durationMinutes >= 420 && durationMinutes <= 540;
+
+  // Get a formatted time for sleep start and end
+  String getFormattedTimeRange() {
+    return '${DateFormat('h:mm a').format(startTime)} - ${DateFormat('h:mm a').format(endTime)}';
   }
-  
-  /// Get sleep cycle count (rough estimate - average cycle is 90 minutes)
-  int get estimatedSleepCycles {
-    return (durationMinutes / 90).floor();
+
+  // Get sleep duration as hours and minutes
+  String getFormattedDuration() {
+    final hours = durationMinutes ~/ 60;
+    final minutes = durationMinutes % 60;
+    
+    if (hours > 0) {
+      return '${hours}h ${minutes}m';
+    } else {
+      return '${minutes}m';
+    }
+  }
+
+  // Get sleep efficiency percentage (time asleep vs time in bed)
+  double? getSleepEfficiency() {
+    // Sleep efficiency = (total sleep time / time in bed) * 100
+    if (deepSleepMinutes == null || 
+        lightSleepMinutes == null || 
+        remSleepMinutes == null) {
+      return null;
+    }
+    
+    final totalSleepMinutes = 
+        (deepSleepMinutes ?? 0) + 
+        (lightSleepMinutes ?? 0) + 
+        (remSleepMinutes ?? 0);
+    
+    return (totalSleepMinutes / durationMinutes) * 100;
+  }
+
+  // Get the quality description
+  String? getQualityDescription() {
+    if (quality == null) return null;
+    
+    if (quality! >= 80) {
+      return 'Excellent';
+    } else if (quality! >= 60) {
+      return 'Good';
+    } else if (quality! >= 40) {
+      return 'Average';
+    } else if (quality! >= 20) {
+      return 'Poor';
+    } else {
+      return 'Very Poor';
+    }
+  }
+
+  // Validate the sleep entry
+  bool isValid() {
+    return userId.isNotEmpty && 
+           durationMinutes > 0 &&
+           startTime.isBefore(endTime);
   }
 }

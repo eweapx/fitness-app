@@ -1,331 +1,214 @@
 import 'package:flutter/material.dart';
-import '../screens/activity_screen.dart';
-import '../screens/workout_screen.dart';
-import '../services/step_tracking_service.dart';
-import '../utils/constants.dart';
-import '../widgets/common_widgets.dart';
 
-class ActivityTabScreen extends StatefulWidget {
-  const ActivityTabScreen({super.key});
-
-  @override
-  _ActivityTabScreenState createState() => _ActivityTabScreenState();
-}
-
-class _ActivityTabScreenState extends State<ActivityTabScreen> {
-  final StepTrackingService _stepTrackingService = StepTrackingService();
-  bool _isLoading = true;
-  int _todaySteps = 0;
-  int _stepGoal = 10000;
-  bool _hasStepPermission = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkStepPermissions();
-  }
-
-  Future<void> _checkStepPermissions() async {
-    setState(() => _isLoading = true);
-    
-    try {
-      // Check if step tracking permission is granted
-      _hasStepPermission = await _stepTrackingService.checkPermissions();
-      
-      if (_hasStepPermission) {
-        // Get today's step count
-        final steps = await _stepTrackingService.getStepCount(DateTime.now());
-        setState(() => _todaySteps = steps ?? 0);
-      }
-    } catch (e) {
-      print('Error checking step permissions: $e');
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _requestStepPermissions() async {
-    setState(() => _isLoading = true);
-    
-    try {
-      final granted = await _stepTrackingService.requestPermissions();
-      setState(() => _hasStepPermission = granted);
-      
-      if (granted) {
-        // Get today's step count
-        final steps = await _stepTrackingService.getStepCount(DateTime.now());
-        setState(() => _todaySteps = steps ?? 0);
-      }
-    } catch (e) {
-      print('Error requesting step permissions: $e');
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
+class ActivityTabScreen extends StatelessWidget {
+  const ActivityTabScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Activity'),
-      ),
-      body: _isLoading
-          ? const LoadingIndicator(message: 'Loading activity data...')
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Steps card
-                  _buildStepsCard(),
-                  const SizedBox(height: 16),
-                  
-                  // Activity options
-                  _buildActivityOptions(),
-                  const SizedBox(height: 16),
-                  
-                  // Recent activities
-                  _buildRecentActivities(),
-                ],
+    final theme = Theme.of(context);
+    
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Activity summary card
+            Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 3,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "This Week's Activity",
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Activity metrics
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildActivityMetric(
+                          context,
+                          Icons.directions_walk,
+                          '47,352',
+                          'Steps',
+                        ),
+                        _buildActivityMetric(
+                          context,
+                          Icons.track_changes,
+                          '26.4',
+                          'km',
+                        ),
+                        _buildActivityMetric(
+                          context,
+                          Icons.local_fire_department,
+                          '1,875',
+                          'Calories',
+                        ),
+                      ],
+                    ),
+                    
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 16),
+                    
+                    // Weekly chart placeholder
+                    Container(
+                      height: 180,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceVariant,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'Weekly Activity Chart',
+                          style: theme.textTheme.bodyLarge,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-    );
-  }
-
-  Widget _buildStepsCard() {
-    final percentComplete = _todaySteps / _stepGoal;
-    
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Today\'s Steps',
-                        style: AppTextStyles.heading3,
-                      ),
-                      Text(
-                        '$_todaySteps / $_stepGoal steps',
-                        style: AppTextStyles.body,
-                      ),
-                    ],
-                  ),
-                ),
-                CircularPercentIndicator(
-                  percent: percentComplete > 1.0 ? 1.0 : percentComplete,
-                  radius: 40,
-                  lineWidth: 10,
-                  centerText: '${(percentComplete * 100).toInt()}%',
-                  label: 'Goal',
-                  color: percentComplete >= 1.0 
-                      ? AppColors.success 
-                      : AppColors.primary,
-                ),
-              ],
+            const SizedBox(height: 24),
+            
+            // Recent activities heading
+            Text(
+              'Recent Activities',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 16),
-            LinearProgressIndicator(
-              value: percentComplete > 1.0 ? 1.0 : percentComplete,
-              minHeight: 10,
-              backgroundColor: Colors.grey[300],
-              valueColor: AlwaysStoppedAnimation<Color>(
-                percentComplete >= 1.0 
-                    ? AppColors.success 
-                    : AppColors.primary,
-              ),
-            ),
             
-            if (!_hasStepPermission)
-              Padding(
-                padding: const EdgeInsets.only(top: 16.0),
-                child: AppButton(
-                  label: 'Enable Step Tracking',
-                  icon: Icons.directions_walk,
-                  onPressed: _requestStepPermissions,
-                  isFullWidth: true,
-                ),
-              ),
+            // Recent activities list
+            _buildActivityItem(
+              context,
+              'Morning Run',
+              'Today, 6:30 AM',
+              '5.4 km • 32 min • 320 cal',
+              Icons.directions_run,
+            ),
+            _buildActivityItem(
+              context,
+              'Strength Training',
+              'Yesterday, 5:45 PM',
+              '45 min • 280 cal',
+              Icons.fitness_center,
+            ),
+            _buildActivityItem(
+              context,
+              'Cycling',
+              'Wednesday, 7:15 AM',
+              '12.3 km • 42 min • 350 cal',
+              Icons.pedal_bike,
+            ),
+            _buildActivityItem(
+              context,
+              'Evening Walk',
+              'Tuesday, 6:30 PM',
+              '3.2 km • 35 min • 180 cal',
+              Icons.directions_walk,
+            ),
           ],
         ),
       ),
     );
   }
-
-  Widget _buildActivityOptions() {
+  
+  Widget _buildActivityMetric(
+    BuildContext context,
+    IconData icon,
+    String value,
+    String label,
+  ) {
+    final theme = Theme.of(context);
+    
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Quick Start',
-          style: AppTextStyles.heading3,
+        Icon(icon, size: 28, color: theme.colorScheme.primary),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _buildActivityOptionCard(
-                'Record Workout',
-                Icons.fitness_center,
-                Colors.purple,
-                () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const WorkoutScreen(),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildActivityOptionCard(
-                'Go for a Run',
-                Icons.directions_run,
-                Colors.orangeAccent,
-                () {
-                  // Start run tracking (would be implemented in a real app)
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Run tracking would start here')),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _buildActivityOptionCard(
-                'Activity History',
-                Icons.history,
-                Colors.blueAccent,
-                () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ActivityScreen(),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildActivityOptionCard(
-                'Step Challenges',
-                Icons.emoji_events,
-                Colors.amber,
-                () {
-                  // Navigate to challenges screen (would be implemented in a real app)
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Step challenges would open here')),
-                  );
-                },
-              ),
-            ),
-          ],
+        Text(
+          label,
+          style: theme.textTheme.bodyMedium,
         ),
       ],
     );
   }
-
-  Widget _buildActivityOptionCard(
+  
+  Widget _buildActivityItem(
+    BuildContext context,
     String title,
+    String date,
+    String details,
     IconData icon,
-    Color color,
-    VoidCallback onTap,
   ) {
+    final theme = Theme.of(context);
+    
     return Card(
-      elevation: 2,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 40,
-                color: color,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: AppTextStyles.body,
-              ),
-            ],
-          ),
-        ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
       ),
-    );
-  }
-
-  Widget _buildRecentActivities() {
-    return Card(
-      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
+        child: Row(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Recent Activities',
-                  style: AppTextStyles.heading3,
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const ActivityScreen(),
-                      ),
-                    );
-                  },
-                  child: const Text('View All'),
-                ),
-              ],
+            // Activity icon
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: theme.colorScheme.primary.withOpacity(0.2),
+              child: Icon(icon, color: theme.colorScheme.primary),
             ),
-            const SizedBox(height: 8),
-            // In a real app, this would be a list of recent activities
-            // For now, we'll show a message to add activities
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 16.0),
-                child: Text(
-                  'No recent activities found.\nComplete a workout to see it here!',
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.body,
-                ),
+            const SizedBox(width: 16),
+            
+            // Activity details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    date,
+                    style: theme.textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    details,
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 8),
-            AppButton(
-              label: 'Record Activity',
-              icon: Icons.add,
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const WorkoutScreen(),
-                  ),
-                );
-              },
-              isFullWidth: true,
+            
+            // Arrow icon
+            Icon(
+              Icons.chevron_right,
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ],
         ),

@@ -1,198 +1,227 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
+import '../utils/app_constants.dart';
 
-/// Enum representing different types of physical activities
-enum ActivityType {
-  walking,
-  running,
-  cycling,
-  swimming,
-  weights,
-  yoga,
-  hiit,
-  pilates,
-  other
-}
-
-/// Extension to provide helper methods for ActivityType enum
-extension ActivityTypeExtension on ActivityType {
-  String get displayName {
-    switch (this) {
-      case ActivityType.walking:
-        return 'Walking';
-      case ActivityType.running:
-        return 'Running';
-      case ActivityType.cycling:
-        return 'Cycling';
-      case ActivityType.swimming:
-        return 'Swimming';
-      case ActivityType.weights:
-        return 'Weights';
-      case ActivityType.yoga:
-        return 'Yoga';
-      case ActivityType.hiit:
-        return 'HIIT';
-      case ActivityType.pilates:
-        return 'Pilates';
-      case ActivityType.other:
-        return 'Other';
-    }
-  }
-  
-  String get icon {
-    switch (this) {
-      case ActivityType.walking:
-        return 'directions_walk';
-      case ActivityType.running:
-        return 'directions_run';
-      case ActivityType.cycling:
-        return 'directions_bike';
-      case ActivityType.swimming:
-        return 'pool';
-      case ActivityType.weights:
-        return 'fitness_center';
-      case ActivityType.yoga:
-        return 'self_improvement';
-      case ActivityType.hiit:
-        return 'timer';
-      case ActivityType.pilates:
-        return 'accessibility_new';
-      case ActivityType.other:
-        return 'sports';
-    }
-  }
-  
-  static ActivityType fromString(String value) {
-    return ActivityType.values.firstWhere(
-      (type) => type.toString().split('.').last == value.toLowerCase(),
-      orElse: () => ActivityType.other,
-    );
-  }
-}
-
-/// Model class for physical activities
-class Activity {
+class ActivityModel {
   final String id;
   final String userId;
   final String name;
-  final ActivityType type;
+  final String type;
   final int durationMinutes;
   final int caloriesBurned;
-  final double? distance; // in kilometers
   final int? steps;
-  final DateTime startTime;
-  final DateTime? endTime;
-  final String? notes;
-  final List<String>? photoUrls;
+  final double? distance; // in kilometers
   final Map<String, dynamic>? additionalData;
-  final bool isSynced;
+  final String? notes;
+  final DateTime date;
   final DateTime createdAt;
-  final DateTime? updatedAt;
-  
-  Activity({
+  final DateTime updatedAt;
+
+  ActivityModel({
     required this.id,
     required this.userId,
     required this.name,
     required this.type,
     required this.durationMinutes,
     required this.caloriesBurned,
-    required this.startTime,
-    this.distance,
     this.steps,
-    this.endTime,
-    this.notes,
-    this.photoUrls,
+    this.distance,
     this.additionalData,
-    this.isSynced = false,
+    this.notes,
+    required this.date,
     required this.createdAt,
-    this.updatedAt,
+    required this.updatedAt,
   });
-  
-  /// Create an Activity from Firestore document
-  factory Activity.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return Activity(
-      id: doc.id,
-      userId: data['userId'] ?? '',
-      name: data['name'] ?? '',
-      type: ActivityTypeExtension.fromString(data['type'] ?? 'other'),
-      durationMinutes: data['durationMinutes'] ?? 0,
-      caloriesBurned: data['caloriesBurned'] ?? 0,
-      distance: data['distance']?.toDouble(),
-      steps: data['steps'],
-      startTime: (data['startTime'] as Timestamp).toDate(),
-      endTime: data['endTime'] != null 
-          ? (data['endTime'] as Timestamp).toDate() 
-          : null,
-      notes: data['notes'],
-      photoUrls: data['photoUrls'] != null 
-          ? List<String>.from(data['photoUrls']) 
-          : null,
-      additionalData: data['additionalData'],
-      isSynced: data['isSynced'] ?? false,
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
-      updatedAt: data['updatedAt'] != null 
-          ? (data['updatedAt'] as Timestamp).toDate() 
-          : null,
+
+  // Create a new activity with a unique ID
+  factory ActivityModel.create({
+    required String userId,
+    required String name,
+    required String type,
+    required int durationMinutes,
+    required int caloriesBurned,
+    int? steps,
+    double? distance,
+    Map<String, dynamic>? additionalData,
+    String? notes,
+    DateTime? date,
+  }) {
+    final now = DateTime.now();
+    return ActivityModel(
+      id: FirebaseFirestore.instance.collection('activities').doc().id,
+      userId: userId,
+      name: name,
+      type: type,
+      durationMinutes: durationMinutes,
+      caloriesBurned: caloriesBurned,
+      steps: steps,
+      distance: distance,
+      additionalData: additionalData,
+      notes: notes,
+      date: date ?? now,
+      createdAt: now,
+      updatedAt: now,
     );
   }
-  
-  /// Convert Activity to a map for Firestore
-  Map<String, dynamic> toFirestore() {
+
+  // Convert an ActivityModel to a Map for Firestore
+  Map<String, dynamic> toMap() {
     return {
       'userId': userId,
       'name': name,
-      'type': type.toString().split('.').last,
+      'type': type,
       'durationMinutes': durationMinutes,
       'caloriesBurned': caloriesBurned,
-      'distance': distance,
       'steps': steps,
-      'startTime': Timestamp.fromDate(startTime),
-      'endTime': endTime != null ? Timestamp.fromDate(endTime!) : null,
-      'notes': notes,
-      'photoUrls': photoUrls,
+      'distance': distance,
       'additionalData': additionalData,
-      'isSynced': isSynced,
+      'notes': notes,
+      'date': Timestamp.fromDate(date),
       'createdAt': Timestamp.fromDate(createdAt),
-      'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
+      'updatedAt': Timestamp.fromDate(updatedAt),
     };
   }
-  
-  /// Create a copy of Activity with updated fields
-  Activity copyWith({
-    String? id,
-    String? userId,
+
+  // Create an ActivityModel from Firestore
+  factory ActivityModel.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return ActivityModel(
+      id: doc.id,
+      userId: data['userId'] ?? '',
+      name: data['name'] ?? '',
+      type: data['type'] ?? '',
+      durationMinutes: data['durationMinutes'] ?? 0,
+      caloriesBurned: data['caloriesBurned'] ?? 0,
+      steps: data['steps'],
+      distance: data['distance'],
+      additionalData: data['additionalData'],
+      notes: data['notes'],
+      date: data['date'] != null 
+          ? (data['date'] as Timestamp).toDate() 
+          : DateTime.now(),
+      createdAt: data['createdAt'] != null 
+          ? (data['createdAt'] as Timestamp).toDate() 
+          : DateTime.now(),
+      updatedAt: data['updatedAt'] != null 
+          ? (data['updatedAt'] as Timestamp).toDate() 
+          : DateTime.now(),
+    );
+  }
+
+  // Create a copy of ActivityModel with updated fields
+  ActivityModel copyWith({
     String? name,
-    ActivityType? type,
+    String? type,
     int? durationMinutes,
     int? caloriesBurned,
-    double? distance,
     int? steps,
-    DateTime? startTime,
-    DateTime? endTime,
-    String? notes,
-    List<String>? photoUrls,
+    double? distance,
     Map<String, dynamic>? additionalData,
-    bool? isSynced,
-    DateTime? createdAt,
-    DateTime? updatedAt,
+    String? notes,
+    DateTime? date,
   }) {
-    return Activity(
-      id: id ?? this.id,
-      userId: userId ?? this.userId,
+    return ActivityModel(
+      id: id,
+      userId: userId,
       name: name ?? this.name,
       type: type ?? this.type,
       durationMinutes: durationMinutes ?? this.durationMinutes,
       caloriesBurned: caloriesBurned ?? this.caloriesBurned,
-      distance: distance ?? this.distance,
       steps: steps ?? this.steps,
-      startTime: startTime ?? this.startTime,
-      endTime: endTime ?? this.endTime,
-      notes: notes ?? this.notes,
-      photoUrls: photoUrls ?? this.photoUrls,
+      distance: distance ?? this.distance,
       additionalData: additionalData ?? this.additionalData,
-      isSynced: isSynced ?? this.isSynced,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
+      notes: notes ?? this.notes,
+      date: date ?? this.date,
+      createdAt: createdAt,
+      updatedAt: DateTime.now(),
     );
+  }
+
+  // Calculate calories burned based on MET value, duration, and weight
+  static int calculateCaloriesBurned(
+      String activityType, int durationMinutes, double weightKg) {
+    // Get the MET value for the activity
+    double metValue = 3.0; // Default moderate activity if not found
+
+    final normalizedActivityType = activityType.toLowerCase().trim();
+    
+    // Try to find an exact match first
+    if (AppConstants.exerciseMetValues.containsKey(normalizedActivityType)) {
+      metValue = AppConstants.exerciseMetValues[normalizedActivityType]!;
+    } else {
+      // If no exact match, look for partial matches
+      for (var key in AppConstants.exerciseMetValues.keys) {
+        if (key.contains(normalizedActivityType) || 
+            normalizedActivityType.contains(key)) {
+          metValue = AppConstants.exerciseMetValues[key]!;
+          break;
+        }
+      }
+    }
+
+    // Calories = MET * weight (kg) * duration (hours)
+    return (metValue * weightKg * (durationMinutes / 60)).round();
+  }
+
+  // Get a formatted string for duration
+  String getFormattedDuration() {
+    final hours = durationMinutes ~/ 60;
+    final minutes = durationMinutes % 60;
+    
+    if (hours > 0) {
+      return '${hours}h ${minutes}m';
+    } else {
+      return '${minutes}m';
+    }
+  }
+
+  // Get a formatted date
+  String getFormattedDate() {
+    return DateFormat('MMM d, yyyy').format(date);
+  }
+
+  // Get a formatted time
+  String getFormattedTime() {
+    return DateFormat('h:mm a').format(date);
+  }
+
+  // Calculate pace for distance activities (min/km)
+  String? getFormattedPace() {
+    if (distance == null || distance! <= 0) return null;
+    
+    final paceMinutesPerKm = durationMinutes / distance!;
+    final paceMinutes = paceMinutesPerKm.floor();
+    final paceSeconds = ((paceMinutesPerKm - paceMinutes) * 60).round();
+    
+    return '$paceMinutes:${paceSeconds.toString().padLeft(2, '0')} /km';
+  }
+
+  // Get a formatted version of the additional data
+  Map<String, String> getFormattedAdditionalData() {
+    final result = <String, String>{};
+    
+    if (additionalData == null) return result;
+    
+    additionalData!.forEach((key, value) {
+      if (value is num) {
+        result[key] = value.toString();
+      } else if (value is DateTime) {
+        result[key] = DateFormat('MMM d, yyyy').format(value);
+      } else if (value is bool) {
+        result[key] = value ? 'Yes' : 'No';
+      } else if (value != null) {
+        result[key] = value.toString();
+      }
+    });
+    
+    return result;
+  }
+
+  // Validate the activity
+  bool isValid() {
+    return name.isNotEmpty && 
+           type.isNotEmpty && 
+           durationMinutes > 0 &&
+           caloriesBurned >= 0;
   }
 }
