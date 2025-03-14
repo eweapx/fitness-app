@@ -583,6 +583,7 @@ function updateDashboard() {
   updateSleepStats();
   updateSleepRecordsList();
   updateSleepChart();
+  updateActivityChart();
   updateConnectionsView();
 }
 
