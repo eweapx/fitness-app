@@ -57,6 +57,63 @@
       display: block;
       margin-bottom: 2px;
     }
+    
+    /* Workout form styles */
+    .plate-selector .plate-btn.active {
+      background-color: #212529;
+      color: white;
+    }
+    
+    .plate-badge {
+      padding: 5px 10px;
+      border-radius: 15px;
+      background-color: #6c757d;
+      color: white;
+      font-size: 0.8rem;
+      margin: 2px;
+    }
+    
+    /* Scroll wheel styles */
+    .weight-selector-container {
+      position: relative;
+    }
+    
+    .scroll-wheel-container {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      width: 100%;
+      height: 150px;
+      background-color: #f8f9fa;
+      border: 1px solid #ced4da;
+      border-radius: 0.25rem;
+      overflow: hidden;
+      z-index: 1000;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .scroll-wheel {
+      position: relative;
+      height: 100%;
+      overflow-y: auto;
+      scrollbar-width: none;
+      text-align: center;
+    }
+    
+    .scroll-wheel::-webkit-scrollbar {
+      display: none;
+    }
+    
+    .scroll-wheel-item {
+      padding: 10px 0;
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+    
+    .scroll-wheel-item.active {
+      background-color: rgba(13, 110, 253, 0.1);
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -721,18 +778,165 @@
           <div class="modal-body">
             <form id="add-activity-form">
               <input type="hidden" id="activity-id">
+              
+              <!-- Workout Category Toggle -->
+              <div class="mb-3 workout-category-toggle">
+                <div class="form-label mb-2">Workout Type</div>
+                <div class="d-flex justify-content-center mb-3">
+                  <div class="btn-group" role="group" aria-label="Workout category">
+                    <input type="radio" class="btn-check" name="workout-category" id="workout-cardio" value="cardio" checked>
+                    <label class="btn btn-outline-primary" for="workout-cardio">
+                      <i class="bi bi-heart-pulse"></i> Cardio
+                    </label>
+                    
+                    <input type="radio" class="btn-check" name="workout-category" id="workout-weights" value="weights">
+                    <label class="btn btn-outline-primary" for="workout-weights">
+                      <i class="bi bi-bar-chart-fill"></i> Weights
+                    </label>
+                  </div>
+                </div>
+              </div>
+              
               <div class="mb-3">
                 <label for="activity-name" class="form-label">Activity Name</label>
-                <input type="text" class="form-control" id="activity-name" placeholder="e.g., Morning Run" required>
+                <div class="input-group">
+                  <input type="text" class="form-control" id="activity-name" placeholder="e.g., Morning Run" required>
+                  <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    Select
+                  </button>
+                  <ul class="dropdown-menu dropdown-menu-end exercise-preset-list">
+                    <!-- Cardio presets -->
+                    <li class="preset-category cardio-presets"><h6 class="dropdown-header">Cardio</h6></li>
+                    <li class="preset-category cardio-presets"><a class="dropdown-item" href="#" data-name="Running">Running</a></li>
+                    <li class="preset-category cardio-presets"><a class="dropdown-item" href="#" data-name="Cycling">Cycling</a></li>
+                    <li class="preset-category cardio-presets"><a class="dropdown-item" href="#" data-name="Swimming">Swimming</a></li>
+                    <li class="preset-category cardio-presets"><a class="dropdown-item" href="#" data-name="Elliptical">Elliptical</a></li>
+                    <li class="preset-category cardio-presets"><a class="dropdown-item" href="#" data-name="Rowing">Rowing</a></li>
+                    <li class="preset-category cardio-presets"><a class="dropdown-item" href="#" data-name="Jump Rope">Jump Rope</a></li>
+                    
+                    <!-- Weight presets -->
+                    <li class="preset-category weight-presets"><h6 class="dropdown-header">Weight Training</h6></li>
+                    <li class="preset-category weight-presets"><a class="dropdown-item" href="#" data-name="Bench Press">Bench Press</a></li>
+                    <li class="preset-category weight-presets"><a class="dropdown-item" href="#" data-name="Squat">Squat</a></li>
+                    <li class="preset-category weight-presets"><a class="dropdown-item" href="#" data-name="Deadlift">Deadlift</a></li>
+                    <li class="preset-category weight-presets"><a class="dropdown-item" href="#" data-name="Overhead Press">Overhead Press</a></li>
+                    <li class="preset-category weight-presets"><a class="dropdown-item" href="#" data-name="Barbell Row">Barbell Row</a></li>
+                    <li class="preset-category weight-presets"><a class="dropdown-item" href="#" data-name="Pull Up">Pull Up</a></li>
+                    <li class="preset-category weight-presets"><a class="dropdown-item" href="#" data-name="Bicep Curl">Bicep Curl</a></li>
+                    <li class="preset-category weight-presets"><a class="dropdown-item" href="#" data-name="Tricep Extension">Tricep Extension</a></li>
+                    <li class="preset-category weight-presets"><a class="dropdown-item" href="#" data-name="Shoulder Press">Shoulder Press</a></li>
+                    <li class="preset-category weight-presets"><a class="dropdown-item" href="#" data-name="Lat Pulldown">Lat Pulldown</a></li>
+                  </ul>
+                </div>
               </div>
+              
+              <!-- Weights specific options (hidden by default) -->
+              <div id="weight-training-options" style="display: none;">
+                <div class="mb-3">
+                  <label class="form-label">Equipment Type</label>
+                  <div class="d-flex justify-content-center">
+                    <div class="btn-group" role="group" aria-label="Equipment type">
+                      <input type="radio" class="btn-check" name="equipment-type" id="equipment-barbell" value="barbell" checked>
+                      <label class="btn btn-outline-secondary" for="equipment-barbell">Barbell</label>
+                      
+                      <input type="radio" class="btn-check" name="equipment-type" id="equipment-dumbbell" value="dumbbell">
+                      <label class="btn btn-outline-secondary" for="equipment-dumbbell">Dumbbell</label>
+                      
+                      <input type="radio" class="btn-check" name="equipment-type" id="equipment-machine" value="machine">
+                      <label class="btn btn-outline-secondary" for="equipment-machine">Machine</label>
+                      
+                      <input type="radio" class="btn-check" name="equipment-type" id="equipment-bodyweight" value="bodyweight">
+                      <label class="btn btn-outline-secondary" for="equipment-bodyweight">Bodyweight</label>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Weight selection - Barbell specific -->
+                <div id="barbell-weight-selector" class="mb-3">
+                  <label class="form-label">Barbell Weight</label>
+                  <div class="text-center mb-2">
+                    <span class="fw-bold">Standard 45lb Bar + Plates</span>
+                    <div class="weight-calculation mt-1">
+                      <span id="barbell-total-weight" class="h4">45</span> lbs
+                    </div>
+                  </div>
+                  
+                  <!-- Plate selector -->
+                  <div class="text-center mb-2">
+                    <p class="form-label">Add plates to each side:</p>
+                    <div class="plate-selector d-flex justify-content-center gap-2 flex-wrap mb-3">
+                      <button type="button" class="btn btn-outline-dark plate-btn" data-weight="45">45lb</button>
+                      <button type="button" class="btn btn-outline-dark plate-btn" data-weight="35">35lb</button>
+                      <button type="button" class="btn btn-outline-dark plate-btn" data-weight="25">25lb</button>
+                      <button type="button" class="btn btn-outline-dark plate-btn" data-weight="15">15lb</button>
+                      <button type="button" class="btn btn-outline-dark plate-btn" data-weight="10">10lb</button>
+                      <button type="button" class="btn btn-outline-dark plate-btn" data-weight="5">5lb</button>
+                      <button type="button" class="btn btn-outline-dark plate-btn" data-weight="2.5">2.5lb</button>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-danger" id="clear-plates-btn">Clear Plates</button>
+                  </div>
+                  
+                  <div class="selected-plates mb-2">
+                    <div class="form-label">Selected Plates:</div>
+                    <div id="selected-plates-display" class="d-flex flex-wrap gap-1 justify-content-center">
+                      <!-- Plates will be added here dynamically -->
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Weight selection - Dumbbell/Machine specific -->
+                <div id="other-weight-selector" class="mb-3" style="display: none;">
+                  <label class="form-label">Weight (lbs)</label>
+                  <div class="weight-selector-container position-relative">
+                    <input type="number" id="other-weight-input" class="form-control text-center weight-input" value="0" min="0" max="200">
+                    
+                    <!-- Scroll wheel weight selector (initially hidden) -->
+                    <div class="scroll-wheel-container" style="display: none;">
+                      <div class="scroll-wheel">
+                        <!-- Numbers will be added dynamically by JavaScript -->
+                      </div>
+                    </div>
+                  </div>
+                  <div class="form-text text-center">Double-tap to switch between scroll wheel and manual input</div>
+                </div>
+                
+                <!-- Sets and reps -->
+                <div class="row mb-3">
+                  <div class="col-6">
+                    <label for="sets-input" class="form-label">Sets</label>
+                    <div class="position-relative">
+                      <input type="number" id="sets-input" class="form-control text-center" value="3" min="1" max="20">
+                      <div class="scroll-wheel-container sets-wheel" style="display: none;">
+                        <div class="scroll-wheel">
+                          <!-- Numbers will be added dynamically by JavaScript -->
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <label for="reps-input" class="form-label">Reps</label>
+                    <div class="position-relative">
+                      <input type="number" id="reps-input" class="form-control text-center" value="10" min="1" max="100">
+                      <div class="scroll-wheel-container reps-wheel" style="display: none;">
+                        <div class="scroll-wheel">
+                          <!-- Numbers will be added dynamically by JavaScript -->
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
               <div class="mb-3">
                 <label for="activity-calories" class="form-label">Calories Burned</label>
                 <input type="number" class="form-control" id="activity-calories" placeholder="e.g., 200" required>
               </div>
+              
               <div class="mb-3">
                 <label for="activity-duration" class="form-label">Duration (minutes)</label>
                 <input type="number" class="form-control" id="activity-duration" placeholder="e.g., 30" required>
               </div>
+              
               <div class="mb-3">
                 <label for="activity-type" class="form-label">Activity Type</label>
                 <select class="form-select" id="activity-type" required>
@@ -742,6 +946,7 @@
                   <option value="swimming">Swimming</option>
                 </select>
               </div>
+              
               <div class="d-flex justify-content-between">
                 <div id="activity-delete-container" style="display: none;">
                   <button type="button" class="btn btn-outline-danger" id="delete-activity-btn">
