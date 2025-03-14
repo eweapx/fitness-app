@@ -1,4 +1,4 @@
-modules = ["flutter", "nodejs-20"]
+modules = ["flutter", "nodejs-20", "dart", "python-3.11"]
 
 [nix]
 channel = "stable-24_05"
@@ -17,14 +17,6 @@ args = "Run Tests"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Simple Web Server"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Static File Server"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
 args = "Robust Server"
 
 [[workflows.workflow.tasks]]
@@ -33,7 +25,7 @@ args = "Basic Server"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Custom Server"
+args = "Flutter Web Express"
 
 [[workflows.workflow]]
 name = "Run Tests"
@@ -48,36 +40,6 @@ task = "packager.installForAll"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npx jest"
-
-[[workflows.workflow]]
-name = "Simple Web Server"
-author = "agent"
-
-[workflows.workflow.metadata]
-agentRequireRestartOnSave = false
-
-[[workflows.workflow.tasks]]
-task = "packager.installForAll"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "node server.js"
-waitForPort = 5000
-
-[[workflows.workflow]]
-name = "Static File Server"
-author = "agent"
-
-[workflows.workflow.metadata]
-agentRequireRestartOnSave = false
-
-[[workflows.workflow.tasks]]
-task = "packager.installForAll"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "node static-server.js"
-waitForPort = 5000
 
 [[workflows.workflow]]
 name = "Robust Server"
@@ -110,7 +72,20 @@ args = "node basic-server.js"
 waitForPort = 5000
 
 [[workflows.workflow]]
-name = "Custom Server"
+name = "Flutter Web"
+author = 40359398
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "flutter pub get"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "flutter run -d web-server --web-port=5000 --web-hostname=0.0.0.0"
+
+[[workflows.workflow]]
+name = "Flutter Web Express"
 author = "agent"
 
 [workflows.workflow.metadata]
@@ -121,7 +96,7 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node static-server.js"
+args = "node -e \"require('./flutter-express-server')\""
 waitForPort = 5001
 
 [deployment]

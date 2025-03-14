@@ -32,40 +32,41 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static const FirebaseOptions web = FirebaseOptions(
-    apiKey: '${String.fromEnvironment('FIREBASE_API_KEY')}',
-    appId: '${String.fromEnvironment('FIREBASE_APP_ID')}',
+  // Using environment variables for Firebase configuration
+  static FirebaseOptions get web => FirebaseOptions(
+    apiKey: const String.fromEnvironment('FIREBASE_API_KEY'),
+    appId: const String.fromEnvironment('FIREBASE_APP_ID'),
     messagingSenderId: '000000000000',
-    projectId: '${String.fromEnvironment('FIREBASE_PROJECT_ID')}',
-    authDomain: '${String.fromEnvironment('FIREBASE_PROJECT_ID')}.firebaseapp.com',
-    storageBucket: '${String.fromEnvironment('FIREBASE_PROJECT_ID')}.appspot.com',
+    projectId: const String.fromEnvironment('FIREBASE_PROJECT_ID'),
+    authDomain: '${const String.fromEnvironment('FIREBASE_PROJECT_ID')}.firebaseapp.com',
+    storageBucket: '${const String.fromEnvironment('FIREBASE_PROJECT_ID')}.appspot.com',
     measurementId: 'G-00000000',
   );
 
-  static const FirebaseOptions android = FirebaseOptions(
-    apiKey: '${String.fromEnvironment('FIREBASE_API_KEY')}',
-    appId: '${String.fromEnvironment('FIREBASE_APP_ID')}',
+  static FirebaseOptions get android => FirebaseOptions(
+    apiKey: const String.fromEnvironment('FIREBASE_API_KEY'),
+    appId: const String.fromEnvironment('FIREBASE_APP_ID'),
     messagingSenderId: '000000000000',
-    projectId: '${String.fromEnvironment('FIREBASE_PROJECT_ID')}',
-    storageBucket: '${String.fromEnvironment('FIREBASE_PROJECT_ID')}.appspot.com',
+    projectId: const String.fromEnvironment('FIREBASE_PROJECT_ID'),
+    storageBucket: '${const String.fromEnvironment('FIREBASE_PROJECT_ID')}.appspot.com',
   );
 
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: '${String.fromEnvironment('FIREBASE_API_KEY')}',
-    appId: '${String.fromEnvironment('FIREBASE_APP_ID')}',
+  static FirebaseOptions get ios => FirebaseOptions(
+    apiKey: const String.fromEnvironment('FIREBASE_API_KEY'),
+    appId: const String.fromEnvironment('FIREBASE_APP_ID'),
     messagingSenderId: '000000000000',
-    projectId: '${String.fromEnvironment('FIREBASE_PROJECT_ID')}',
-    storageBucket: '${String.fromEnvironment('FIREBASE_PROJECT_ID')}.appspot.com',
+    projectId: const String.fromEnvironment('FIREBASE_PROJECT_ID'),
+    storageBucket: '${const String.fromEnvironment('FIREBASE_PROJECT_ID')}.appspot.com',
     iosClientId: 'ios-client-id',
     iosBundleId: 'com.example.fitnessTracker',
   );
 
-  static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: '${String.fromEnvironment('FIREBASE_API_KEY')}',
-    appId: '${String.fromEnvironment('FIREBASE_APP_ID')}',
+  static FirebaseOptions get macos => FirebaseOptions(
+    apiKey: const String.fromEnvironment('FIREBASE_API_KEY'),
+    appId: const String.fromEnvironment('FIREBASE_APP_ID'),
     messagingSenderId: '000000000000',
-    projectId: '${String.fromEnvironment('FIREBASE_PROJECT_ID')}',
-    storageBucket: '${String.fromEnvironment('FIREBASE_PROJECT_ID')}.appspot.com',
+    projectId: const String.fromEnvironment('FIREBASE_PROJECT_ID'),
+    storageBucket: '${const String.fromEnvironment('FIREBASE_PROJECT_ID')}.appspot.com',
     iosClientId: 'ios-client-id',
     iosBundleId: 'com.example.fitnessTracker',
   );

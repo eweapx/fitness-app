@@ -32,21 +32,85 @@
   <title>Health & Fitness Tracker</title>
   <link rel="manifest" href="manifest.json">
 
+  <!-- Firebase SDK - Updated to use the latest version and modular SDK with latest CDN pattern -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+    import { getAuth } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+    import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+    import { getAnalytics } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js';
+    
+    window.firebase = {
+      initializeApp: initializeApp,
+      getAuth: getAuth,
+      getFirestore: getFirestore,
+      getAnalytics: getAnalytics
+    };
+  </script>
+
   <script>
     // The value below is injected by flutter build, do not touch.
-    var serviceWorkerVersion = null;
+    const serviceWorkerVersion = "{{flutter_service_worker_version}}";
   </script>
   <!-- This script adds the flutter initialization JS code -->
   <script src="flutter.js" defer></script>
 </head>
 <body>
   <script>
+    // Initialize Firebase for Web
+    // These values will be set by the Flutter app using the environment variables
+    const firebaseConfig = {
+      apiKey: "", // Will be set by Dart code from env variables
+      authDomain: "", // Will be set by Dart code
+      projectId: "", // Will be set by Dart code
+      storageBucket: "",
+      messagingSenderId: "",
+      appId: "", // Will be set by Dart code
+      measurementId: ""
+    };
+
     window.addEventListener('load', function(ev) {
-      // Download main.dart.js
-      var scriptTag = document.createElement('script');
-      scriptTag.src = 'main.dart.js';
-      scriptTag.type = 'application/javascript';
-      document.body.append(scriptTag);
+      // Loading indicator for better UX
+      var loading = document.createElement('div');
+      loading.style.position = 'fixed';
+      loading.style.top = '0';
+      loading.style.left = '0';
+      loading.style.width = '100%';
+      loading.style.height = '100%';
+      loading.style.display = 'flex';
+      loading.style.flexDirection = 'column';
+      loading.style.alignItems = 'center';
+      loading.style.justifyContent = 'center';
+      loading.style.backgroundColor = '#f5f5f5';
+      loading.style.zIndex = '9999';
+      loading.innerHTML = `
+        <div style="text-align: center;">
+          <img src="favicon.png" alt="Logo" style="width: 80px; height: 80px;">
+          <h2 style="margin-top: 20px; font-family: Arial, sans-serif; color: #333;">Health & Fitness Tracker</h2>
+          <p style="margin-top: 10px; font-family: Arial, sans-serif; color: #666;">Loading your personalized fitness journey...</p>
+          <div style="margin-top: 20px; width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        </div>
+        <style>
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        </style>
+      `;
+      document.body.appendChild(loading);
+
+      // Initialize Flutter Web - Using updated load() method
+      _flutter.loader.load({
+        serviceWorker: {
+          serviceWorkerVersion: serviceWorkerVersion,
+        },
+        onEntrypointLoaded: function(engineInitializer) {
+          engineInitializer.initializeEngine().then(function(appRunner) {
+            appRunner.runApp();
+            // Remove loading indicator when app is loaded
+            document.body.removeChild(loading);
+          });
+        }
+      });
     });
   </script>
 </body>
