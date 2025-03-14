@@ -217,7 +217,8 @@ class SleepTracker {
       
       results.push({
         date,
-        summary
+        duration: summary.totalDuration,
+        quality: summary.averageQuality * 20 // Convert 1-5 scale to percentage (0-100)
       });
     }
     

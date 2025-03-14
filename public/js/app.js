@@ -1139,7 +1139,7 @@ function updateSleepChart() {
   });
   
   const durationData = weeklyData.map(day => day.duration);
-  const qualityData = weeklyData.map(day => day.quality * 20); // Convert 1-5 to percentage
+  const qualityData = weeklyData.map(day => day.quality); // Already converted in getWeeklySleepSummary
   
   // Create or update the chart
   if (window.sleepChart) {
