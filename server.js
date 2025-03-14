@@ -1,162 +1,84 @@
-const http = require('http');
+const express = require('express');
+const path = require('path');
 const fs = require('fs');
-const url = require('url');
-const { Activity, tracker } = require('./models');
 
-// Create HTTP server
-const server = http.createServer((req, res) => {
-  const parsedUrl = url.parse(req.url, true);
-  const path = parsedUrl.pathname;
-  
-  console.log(`${req.method} ${path}`);
-  
-  // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  
-  // Handle API requests
-  if (path.startsWith('/api/')) {
-    handleApiRequest(req, res, path);
-    return;
-  }
+// Create Express app
+const app = express();
+const PORT = 5000;
 
-  // Serve static files (for now, just index.html)
-  if (path === '/' || path === '/index.html') {
-    serveFile(res, './index.html', 'text/html');
+// Define paths to static content
+const publicDir = path.join(__dirname, 'public');
+const flutterBuildDir = path.join(__dirname, 'fitness_tracker/build/web');
+
+// Set up logging middleware
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
+
+// API routes handler
+function handleApiRequest(req, res, path) {
+  if (path === '/api/health') {
+    res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+  } else if (path === '/api/version') {
+    res.json({ version: '1.0.0', platform: 'web' });
   } else {
-    res.writeHead(404, { 'Content-Type': 'text/plain' });
-    res.end('404 Not Found');
+    res.status(404).json({ error: 'API endpoint not found' });
+  }
+}
+
+// Helper to serve files with proper content types
+function serveFile(res, filePath, contentType) {
+  try {
+    if (fs.existsSync(filePath)) {
+      res.setHeader('Content-Type', contentType);
+      fs.createReadStream(filePath).pipe(res);
+    } else {
+      res.status(404).send('File not found');
+    }
+  } catch (error) {
+    console.error(`Error serving file ${filePath}:`, error);
+    res.status(500).send('Internal server error');
+  }
+}
+
+// Serve static files from public directory
+app.use(express.static(publicDir));
+
+// If Flutter web build exists, serve from there too
+if (fs.existsSync(flutterBuildDir)) {
+  console.log(`Serving Flutter web from: ${flutterBuildDir}`);
+  app.use(express.static(flutterBuildDir));
+}
+
+// Handle API requests
+app.use('/api', (req, res) => {
+  handleApiRequest(req, res, req.path);
+});
+
+// Fallback route - important for SPA
+app.get('*', (req, res) => {
+  const indexPath = path.join(publicDir, 'index.html');
+  const flutterIndexPath = path.join(flutterBuildDir, 'index.html');
+  
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else if (fs.existsSync(flutterIndexPath)) {
+    res.sendFile(flutterIndexPath);
+  } else {
+    res.status(404).send('No index.html found');
   }
 });
 
-// Handle API requests
-function handleApiRequest(req, res, path) {
-  // Set content type for all API responses
-  res.setHeader('Content-Type', 'application/json');
+// Start the server
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running at http://0.0.0.0:${PORT}`);
   
-  // GET /api/tracker - Return tracker data
-  if (path === '/api/tracker' && req.method === 'GET') {
-    const data = {
-      activities: tracker.getActivities(),
-      caloriesBurned: tracker.getTotalCalories(),
-      stepsCount: tracker.getTotalSteps(),
-      activitiesLogged: tracker.getActivitiesCount()
-    };
-    res.writeHead(200);
-    res.end(JSON.stringify(data));
-    return;
-  }
-  
-  // POST /api/steps - Add steps
-  if (path === '/api/steps' && req.method === 'POST') {
-    let body = '';
-    
-    req.on('data', chunk => {
-      body += chunk.toString();
-    });
-    
-    req.on('end', () => {
-      try {
-        const data = JSON.parse(body);
-        
-        if (data.steps && !isNaN(data.steps)) {
-          tracker.addSteps(parseInt(data.steps));
-          
-          const responseData = {
-            activities: tracker.getActivities(),
-            caloriesBurned: tracker.getTotalCalories(),
-            stepsCount: tracker.getTotalSteps(),
-            activitiesLogged: tracker.getActivitiesCount()
-          };
-          
-          res.writeHead(200);
-          res.end(JSON.stringify(responseData));
-        } else {
-          res.writeHead(400);
-          res.end(JSON.stringify({ error: 'Invalid steps data' }));
-        }
-      } catch (error) {
-        res.writeHead(400);
-        res.end(JSON.stringify({ error: 'Invalid JSON data' }));
-      }
-    });
-    
-    return;
-  }
-  
-  // POST /api/activities - Add activity
-  if (path === '/api/activities' && req.method === 'POST') {
-    let body = '';
-    
-    req.on('data', chunk => {
-      body += chunk.toString();
-    });
-    
-    req.on('end', () => {
-      try {
-        const data = JSON.parse(body);
-        
-        if (data.name && data.calories && data.duration && data.type) {
-          const activity = new Activity(
-            data.name,
-            parseInt(data.calories),
-            parseInt(data.duration),
-            data.type
-          );
-          
-          tracker.addActivity(activity);
-          
-          const responseData = {
-            activities: tracker.getActivities(),
-            caloriesBurned: tracker.getTotalCalories(),
-            stepsCount: tracker.getTotalSteps(),
-            activitiesLogged: tracker.getActivitiesCount()
-          };
-          
-          res.writeHead(200);
-          res.end(JSON.stringify(responseData));
-        } else {
-          res.writeHead(400);
-          res.end(JSON.stringify({ error: 'Missing required activity data' }));
-        }
-      } catch (error) {
-        res.writeHead(400);
-        res.end(JSON.stringify({ error: 'Invalid JSON data' }));
-      }
-    });
-    
-    return;
-  }
-  
-  // Method not allowed
-  if (req.method === 'OPTIONS') {
-    res.writeHead(200);
-    res.end();
-    return;
-  }
-  
-  // Not found
-  res.writeHead(404);
-  res.end(JSON.stringify({ error: 'API endpoint not found' }));
-}
-
-// Helper function to serve files
-function serveFile(res, filePath, contentType) {
-  fs.readFile(filePath, (err, data) => {
-    if (err) {
-      res.writeHead(500, { 'Content-Type': 'text/plain' });
-      res.end('500 Internal Server Error');
-      return;
-    }
-    
-    res.writeHead(200, { 'Content-Type': contentType });
-    res.end(data);
+  // Print diagnostics about available files
+  ['index.html', 'flutter.js', 'main.dart.js'].forEach(file => {
+    const publicPath = path.join(publicDir, file);
+    const flutterPath = path.join(flutterBuildDir, file);
+    console.log(`${file} in public: ${fs.existsSync(publicPath)}`);
+    console.log(`${file} in Flutter build: ${fs.existsSync(flutterPath)}`);
   });
-}
-
-// Start server
-const PORT = 5000;
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Fitness Tracker Server running at http://0.0.0.0:${PORT}`);
 });
