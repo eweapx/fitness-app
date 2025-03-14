@@ -35,9 +35,74 @@ document.addEventListener('DOMContentLoaded', function() {
   // Set up event listeners for all forms
   setupEventListeners();
   
+  // Sync data from all health connections if any exist
+  if (healthConnectionManager.getConnections().length > 0) {
+    syncAllHealthConnections();
+  }
+  
   // Update the dashboard with current data
   updateDashboard();
 });
+
+/**
+ * Sync data from all health connections
+ */
+function syncAllHealthConnections() {
+  showMessage('Syncing data from all connected health sources...', 'info');
+  
+  healthConnectionManager.syncAllConnections()
+    .then(results => {
+      // Process all the synced data
+      if (results.results && results.results.length > 0) {
+        results.results.forEach(result => {
+          if (result.data) {
+            // Update steps if available
+            if (result.data.steps && result.data.steps > 0) {
+              fitnessTracker.addSteps(result.data.steps);
+            }
+            
+            // Add workouts if available
+            if (result.data.workouts && result.data.workouts.length > 0) {
+              result.data.workouts.forEach(workout => {
+                const activity = new Activity(
+                  `${workout.type.charAt(0).toUpperCase() + workout.type.slice(1)}`,
+                  workout.calories,
+                  workout.duration,
+                  workout.type,
+                  workout.date
+                );
+                fitnessTracker.addActivity(activity);
+              });
+            }
+            
+            // Add sleep data if available
+            if (result.data.sleep && sleepTracker) {
+              const sleep = result.data.sleep;
+              const sleepRecord = new SleepRecord(
+                new Date(sleep.startTime),
+                new Date(sleep.endTime),
+                sleep.quality,
+                'Synced from connected device',
+                []
+              );
+              sleepTracker.addSleepRecord(sleepRecord);
+            }
+          }
+        });
+        
+        // Save updated data
+        fitnessTracker.saveToLocalStorage();
+        sleepTracker.saveToLocalStorage();
+      }
+      
+      updateDashboard();
+      showMessage('Successfully synced data from all health sources', 'success');
+    })
+    .catch(error => {
+      console.error('Sync error:', error);
+      showMessage('Error syncing data from health sources', 'danger');
+    });
+}
 
 /**
  * Set up all event listeners for the application
@@ -444,6 +509,47 @@ function handleConnectionFormSubmit(event) {
   // Add the connection
   healthConnectionManager.addConnection(connection)
     .then(result => {
+      // Process the synced data from initial connection
+      if (result.syncResult && result.syncResult.data) {
+        const syncData = result.syncResult.data;
+        
+        // Update steps if available
+        if (syncData.steps && syncData.steps > 0) {
+          fitnessTracker.addSteps(syncData.steps);
+        }
+        
+        // Add workouts if available
+        if (syncData.workouts && syncData.workouts.length > 0) {
+          syncData.workouts.forEach(workout => {
+            const activity = new Activity(
+              `${workout.type.charAt(0).toUpperCase() + workout.type.slice(1)}`,
+              workout.calories,
+              workout.duration,
+              workout.type,
+              workout.date
+            );
+            fitnessTracker.addActivity(activity);
+          });
+        }
+        
+        // Add sleep data if available
+        if (syncData.sleep && sleepTracker) {
+          const sleep = syncData.sleep;
+          const sleepRecord = new SleepRecord(
+            new Date(sleep.startTime),
+            new Date(sleep.endTime),
+            sleep.quality,
+            'Synced from ' + connection.getDisplayName(),
+            []
+          );
+          sleepTracker.addSleepRecord(sleepRecord);
+        }
+        
+        // Save updated data
+        fitnessTracker.saveToLocalStorage();
+        sleepTracker.saveToLocalStorage();
+      }
+      
       updateConnectionsView();
       updateDashboard();
       
@@ -1130,6 +1236,7 @@ function updateConnectionsView() {
   const syncedWorkoutsCount = document.getElementById('synced-workouts-count');
   const syncedStepsCount = document.getElementById('synced-steps-count');
   const syncedCaloriesCount = document.getElementById('synced-calories-count');
+  const syncAllButton = document.getElementById('sync-all-button');
   
   const connections = healthConnectionManager.getConnections();
   const stats = healthConnectionManager.getAggregateStats();
@@ -1141,6 +1248,16 @@ function updateConnectionsView() {
   if (syncedWorkoutsCount) syncedWorkoutsCount.textContent = stats.workouts.toString();
   if (syncedStepsCount) syncedStepsCount.textContent = stats.steps.toLocaleString();
   if (syncedCaloriesCount) syncedCaloriesCount.textContent = stats.calories.toLocaleString();
+  
+  // Update sync all button
+  if (syncAllButton) {
+    if (connections.length > 0) {
+      syncAllButton.disabled = false;
+      syncAllButton.onclick = syncAllHealthConnections;
+    } else {
+      syncAllButton.disabled = true;
+    }
+  }
   
   // Update connected devices list
   if (connectedDevicesList && noConnectedDevices) {
@@ -1225,7 +1342,44 @@ function syncConnection(connectionId) {
   
   connection.syncData()
     .then(result => {
-      // Potential TODO: Process the new data to update tracker stats
+      // Process the synced data to update our trackers
+      if (result.data) {
+        // Update steps if available
+        if (result.data.steps && result.data.steps > 0) {
+          fitnessTracker.addSteps(result.data.steps);
+        }
+        
+        // Add workouts if available
+        if (result.data.workouts && result.data.workouts.length > 0) {
+          result.data.workouts.forEach(workout => {
+            const activity = new Activity(
+              `${workout.type.charAt(0).toUpperCase() + workout.type.slice(1)}`,
+              workout.calories,
+              workout.duration,
+              workout.type,
+              workout.date
+            );
+            fitnessTracker.addActivity(activity);
+          });
+        }
+        
+        // Add sleep data if available
+        if (result.data.sleep && sleepTracker) {
+          const sleep = result.data.sleep;
+          const sleepRecord = new SleepRecord(
+            new Date(sleep.startTime),
+            new Date(sleep.endTime),
+            sleep.quality,
+            'Synced from ' + connection.getDisplayName(),
+            []
+          );
+          sleepTracker.addSleepRecord(sleepRecord);
+        }
+      }
+      
+      // Save updated data
+      fitnessTracker.saveToLocalStorage();
+      sleepTracker.saveToLocalStorage();
       
       updateConnectionsView();
       updateDashboard();
