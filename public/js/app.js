@@ -1558,7 +1558,16 @@ function updateScrollWheelPosition(input, value) {
   if (!input || !input.scrollWheel) return;
   
   const { wheel, optionHeight } = input.scrollWheel;
-  const position = -(value * optionHeight) + (input.scrollWheel.container.offsetHeight / 2 - optionHeight / 2);
+  
+  // Special handling for weight input with 5lb increments
+  let position;
+  if (input.id === 'other-weight-input') {
+    // For weight inputs, we need to divide by 5 since we're using 5lb increments
+    position = -((value / 5) * optionHeight) + (input.scrollWheel.container.offsetHeight / 2 - optionHeight / 2);
+  } else {
+    // For other inputs (sets, reps), use standard positioning
+    position = -(value * optionHeight) + (input.scrollWheel.container.offsetHeight / 2 - optionHeight / 2);
+  }
   
   wheel.style.transition = 'transform 0.3s ease-out';
   wheel.style.transform = `translateY(${position}px)`;
@@ -2852,9 +2861,9 @@ function initializeWorkoutForm() {
       // Update max weight for dumbbells vs machines
       const otherWeightInput = document.getElementById('other-weight-input');
       if (equipmentType === 'dumbbell') {
-        otherWeightInput.max = 200;
+        otherWeightInput.max = 200; // Max dumbbell weight still 200lbs for typical users
       } else {
-        otherWeightInput.max = 1000;
+        otherWeightInput.max = 1000; // Machine weight up to 1000lbs
       }
     }
   }
