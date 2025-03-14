@@ -9,8 +9,12 @@ class Activity {
    * @param {number} duration - Duration in minutes
    * @param {string} type - Type of activity (running, cycling, weights, swimming)
    * @param {Date} date - Date and time of activity
+   * @param {string} id - Unique identifier
+   * @param {string} sourceConnection - ID of the health connection this activity came from
+   * @param {string} sourceId - ID of the activity in the original health data source
+   * @param {Object} workoutDetails - Additional workout details (for weights or specific exercises)
    */
-  constructor(name, calories, duration, type, date = new Date(), id = null, sourceConnection = null, sourceId = null) {
+  constructor(name, calories, duration, type, date = new Date(), id = null, sourceConnection = null, sourceId = null, workoutDetails = null) {
     this.id = id || Date.now().toString();
     this.name = name;
     this.calories = calories;
@@ -21,6 +25,12 @@ class Activity {
     // Track if this activity is from a health connection
     this.sourceConnection = sourceConnection; // ID of the health connection this activity came from
     this.sourceId = sourceId; // ID of the activity in the original health data source
+    
+    // Workout details for enhanced activity tracking
+    this.workoutDetails = workoutDetails || {
+      category: 'cardio', // 'cardio' or 'weights'
+      exercises: []       // Array of exercise objects
+    };
   }
 
   /**
@@ -52,6 +62,92 @@ class Activity {
       Number(this.duration) > 0 && 
       this.type
     );
+  }
+  
+  /**
+   * Add an exercise to this activity
+   * @param {Object} exercise - Exercise details
+   * @returns {boolean} True if the exercise was added successfully
+   */
+  addExercise(exercise) {
+    if (this.isValidExercise(exercise)) {
+      this.workoutDetails.exercises.push(exercise);
+      return true;
+    }
+    return false;
+  }
+  
+  /**
+   * Validate if an exercise has all required fields
+   * @param {Object} exercise - Exercise to validate
+   * @returns {boolean} True if the exercise is valid
+   */
+  isValidExercise(exercise) {
+    return (
+      exercise && 
+      exercise.name && 
+      exercise.name.trim() !== ''
+    );
+  }
+  
+  /**
+   * Remove an exercise from this activity
+   * @param {number} index - Index of the exercise to remove
+   * @returns {boolean} True if the exercise was removed successfully
+   */
+  removeExercise(index) {
+    if (index >= 0 && index < this.workoutDetails.exercises.length) {
+      this.workoutDetails.exercises.splice(index, 1);
+      return true;
+    }
+    return false;
+  }
+  
+  /**
+   * Update an exercise in this activity
+   * @param {number} index - Index of the exercise to update
+   * @param {Object} updatedExercise - Updated exercise details
+   * @returns {boolean} True if the exercise was updated successfully
+   */
+  updateExercise(index, updatedExercise) {
+    if (
+      index >= 0 && 
+      index < this.workoutDetails.exercises.length && 
+      this.isValidExercise(updatedExercise)
+    ) {
+      this.workoutDetails.exercises[index] = updatedExercise;
+      return true;
+    }
+    return false;
+  }
+  
+  /**
+   * Set the workout category
+   * @param {string} category - The category ('cardio' or 'weights')
+   * @returns {boolean} True if the category was set successfully
+   */
+  setWorkoutCategory(category) {
+    if (category === 'cardio' || category === 'weights') {
+      this.workoutDetails.category = category;
+      return true;
+    }
+    return false;
+  }
+  
+  /**
+   * Calculate barbell weight from specified plates
+   * @param {Array} plates - Array of plates on one side of the bar
+   * @returns {number} Total weight including the bar (45lbs)
+   */
+  static calculateBarbellWeight(plates) {
+    // Standard barbell is 45 lbs
+    const barWeight = 45;
+    
+    // Sum the weight of all plates (multiplied by 2 for both sides)
+    const plateWeight = plates.reduce((sum, plate) => sum + (Number(plate) * 2), 0);
+    
+    // Return total weight
+    return barWeight + plateWeight;
   }
 }
 
@@ -150,7 +246,7 @@ class FitnessTracker {
     // Get the original activity
     const originalActivity = this.activities[activityIndex];
     
-    // Create updated activity object preserving source information
+    // Create updated activity object preserving source information and workout details
     const updatedActivity = new Activity(
       updates.name || originalActivity.name,
       updates.calories || originalActivity.calories,
@@ -159,7 +255,8 @@ class FitnessTracker {
       updates.date || originalActivity.date,
       id,
       originalActivity.sourceConnection,
-      originalActivity.sourceId
+      originalActivity.sourceId,
+      updates.workoutDetails || originalActivity.workoutDetails
     );
     
     if (updatedActivity.isValid()) {
@@ -215,7 +312,8 @@ class FitnessTracker {
             new Date(activity.date),
             activity.id,
             activity.sourceConnection,
-            activity.sourceId
+            activity.sourceId,
+            activity.workoutDetails
           );
           // Ensure the activity ID is preserved
           newActivity.id = activity.id || newActivity.id;
