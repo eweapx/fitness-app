@@ -71,6 +71,9 @@ document.addEventListener('DOMContentLoaded', function() {
   // Set up event listeners for all forms
   setupEventListeners();
   
+  // Set up authentication system
+  setupAuthSystem();
+  
   // Sync data from all health connections if any exist
   if (healthConnectionManager.getConnections().length > 0) {
     syncAllHealthConnections();
@@ -2030,6 +2033,270 @@ function handleDeleteActivity(activityId) {
     } else {
       showMessage('Error deleting activity', 'danger');
     }
+  }
+}
+
+/**
+ * Set up the authentication system
+ */
+function setupAuthSystem() {
+  // Get references to DOM elements
+  const authButtons = document.getElementById('auth-buttons');
+  const userProfile = document.getElementById('user-profile');
+  const userNameElement = document.getElementById('user-name');
+  
+  // Login form handling
+  const loginForm = document.getElementById('login-form');
+  const loginErrorElement = document.getElementById('login-error');
+  
+  // Registration form handling
+  const registerForm = document.getElementById('register-form');
+  const registerErrorElement = document.getElementById('register-error');
+  
+  // Profile settings form
+  const profileSettingsForm = document.getElementById('profile-settings-form');
+  const settingsNameInput = document.getElementById('settings-name');
+  const settingsEmailInput = document.getElementById('settings-email');
+  
+  // Preferences form
+  const preferencesForm = document.getElementById('preferences-settings-form');
+  
+  // Security form
+  const securityForm = document.getElementById('security-settings-form');
+  
+  // Logout button
+  const logoutButton = document.getElementById('logout-button');
+  const profileSettings = document.getElementById('profile-settings');
+  
+  // Check if user is already logged in
+  if (authManager.isLoggedIn()) {
+    // Update UI for logged-in state
+    updateAuthUI(true);
+  } else {
+    // Update UI for logged-out state
+    updateAuthUI(false);
+  }
+  
+  // Login form submission
+  if (loginForm) {
+    loginForm.addEventListener('submit', function(event) {
+      event.preventDefault();
+      
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+      
+      const result = authManager.login(email, password);
+      
+      if (result.success) {
+        // Hide the modal
+        const loginModal = bootstrap.Modal.getInstance(document.getElementById('loginModal'));
+        loginModal.hide();
+        
+        // Update UI
+        updateAuthUI(true);
+        
+        // Show success message
+        showMessage(`Welcome back, ${result.user.name}!`, 'success');
+        
+        // Reset the form
+        loginForm.reset();
+      } else {
+        // Show error message
+        loginErrorElement.textContent = result.message;
+        loginErrorElement.style.display = 'block';
+      }
+    });
+  }
+  
+  // Registration form submission
+  if (registerForm) {
+    registerForm.addEventListener('submit', function(event) {
+      event.preventDefault();
+      
+      const name = document.getElementById('register-name').value;
+      const email = document.getElementById('register-email').value;
+      const password = document.getElementById('register-password').value;
+      const confirmPassword = document.getElementById('register-password-confirm').value;
+      
+      // Check if passwords match
+      if (password !== confirmPassword) {
+        registerErrorElement.textContent = 'Passwords do not match';
+        registerErrorElement.style.display = 'block';
+        return;
+      }
+      
+      // Register the user
+      const result = authManager.register(name, email, password);
+      
+      if (result.success) {
+        // Hide the modal
+        const registerModal = bootstrap.Modal.getInstance(document.getElementById('registerModal'));
+        registerModal.hide();
+        
+        // Update UI
+        updateAuthUI(true);
+        
+        // Show success message
+        showMessage(`Account created successfully. Welcome, ${result.user.name}!`, 'success');
+        
+        // Reset the form
+        registerForm.reset();
+      } else {
+        // Show error message
+        registerErrorElement.textContent = result.message;
+        registerErrorElement.style.display = 'block';
+      }
+    });
+  }
+  
+  // Profile settings form submission
+  if (profileSettingsForm) {
+    profileSettingsForm.addEventListener('submit', function(event) {
+      event.preventDefault();
+      
+      const name = settingsNameInput.value;
+      const email = settingsEmailInput.value;
+      
+      const currentUser = authManager.getCurrentUser();
+      if (currentUser) {
+        currentUser.updateProfile({ name, email });
+        authManager.saveToLocalStorage();
+        
+        // Update UI
+        userNameElement.textContent = name;
+        
+        // Show success message
+        showMessage('Profile updated successfully', 'success');
+      }
+    });
+  }
+  
+  // Preferences form submission
+  if (preferencesForm) {
+    preferencesForm.addEventListener('submit', function(event) {
+      event.preventDefault();
+      
+      const units = document.querySelector('input[name="units"]:checked')?.value || 'metric';
+      const calorieGoal = document.getElementById('daily-calorie-goal').value;
+      const stepsGoal = document.getElementById('daily-steps-goal').value;
+      
+      const currentUser = authManager.getCurrentUser();
+      if (currentUser) {
+        currentUser.updateProfile({
+          preferences: {
+            units,
+            calorieGoal: parseInt(calorieGoal, 10) || 2000,
+            stepsGoal: parseInt(stepsGoal, 10) || 10000
+          }
+        });
+        authManager.saveToLocalStorage();
+        
+        // Show success message
+        showMessage('Preferences updated successfully', 'success');
+      }
+    });
+  }
+  
+  // Security form submission
+  if (securityForm) {
+    securityForm.addEventListener('submit', function(event) {
+      event.preventDefault();
+      
+      const currentPassword = document.getElementById('current-password').value;
+      const newPassword = document.getElementById('new-password').value;
+      const confirmNewPassword = document.getElementById('confirm-new-password').value;
+      
+      // Validate inputs
+      if (!currentPassword || !newPassword || !confirmNewPassword) {
+        showMessage('Please fill in all password fields', 'danger');
+        return;
+      }
+      
+      if (newPassword !== confirmNewPassword) {
+        showMessage('New passwords do not match', 'danger');
+        return;
+      }
+      
+      const currentUser = authManager.getCurrentUser();
+      if (currentUser && currentUser.checkPassword(currentPassword)) {
+        // Update password
+        currentUser.password = newPassword;
+        authManager.saveToLocalStorage();
+        
+        // Show success message
+        showMessage('Password updated successfully', 'success');
+        
+        // Reset form
+        securityForm.reset();
+      } else {
+        showMessage('Current password is incorrect', 'danger');
+      }
+    });
+  }
+  
+  // Profile settings button click
+  if (profileSettings) {
+    profileSettings.addEventListener('click', function() {
+      const currentUser = authManager.getCurrentUser();
+      if (currentUser) {
+        // Fill form with current user data
+        settingsNameInput.value = currentUser.name;
+        settingsEmailInput.value = currentUser.email;
+        
+        // Fill preferences form
+        if (currentUser.preferences) {
+          const unitValue = currentUser.preferences.units || 'metric';
+          document.getElementById(`units-${unitValue}`).checked = true;
+          
+          if (currentUser.preferences.calorieGoal) {
+            document.getElementById('daily-calorie-goal').value = currentUser.preferences.calorieGoal;
+          }
+          
+          if (currentUser.preferences.stepsGoal) {
+            document.getElementById('daily-steps-goal').value = currentUser.preferences.stepsGoal;
+          }
+        }
+        
+        // Show the modal
+        const settingsModal = new bootstrap.Modal(document.getElementById('userSettingsModal'));
+        settingsModal.show();
+      }
+    });
+  }
+  
+  // Logout button click
+  if (logoutButton) {
+    logoutButton.addEventListener('click', function() {
+      authManager.logout();
+      updateAuthUI(false);
+      showMessage('You have been logged out', 'info');
+    });
+  }
+}
+
+/**
+ * Update the UI based on authentication state
+ * @param {boolean} isLoggedIn - Whether the user is logged in
+ */
+function updateAuthUI(isLoggedIn) {
+  const authButtons = document.getElementById('auth-buttons');
+  const userProfile = document.getElementById('user-profile');
+  const userNameElement = document.getElementById('user-name');
+  
+  if (isLoggedIn) {
+    // Show user profile, hide auth buttons
+    authButtons.style.display = 'none';
+    userProfile.style.display = 'block';
+    
+    // Update user name
+    const currentUser = authManager.getCurrentUser();
+    if (currentUser) {
+      userNameElement.textContent = currentUser.name;
+    }
+  } else {
+    // Show auth buttons, hide user profile
+    authButtons.style.display = 'block';
+    userProfile.style.display = 'none';
   }
 }
 
