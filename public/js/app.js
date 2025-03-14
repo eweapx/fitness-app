@@ -1,6 +1,7 @@
 // Initialize the trackers
 const fitnessTracker = new FitnessTracker();
 const habitTracker = new HabitTracker();
+const nutritionTracker = new NutritionTracker();
 
 // Set up event listeners when the document is ready
 document.addEventListener('DOMContentLoaded', function() {
@@ -23,6 +24,7 @@ function initializeTrackers() {
   // Load data from localStorage via the tracker classes
   console.log('Fitness tracker loaded', fitnessTracker.getActivitiesCount(), 'activities');
   console.log('Habit tracker loaded', habitTracker.getHabits().length, 'habits');
+  console.log('Nutrition tracker loaded', nutritionTracker.getMeals().length, 'meals');
 }
 
 /**
@@ -51,6 +53,12 @@ function setupEventListeners() {
   const checkInForm = document.getElementById('habit-check-in-form');
   if (checkInForm) {
     checkInForm.addEventListener('submit', handleCheckInFormSubmit);
+  }
+  
+  // Meal form submission
+  const mealForm = document.getElementById('add-meal-form');
+  if (mealForm) {
+    mealForm.addEventListener('submit', handleMealFormSubmit);
   }
 }
 

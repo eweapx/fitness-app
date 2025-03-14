@@ -73,6 +73,9 @@
           <a class="nav-link" id="activity-tab" href="#">Activities</a>
         </li>
         <li class="nav-item">
+          <a class="nav-link" id="nutrition-tab" href="#">Nutrition</a>
+        </li>
+        <li class="nav-item">
           <a class="nav-link" id="habits-tab" href="#">Bad Habits</a>
         </li>
         <li class="nav-item">
@@ -202,6 +205,71 @@
         </div>
       </div>
 
+      <!-- Nutrition Section (Initially Hidden) -->
+      <div id="nutrition-content" class="content-section" style="display: none;">
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Nutrition Tracking</h5>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addMealModal">
+              Log New Meal
+            </button>
+          </div>
+          <div class="card-body">
+            <div class="alert alert-info mb-4">
+              <i class="bi bi-info-circle me-2"></i>
+              Track your daily food intake, monitor your calories and macronutrients.
+            </div>
+            
+            <div class="row mb-4">
+              <div class="col-md-3 col-6">
+                <div class="card stat-card">
+                  <h6>Daily Calories</h6>
+                  <div class="stat-value" id="nutrition-calories">0</div>
+                  <div class="small text-muted">Goal: 2000</div>
+                </div>
+              </div>
+              <div class="col-md-3 col-6">
+                <div class="card stat-card">
+                  <h6>Protein</h6>
+                  <div class="stat-value" id="nutrition-protein">0g</div>
+                  <div class="small text-muted">Goal: 120g</div>
+                </div>
+              </div>
+              <div class="col-md-3 col-6">
+                <div class="card stat-card">
+                  <h6>Carbs</h6>
+                  <div class="stat-value" id="nutrition-carbs">0g</div>
+                  <div class="small text-muted">Goal: 225g</div>
+                </div>
+              </div>
+              <div class="col-md-3 col-6">
+                <div class="card stat-card">
+                  <h6>Fat</h6>
+                  <div class="stat-value" id="nutrition-fat">0g</div>
+                  <div class="small text-muted">Goal: 65g</div>
+                </div>
+              </div>
+            </div>
+
+            <h5 class="mb-3">Today's Meals</h5>
+            <div id="meals-list">
+              <!-- Meals will be populated by JavaScript -->
+              <div class="text-center py-4">
+                <p class="text-muted">No meals logged yet today.</p>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addMealModal">
+                  Log Your First Meal
+                </button>
+              </div>
+            </div>
+            
+            <div class="mt-4">
+              <h5 class="mb-3">Nutrition History</h5>
+              <canvas id="nutrition-chart" height="200"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+      
       <!-- Habits Section (Initially Hidden) -->
       <div id="habits-content" class="content-section" style="display: none;">
         <div class="card">
@@ -249,15 +317,15 @@
             </a>
           </div>
           <div class="col-3">
-            <a class="nav-link" id="bottom-habits-tab" href="#">
-              <i class="bi bi-x-circle"></i>
-              Habits
+            <a class="nav-link" id="bottom-nutrition-tab" href="#">
+              <i class="bi bi-egg-fried"></i>
+              Nutrition
             </a>
           </div>
           <div class="col-3">
-            <a class="nav-link" id="bottom-about-tab" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal">
-              <i class="bi bi-info-circle"></i>
-              About
+            <a class="nav-link" id="bottom-habits-tab" href="#">
+              <i class="bi bi-x-circle"></i>
+              Habits
             </a>
           </div>
         </div>
@@ -451,6 +519,72 @@
       </div>
     </div>
 
+    <!-- Add Meal Modal -->
+    <div class="modal fade" id="addMealModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Log Meal</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="add-meal-form">
+              <div class="mb-3">
+                <label for="meal-name" class="form-label">Meal Name</label>
+                <input type="text" class="form-control" id="meal-name" placeholder="e.g., Breakfast, Lunch, Dinner" required>
+              </div>
+              <div class="mb-3">
+                <label for="meal-description" class="form-label">Description</label>
+                <textarea class="form-control" id="meal-description" rows="2" placeholder="e.g., Chicken salad with olive oil dressing"></textarea>
+              </div>
+              <div class="mb-3">
+                <label for="meal-calories" class="form-label">Calories</label>
+                <input type="number" class="form-control" id="meal-calories" placeholder="e.g., 500" required>
+              </div>
+              <div class="row">
+                <div class="col-md-4">
+                  <div class="mb-3">
+                    <label for="meal-protein" class="form-label">Protein (g)</label>
+                    <input type="number" class="form-control" id="meal-protein" placeholder="e.g., 30">
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="mb-3">
+                    <label for="meal-carbs" class="form-label">Carbs (g)</label>
+                    <input type="number" class="form-control" id="meal-carbs" placeholder="e.g., 45">
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="mb-3">
+                    <label for="meal-fat" class="form-label">Fat (g)</label>
+                    <input type="number" class="form-control" id="meal-fat" placeholder="e.g., 15">
+                  </div>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label for="meal-time" class="form-label">Time</label>
+                <input type="time" class="form-control" id="meal-time">
+              </div>
+              <div class="mb-3">
+                <label for="meal-category" class="form-label">Category</label>
+                <select class="form-select" id="meal-category" required>
+                  <option value="breakfast">Breakfast</option>
+                  <option value="lunch">Lunch</option>
+                  <option value="dinner">Dinner</option>
+                  <option value="snack">Snack</option>
+                  <option value="dessert">Dessert</option>
+                </select>
+              </div>
+              <div class="d-flex justify-content-end">
+                <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Meal</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Toast container for notifications -->
     <div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
   </div>
@@ -468,6 +602,7 @@
   <!-- Application JavaScript -->
   <script src="public/js/activity.js"></script>
   <script src="public/js/badHabit.js"></script>
+  <script src="public/js/nutrition.js"></script>
   <script src="public/js/app.js"></script>
   
   <script>
@@ -476,30 +611,36 @@
       // Top navigation
       const dashboardTab = document.getElementById('dashboard-tab');
       const activityTab = document.getElementById('activity-tab');
+      const nutritionTab = document.getElementById('nutrition-tab');
       const habitsTab = document.getElementById('habits-tab');
       
       // Bottom navigation
       const bottomDashboardTab = document.getElementById('bottom-dashboard-tab');
       const bottomActivityTab = document.getElementById('bottom-activity-tab');
+      const bottomNutritionTab = document.getElementById('bottom-nutrition-tab');
       const bottomHabitsTab = document.getElementById('bottom-habits-tab');
       
       // Content sections
       const dashboardContent = document.getElementById('dashboard-content');
       const activityContent = document.getElementById('activity-content');
+      const nutritionContent = document.getElementById('nutrition-content');
       const habitsContent = document.getElementById('habits-content');
       
       function showContent(contentId) {
         // Hide all content sections
         dashboardContent.style.display = 'none';
         activityContent.style.display = 'none';
+        nutritionContent.style.display = 'none';
         habitsContent.style.display = 'none';
         
         // Remove active class from all tabs
         dashboardTab.classList.remove('active');
         activityTab.classList.remove('active');
+        nutritionTab.classList.remove('active');
         habitsTab.classList.remove('active');
         bottomDashboardTab.classList.remove('active');
         bottomActivityTab.classList.remove('active');
+        bottomNutritionTab.classList.remove('active');
         bottomHabitsTab.classList.remove('active');
         
         // Show the selected content and highlight the tab
@@ -511,6 +652,10 @@
           activityContent.style.display = 'block';
           activityTab.classList.add('active');
           bottomActivityTab.classList.add('active');
+        } else if (contentId === 'nutrition') {
+          nutritionContent.style.display = 'block';
+          nutritionTab.classList.add('active');
+          bottomNutritionTab.classList.add('active');
         } else if (contentId === 'habits') {
           habitsContent.style.display = 'block';
           habitsTab.classList.add('active');
@@ -529,6 +674,11 @@
         showContent('activity');
       });
       
+      nutritionTab.addEventListener('click', function(e) {
+        e.preventDefault();
+        showContent('nutrition');
+      });
+      
       habitsTab.addEventListener('click', function(e) {
         e.preventDefault();
         showContent('habits');
@@ -542,6 +692,11 @@
       bottomActivityTab.addEventListener('click', function(e) {
         e.preventDefault();
         showContent('activity');
+      });
+      
+      bottomNutritionTab.addEventListener('click', function(e) {
+        e.preventDefault();
+        showContent('nutrition');
       });
       
       bottomHabitsTab.addEventListener('click', function(e) {
