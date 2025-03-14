@@ -270,19 +270,19 @@
         </div>
       </div>
       
-      <!-- Habits Section (Initially Hidden) -->
+      <!-- Bad Habits Section (Initially Hidden) -->
       <div id="habits-content" class="content-section" style="display: none;">
         <div class="card mb-4">
           <div class="card-body">
-            <h4 class="mb-4">Habit Tracker</h4>
-            <p class="text-muted mb-4">Track daily habits to build consistency and achieve your goals.</p>
+            <h4 class="mb-4">Bad Habit Quitting Tracker</h4>
+            <p class="text-muted mb-4">Track your efforts to break bad habits and live a healthier lifestyle.</p>
             
             <!-- Habit progress section -->
             <div class="row mb-4">
               <div class="col-md-6 mb-3">
                 <div class="card h-100">
                   <div class="card-body">
-                    <h5 class="card-title">Weekly Overview</h5>
+                    <h5 class="card-title">This Week's Progress</h5>
                     <div class="d-flex flex-wrap mt-3">
                       <div class="habit-day-indicator completed me-2 mb-2" data-bs-toggle="tooltip" title="Mon">M</div>
                       <div class="habit-day-indicator completed me-2 mb-2" data-bs-toggle="tooltip" title="Tue">T</div>
@@ -293,7 +293,7 @@
                       <div class="habit-day-indicator me-2 mb-2" data-bs-toggle="tooltip" title="Sun">S</div>
                     </div>
                     <div class="progress mt-3">
-                      <div class="progress-bar bg-success" style="width: 43%" role="progressbar" aria-valuenow="43" aria-valuemin="0" aria-valuemax="100">43%</div>
+                      <div class="progress-bar bg-success" style="width: 43%" role="progressbar" aria-valuenow="43" aria-valuemin="0" aria-valuemax="100">43% Success</div>
                     </div>
                   </div>
                 </div>
@@ -301,7 +301,7 @@
               <div class="col-md-6 mb-3">
                 <div class="card h-100">
                   <div class="card-body">
-                    <h5 class="card-title">Streaks</h5>
+                    <h5 class="card-title">Quitting Streaks</h5>
                     <div class="d-flex justify-content-between align-items-center mt-3">
                       <div class="text-center">
                         <div class="display-6">3</div>
@@ -313,7 +313,7 @@
                       </div>
                       <div class="text-center">
                         <div class="display-6">12</div>
-                        <div class="text-muted small">Total Days</div>
+                        <div class="text-muted small">Days Without</div>
                       </div>
                     </div>
                   </div>
@@ -321,68 +321,68 @@
               </div>
             </div>
             
-            <!-- Habit list section -->
+            <!-- Bad Habit list section -->
             <div>
-              <h5 class="mb-3">Your Habits</h5>
+              <h5 class="mb-3">Habits You're Breaking</h5>
               <div id="no-habits" style="display: none;" class="alert alert-info">
                 <i class="bi bi-info-circle me-2"></i>
-                You haven't created any habits yet. Add your first habit to get started.
+                You haven't added any bad habits to track yet. Add your first one to start breaking it.
               </div>
               
               <div id="habit-list">
-                <!-- Habit item -->
+                <!-- Bad Habit item -->
                 <div class="card mb-3">
                   <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                       <div>
-                        <h5 class="card-title mb-1">Morning Meditation</h5>
-                        <div class="text-muted small">Daily • Started 12 days ago</div>
+                        <h5 class="card-title mb-1">Social Media Scrolling</h5>
+                        <div class="text-muted small">Trying to quit • Started 12 days ago</div>
                       </div>
                       <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" id="habit-1-toggle" checked>
-                        <label class="form-check-label" for="habit-1-toggle">Completed Today</label>
+                        <label class="form-check-label" for="habit-1-toggle">Avoided Today</label>
                       </div>
                     </div>
                     <div class="progress mt-3">
-                      <div class="progress-bar bg-primary" style="width: 75%" role="progressbar">75% Complete</div>
+                      <div class="progress-bar bg-success" style="width: 75%" role="progressbar">75% Success Rate</div>
                     </div>
                   </div>
                 </div>
                 
-                <!-- Habit item -->
+                <!-- Bad Habit item -->
                 <div class="card mb-3">
                   <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                       <div>
-                        <h5 class="card-title mb-1">Drink 8 Glasses of Water</h5>
-                        <div class="text-muted small">Daily • Started 5 days ago</div>
+                        <h5 class="card-title mb-1">Late Night Snacking</h5>
+                        <div class="text-muted small">Trying to quit • Started 5 days ago</div>
                       </div>
                       <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" id="habit-2-toggle" checked>
-                        <label class="form-check-label" for="habit-2-toggle">Completed Today</label>
+                        <label class="form-check-label" for="habit-2-toggle">Avoided Today</label>
                       </div>
                     </div>
                     <div class="progress mt-3">
-                      <div class="progress-bar bg-primary" style="width: 60%" role="progressbar">60% Complete</div>
+                      <div class="progress-bar bg-success" style="width: 60%" role="progressbar">60% Success Rate</div>
                     </div>
                   </div>
                 </div>
                 
-                <!-- Habit item -->
+                <!-- Bad Habit item -->
                 <div class="card mb-3">
                   <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                       <div>
-                        <h5 class="card-title mb-1">Read 20 Pages</h5>
-                        <div class="text-muted small">Daily • Started 8 days ago</div>
+                        <h5 class="card-title mb-1">Procrastination</h5>
+                        <div class="text-muted small">Trying to quit • Started 8 days ago</div>
                       </div>
                       <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" id="habit-3-toggle">
-                        <label class="form-check-label" for="habit-3-toggle">Completed Today</label>
+                        <label class="form-check-label" for="habit-3-toggle">Avoided Today</label>
                       </div>
                     </div>
                     <div class="progress mt-3">
-                      <div class="progress-bar bg-primary" style="width: 25%" role="progressbar">25% Complete</div>
+                      <div class="progress-bar bg-success" style="width: 25%" role="progressbar">25% Success Rate</div>
                     </div>
                   </div>
                 </div>
@@ -390,7 +390,7 @@
             </div>
             
             <button class="btn btn-primary w-100 mt-3" data-bs-toggle="modal" data-bs-target="#habitModal">
-              Add New Habit
+              Track a Bad Habit to Quit
             </button>
           </div>
         </div>
@@ -628,63 +628,76 @@
       </div>
     </div>
     
-    <!-- Habit Modal -->
+    <!-- Bad Habit Modal -->
     <div class="modal fade" id="habitModal" tabindex="-1">
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">Add New Habit</h5>
+            <h5 class="modal-title">Track a Bad Habit to Quit</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
             <form id="habit-form">
               <div class="mb-3">
-                <label for="habit-name" class="form-label">Habit Name</label>
-                <input type="text" class="form-control" id="habit-name" placeholder="e.g., Morning Meditation">
+                <label for="habit-name" class="form-label">Bad Habit Name</label>
+                <input type="text" class="form-control" id="habit-name" placeholder="e.g., Social Media Scrolling">
               </div>
               <div class="mb-3">
-                <label for="habit-description" class="form-label">Description</label>
-                <textarea class="form-control" id="habit-description" rows="2" placeholder="Describe your habit..."></textarea>
+                <label for="habit-description" class="form-label">Why You Want to Quit</label>
+                <textarea class="form-control" id="habit-description" rows="2" placeholder="Describe why you want to break this habit..."></textarea>
               </div>
               <div class="mb-3">
-                <label for="habit-frequency" class="form-label">Frequency</label>
+                <label for="habit-frequency" class="form-label">When Do You Usually Do It?</label>
                 <select class="form-select" id="habit-frequency">
-                  <option value="daily" selected>Daily</option>
-                  <option value="weekdays">Weekdays</option>
-                  <option value="weekends">Weekends</option>
-                  <option value="weekly">Weekly</option>
+                  <option value="daily" selected>Multiple times per day</option>
+                  <option value="daily-once">Once per day</option>
+                  <option value="weekdays">Only on weekdays</option>
+                  <option value="weekends">Only on weekends</option>
+                  <option value="weekly">A few times per week</option>
                 </select>
               </div>
               <div class="mb-3">
-                <label for="habit-reminder" class="form-label">Set Reminder</label>
+                <label for="habit-reminder" class="form-label">Set Reminder to Check In</label>
                 <input type="time" class="form-control" id="habit-reminder">
               </div>
               <div class="mb-3">
-                <label class="form-label">Habit Type</label>
-                <div class="d-flex">
-                  <div class="form-check me-3">
-                    <input class="form-check-input" type="radio" name="habit-type" id="type-fitness" value="fitness" checked>
-                    <label class="form-check-label" for="type-fitness">Fitness</label>
+                <label class="form-label">Habit Category</label>
+                <div class="d-flex flex-wrap">
+                  <div class="form-check me-3 mb-2">
+                    <input class="form-check-input" type="radio" name="habit-type" id="type-screen" value="screen" checked>
+                    <label class="form-check-label" for="type-screen">Screen Time</label>
                   </div>
-                  <div class="form-check me-3">
-                    <input class="form-check-input" type="radio" name="habit-type" id="type-nutrition" value="nutrition">
-                    <label class="form-check-label" for="type-nutrition">Nutrition</label>
+                  <div class="form-check me-3 mb-2">
+                    <input class="form-check-input" type="radio" name="habit-type" id="type-food" value="food">
+                    <label class="form-check-label" for="type-food">Food Related</label>
                   </div>
-                  <div class="form-check me-3">
-                    <input class="form-check-input" type="radio" name="habit-type" id="type-wellness" value="wellness">
-                    <label class="form-check-label" for="type-wellness">Wellness</label>
+                  <div class="form-check me-3 mb-2">
+                    <input class="form-check-input" type="radio" name="habit-type" id="type-productivity" value="productivity">
+                    <label class="form-check-label" for="type-productivity">Productivity</label>
                   </div>
-                  <div class="form-check">
+                  <div class="form-check me-3 mb-2">
+                    <input class="form-check-input" type="radio" name="habit-type" id="type-health" value="health">
+                    <label class="form-check-label" for="type-health">Health</label>
+                  </div>
+                  <div class="form-check mb-2">
                     <input class="form-check-input" type="radio" name="habit-type" id="type-other" value="other">
                     <label class="form-check-label" for="type-other">Other</label>
                   </div>
                 </div>
               </div>
+              <div class="mb-3">
+                <label for="habit-trigger" class="form-label">What Triggers This Habit?</label>
+                <input type="text" class="form-control" id="habit-trigger" placeholder="e.g., Boredom, Stress, Tiredness">
+              </div>
+              <div class="mb-3">
+                <label for="habit-alternative" class="form-label">Healthier Alternative</label>
+                <input type="text" class="form-control" id="habit-alternative" placeholder="e.g., Reading, Walking, Meditating">
+              </div>
             </form>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" id="save-habit">Save Habit</button>
+            <button type="button" class="btn btn-primary" id="save-habit">Start Tracking</button>
           </div>
         </div>
       </div>
