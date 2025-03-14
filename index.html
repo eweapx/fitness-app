@@ -1984,6 +1984,17 @@
         return new bootstrap.Tooltip(tooltipTriggerEl)
       });
       
+      // Add a global click handler to help debug
+      document.addEventListener('click', function(event) {
+        const extendedNav = document.querySelector('.nav-extended');
+        if (extendedNav && extendedNav.style.display === 'flex') {
+          // Only check clicks outside the extended navigation and more tab
+          if (!event.target.closest('.nav-extended') && !event.target.closest('#more-tab')) {
+            console.log('Click outside extended nav detected');
+          }
+        }
+      });
+      
       // Initialize UI with placeholder data until the real data loads
       const placeholderData = {
         stepsCount: 5000,
@@ -2190,6 +2201,8 @@
       
       // Get the extended navigation row
       const extendedNav = document.querySelector('.nav-extended');
+      console.log("More tab reference:", bottomMoreTab);
+      console.log("Extended nav reference:", extendedNav);
       
       // Create tab mapping for easy referencing
       const contentMap = {
@@ -2271,27 +2284,49 @@
       }
       
       // More tab to show/hide extended navigation
-      console.log('More tab reference:', bottomMoreTab);
-      console.log('Extended nav reference:', extendedNav);
+      let isExtendedNavVisible = false; // Use a variable to track state
+      
       if (bottomMoreTab) {
         bottomMoreTab.addEventListener('click', function(event) {
           event.preventDefault();
+          event.stopPropagation(); // Stop event from bubbling
+          
           console.log('More tab clicked');
-          // Toggle extended navigation
+          
           if (extendedNav) {
-            console.log('Current display style:', extendedNav.style.display);
-            // Toggle the extended navigation visibility
-            if (extendedNav.style.display === 'none' || extendedNav.style.display === '') {
+            // Toggle based on our tracked state, not the current display property
+            if (!isExtendedNavVisible) {
+              // Show extended navigation
               extendedNav.style.display = 'flex';
               bottomMoreTab.classList.add('active');
+              isExtendedNavVisible = true;
               console.log('Extended nav shown');
             } else {
+              // Hide extended navigation
               extendedNav.style.display = 'none';
               bottomMoreTab.classList.remove('active');
+              isExtendedNavVisible = false;
               console.log('Extended nav hidden');
             }
           } else {
             console.log('Extended nav element not found');
+          }
+          
+          // Stop the click from propagating further
+          return false;
+        });
+        
+        // Add a document click handler to hide the extended nav when clicking elsewhere
+        document.addEventListener('click', function(event) {
+          // If nav is visible and the click is outside the nav and more tab
+          if (isExtendedNavVisible && extendedNav && 
+              !event.target.closest('.nav-extended') && 
+              !event.target.closest('#more-tab')) {
+            
+            extendedNav.style.display = 'none';
+            bottomMoreTab.classList.remove('active');
+            isExtendedNavVisible = false;
+            console.log('Extended nav hidden by document click');
           }
         });
       }
@@ -2300,6 +2335,8 @@
       if (bottomSleepTab) {
         bottomSleepTab.addEventListener('click', function(event) {
           event.preventDefault();
+          event.stopPropagation(); // Prevent document click from hiding the menu
+          isExtendedNavVisible = true; // Keep track of state
           activateTabAndContent('sleep');
         });
       }
@@ -2307,6 +2344,8 @@
       if (bottomMeditationTab) {
         bottomMeditationTab.addEventListener('click', function(event) {
           event.preventDefault();
+          event.stopPropagation(); // Prevent document click from hiding the menu
+          isExtendedNavVisible = true; // Keep track of state
           activateTabAndContent('meditation');
         });
       }
@@ -2314,6 +2353,8 @@
       if (bottomGoalsTab) {
         bottomGoalsTab.addEventListener('click', function(event) {
           event.preventDefault();
+          event.stopPropagation(); // Prevent document click from hiding the menu
+          isExtendedNavVisible = true; // Keep track of state
           activateTabAndContent('goals');
         });
       }
@@ -2321,6 +2362,8 @@
       if (bottomMedsTab) {
         bottomMedsTab.addEventListener('click', function(event) {
           event.preventDefault();
+          event.stopPropagation(); // Prevent document click from hiding the menu
+          isExtendedNavVisible = true; // Keep track of state
           activateTabAndContent('meds');
         });
       }
@@ -2340,6 +2383,7 @@
         // Hide extended navigation by default when switching to main tabs
         if (!['sleep', 'meditation', 'goals', 'meds'].includes(contentType) && extendedNav) {
           extendedNav.style.display = 'none';
+          isExtendedNavVisible = false; // Update state variable
         }
         
         // Update active tab in top navbar
@@ -2384,7 +2428,10 @@
           // Activate "More" tab for extended navigation items
           bottomMoreTab.classList.add('active');
           // Show extended navigation
-          if (extendedNav) extendedNav.style.display = 'flex';
+          if (extendedNav) {
+            extendedNav.style.display = 'flex';
+            isExtendedNavVisible = true; // Update state variable
+          }
           
           // Set active tab in extended navigation
           if (contentType === 'sleep' && bottomSleepTab) {
