@@ -621,6 +621,46 @@ function updateDashboard() {
   updateSleepChart();
   updateActivityChart();
   updateConnectionsView();
+  
+  // Set up global click handler to reset any partially swiped cards
+  setupGlobalClickHandlers();
+}
+
+/**
+ * Set up global click handlers
+ */
+function setupGlobalClickHandlers() {
+  // Add a single document click handler to reset any swiped cards
+  if (!window.hasResetClickHandler) {
+    document.addEventListener('click', function(e) {
+      // Find all activity cards
+      const activityCards = document.querySelectorAll('.activity-card');
+      
+      // Reset any cards that might be in a swiped state
+      activityCards.forEach(card => {
+        // If the card has a resetSwipe method, use it
+        if (typeof card.resetSwipe === 'function') {
+          card.resetSwipe();
+        } else {
+          // Fallback for older cards that might not have the method
+          const cardBody = card.querySelector('.card-body');
+          if (cardBody && cardBody.style.transform && 
+              cardBody.style.transform !== 'translateX(0px)' && 
+              cardBody.style.transform !== 'translateX(0)') {
+            
+            cardBody.style.transform = 'translateX(0)';
+            
+            // Also reset any visible delete buttons
+            const deleteBtn = card.querySelector('.swipe-delete-btn');
+            if (deleteBtn) {
+              deleteBtn.style.opacity = '0';
+            }
+          }
+        }
+      });
+    });
+    window.hasResetClickHandler = true;
+  }
 }
 
 /**
@@ -1998,6 +2038,7 @@ function setupSwipeToDelete(element, itemId) {
   let deleteThreshold = 100; // How far to swipe to trigger delete
   let isSwiping = false;
   let touchTarget = null;
+  let resetTimeoutId = null;
   
   // Add a delete button that will be revealed on swipe
   const deleteButton = document.createElement('div');
@@ -2030,6 +2071,18 @@ function setupSwipeToDelete(element, itemId) {
     
     // Store the activity ID on the delete button
     deleteButton.dataset.itemId = itemId;
+    
+    // Add a reset method to this element
+    element.resetSwipe = function() {
+      if (cardContainer) {
+        // Clear any pending reset timeouts
+        if (resetTimeoutId) {
+          clearTimeout(resetTimeoutId);
+        }
+        cardContainer.style.transform = 'translateX(0)';
+        deleteButton.style.opacity = '0';
+      }
+    };
     
     // Find the view details button to exclude it from swipe handling
     const viewDetailsBtn = element.querySelector('.view-details-btn');
@@ -2093,22 +2146,53 @@ function setupSwipeToDelete(element, itemId) {
         const swipeDistance = touchStartX - touchEndX;
         
         if (swipeDistance > deleteThreshold) {
-          // Swiped far enough to delete
-          cardContainer.style.transform = 'translateX(-100%)';
+          // Swiped far enough to delete - show the confirm dialog
+          cardContainer.style.transform = 'translateX(-80px)';
           deleteButton.style.opacity = 1;
           
-          // Delete after animation completes
-          setTimeout(() => {
-            handleDeleteActivity(itemId);
-          }, 300);
+          // Clear any previous reset timeouts
+          if (resetTimeoutId) {
+            clearTimeout(resetTimeoutId);
+          }
+          
+          // Set a timeout to reset the card if the user doesn't respond to the dialog
+          resetTimeoutId = setTimeout(() => {
+            // If the card is still in a swiped state after 3 seconds, reset it
+            if (cardContainer.style.transform !== 'translateX(0px)' && 
+                cardContainer.style.transform !== 'translateX(0)') {
+              element.resetSwipe();
+            }
+          }, 3000);
+          
+          // Ask for confirmation
+          if (confirm('Are you sure you want to delete this activity?')) {
+            // If confirmed, animate fully and delete
+            cardContainer.style.transform = 'translateX(-100%)';
+            
+            // Clear the reset timeout since we're proceeding with the deletion
+            if (resetTimeoutId) {
+              clearTimeout(resetTimeoutId);
+            }
+            
+            // Delete after animation completes
+            setTimeout(() => {
+              handleDeleteActivity(itemId);
+            }, 300);
+          } else {
+            // User canceled, animate back to original position
+            element.resetSwipe();
+          }
         } else {
           // Not swiped far enough, reset position
-          cardContainer.style.transform = initialTransform;
-          deleteButton.style.opacity = 0;
+          element.resetSwipe();
         }
         
         // Reset swiping flag
         isSwiping = false;
+      } else {
+        // If we weren't swiping at all, make sure we're reset
+        cardContainer.style.transform = 'translateX(0)';
+        deleteButton.style.opacity = 0;
       }
     }, { passive: true });
     
