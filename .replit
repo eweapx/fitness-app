@@ -80,6 +80,7 @@ build = ["sh", "-c", "flutter build web"]
 
 [[ports]]
 localPort = 5000
+externalPort = 5000
 
 [[ports]]
 localPort = 5002
