@@ -122,6 +122,62 @@ class FitnessTracker {
   getActivitiesCount() {
     return this.activities.length;
   }
+  
+  /**
+   * Get an activity by ID
+   * @param {string} id - The ID of the activity to find
+   * @returns {Activity|null} The activity if found, null otherwise
+   */
+  getActivityById(id) {
+    return this.activities.find(activity => activity.id === id) || null;
+  }
+  
+  /**
+   * Update an existing activity
+   * @param {string} id - The ID of the activity to update
+   * @param {Object} updates - The fields to update
+   * @returns {boolean} True if the activity was updated successfully
+   */
+  updateActivity(id, updates) {
+    const activityIndex = this.activities.findIndex(activity => activity.id === id);
+    
+    if (activityIndex === -1) return false;
+    
+    // Create updated activity object
+    const updatedActivity = new Activity(
+      updates.name || this.activities[activityIndex].name,
+      updates.calories || this.activities[activityIndex].calories,
+      updates.duration || this.activities[activityIndex].duration,
+      updates.type || this.activities[activityIndex].type,
+      updates.date || this.activities[activityIndex].date,
+      id
+    );
+    
+    if (updatedActivity.isValid()) {
+      this.activities[activityIndex] = updatedActivity;
+      this.saveToLocalStorage();
+      return true;
+    }
+    
+    return false;
+  }
+  
+  /**
+   * Delete an activity by ID
+   * @param {string} id - The ID of the activity to delete
+   * @returns {boolean} True if the activity was deleted successfully
+   */
+  deleteActivity(id) {
+    const initialLength = this.activities.length;
+    this.activities = this.activities.filter(activity => activity.id !== id);
+    
+    if (this.activities.length < initialLength) {
+      this.saveToLocalStorage();
+      return true;
+    }
+    
+    return false;
+  }
 
   /**
    * Save fitness data to localStorage
@@ -142,13 +198,17 @@ class FitnessTracker {
       if (savedActivities) {
         const parsedActivities = JSON.parse(savedActivities);
         this.activities = parsedActivities.map(activity => {
-          return new Activity(
+          const newActivity = new Activity(
             activity.name,
             activity.calories,
             activity.duration,
             activity.type,
-            new Date(activity.date)
+            new Date(activity.date),
+            activity.id
           );
+          // Ensure the activity ID is preserved
+          newActivity.id = activity.id || newActivity.id;
+          return newActivity;
         });
       }
       

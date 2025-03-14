@@ -628,7 +628,8 @@ function updateActivitiesList() {
       
       recentActivities.forEach(activity => {
         const activityElement = document.createElement('div');
-        activityElement.className = 'card mb-2';
+        activityElement.className = 'card mb-2 activity-card';
+        activityElement.dataset.activityId = activity.id;
         activityElement.innerHTML = `
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center">
@@ -642,6 +643,9 @@ function updateActivitiesList() {
             </div>
           </div>
         `;
+        
+        // Make the activity card clickable
+        activityElement.addEventListener('click', () => openActivityModal(activity.id));
         
         activitiesList.appendChild(activityElement);
       });
@@ -1230,6 +1234,9 @@ function deleteSleepRecord(recordId) {
 /**
  * Update activity chart
  */
+// Store current chart type
+let currentChartType = 'doughnut';
+
 function updateActivityChart() {
   const chartCanvas = document.getElementById('activity-chart');
   
@@ -1242,6 +1249,7 @@ function updateActivityChart() {
   
   // Group activities by type and calculate total calories
   const activityTypes = ['running', 'cycling', 'weights', 'swimming', 'other'];
+  const activityLabels = ['Running', 'Cycling', 'Weights', 'Swimming', 'Other'];
   const typeCalories = {};
   
   activityTypes.forEach(type => {
@@ -1258,59 +1266,223 @@ function updateActivityChart() {
     }
   });
   
+  // Create chart config based on chart type
+  const chartConfig = getChartConfig(currentChartType, activityTypes, activityLabels, typeCalories);
+  
   // Create or update chart
   if (window.activityChart) {
-    window.activityChart.data.datasets[0].data = activityTypes.map(type => typeCalories[type]);
-    window.activityChart.update();
+    // If chart type has changed, destroy and recreate
+    if (window.activityChart.config.type !== chartConfig.type) {
+      window.activityChart.destroy();
+      window.activityChart = new Chart(ctx, chartConfig);
+    } else {
+      // Just update the data
+      window.activityChart.data = chartConfig.data;
+      window.activityChart.options = chartConfig.options;
+      window.activityChart.update();
+    }
   } else {
-    window.activityChart = new Chart(ctx, {
-      type: 'doughnut',
-      data: {
-        labels: ['Running', 'Cycling', 'Weights', 'Swimming', 'Other'],
-        datasets: [{
-          data: activityTypes.map(type => typeCalories[type]),
-          backgroundColor: [
-            'rgba(255, 99, 132, 0.7)',  // Red for running
-            'rgba(54, 162, 235, 0.7)',  // Blue for cycling
-            'rgba(255, 206, 86, 0.7)',  // Yellow for weights
-            'rgba(75, 192, 192, 0.7)',  // Teal for swimming
-            'rgba(153, 102, 255, 0.7)'  // Purple for other
-          ],
-          borderColor: [
-            'rgb(255, 99, 132)',
-            'rgb(54, 162, 235)',
-            'rgb(255, 206, 86)',
-            'rgb(75, 192, 192)',
-            'rgb(153, 102, 255)'
-          ],
-          borderWidth: 1
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: {
-            position: 'bottom',
-          },
-          title: {
-            display: true,
-            text: 'Calories Burned by Activity Type'
-          },
-          tooltip: {
-            callbacks: {
-              label: function(context) {
-                const label = context.label || '';
-                const value = context.formattedValue;
-                const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
-                const percentage = total > 0 ? Math.round((context.raw / total) * 100) : 0;
-                return `${label}: ${value} calories (${percentage}%)`;
-              }
-            }
-          }
-        }
-      }
+    window.activityChart = new Chart(ctx, chartConfig);
+  }
+  
+  // Add event listeners for chart type buttons if they haven't been added yet
+  if (!window.chartButtonsInitialized) {
+    initChartTypeButtons();
+    window.chartButtonsInitialized = true;
+  }
+}
+
+// Handle chart type button clicks
+function initChartTypeButtons() {
+  const doughnutBtn = document.getElementById('chart-type-doughnut');
+  const barBtn = document.getElementById('chart-type-bar');
+  const lineBtn = document.getElementById('chart-type-line');
+  
+  if (doughnutBtn && barBtn && lineBtn) {
+    doughnutBtn.addEventListener('click', () => {
+      setActiveChartButton(doughnutBtn);
+      currentChartType = 'doughnut';
+      updateActivityChart();
+    });
+    
+    barBtn.addEventListener('click', () => {
+      setActiveChartButton(barBtn);
+      currentChartType = 'bar';
+      updateActivityChart();
+    });
+    
+    lineBtn.addEventListener('click', () => {
+      setActiveChartButton(lineBtn);
+      currentChartType = 'line';
+      updateActivityChart();
     });
   }
+}
+
+// Set active chart button
+function setActiveChartButton(activeButton) {
+  const buttons = [
+    document.getElementById('chart-type-doughnut'),
+    document.getElementById('chart-type-bar'),
+    document.getElementById('chart-type-line')
+  ];
+  
+  buttons.forEach(btn => {
+    if (btn && btn === activeButton) {
+      btn.classList.add('active');
+    } else if (btn) {
+      btn.classList.remove('active');
+    }
+  });
+}
+
+// Get chart configuration based on chart type
+function getChartConfig(chartType, activityTypes, activityLabels, typeCalories) {
+  const data = activityTypes.map(type => typeCalories[type]);
+  const colors = [
+    'rgba(255, 99, 132, 0.7)',   // Red for running
+    'rgba(54, 162, 235, 0.7)',   // Blue for cycling
+    'rgba(255, 206, 86, 0.7)',   // Yellow for weights
+    'rgba(75, 192, 192, 0.7)',   // Teal for swimming
+    'rgba(153, 102, 255, 0.7)'   // Purple for other
+  ];
+  const borderColors = [
+    'rgb(255, 99, 132)',
+    'rgb(54, 162, 235)',
+    'rgb(255, 206, 86)',
+    'rgb(75, 192, 192)',
+    'rgb(153, 102, 255)'
+  ];
+  
+  let config = {
+    type: chartType,
+    data: {
+      labels: activityLabels,
+      datasets: [{
+        data: data,
+        backgroundColor: chartType === 'line' ? colors[0] : colors,
+        borderColor: chartType === 'line' ? borderColors[0] : borderColors,
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          display: chartType !== 'bar'
+        },
+        title: {
+          display: true,
+          text: 'Calories Burned by Activity Type'
+        }
+      }
+    }
+  };
+  
+  // Add specific configurations based on chart type
+  if (chartType === 'doughnut' || chartType === 'pie') {
+    config.options.plugins.tooltip = {
+      callbacks: {
+        label: function(context) {
+          const label = context.label || '';
+          const value = context.formattedValue;
+          const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
+          const percentage = total > 0 ? Math.round((context.raw / total) * 100) : 0;
+          return `${label}: ${value} calories (${percentage}%)`;
+        }
+      }
+    };
+  } else if (chartType === 'bar') {
+    config.options.scales = {
+      y: {
+        beginAtZero: true,
+        title: {
+          display: true,
+          text: 'Calories Burned'
+        }
+      },
+      x: {
+        title: {
+          display: true,
+          text: 'Activity Type'
+        }
+      }
+    };
+  } else if (chartType === 'line') {
+    // For line chart, we need time-based data
+    // We'll convert activity types data to time-based daily data
+    const dailyData = getDailyActivityData(activityTypes);
+    
+    config.data.labels = dailyData.labels;
+    config.data.datasets = activityTypes.map((type, index) => {
+      return {
+        label: activityLabels[index],
+        data: dailyData.datasets[type],
+        backgroundColor: colors[index],
+        borderColor: borderColors[index],
+        tension: 0.1,
+        fill: false
+      };
+    });
+    
+    config.options.scales = {
+      y: {
+        beginAtZero: true,
+        title: {
+          display: true,
+          text: 'Calories Burned'
+        }
+      },
+      x: {
+        title: {
+          display: true,
+          text: 'Date'
+        }
+      }
+    };
+  }
+  
+  return config;
+}
+
+// Get daily activity data for line chart
+function getDailyActivityData(activityTypes) {
+  const activities = fitnessTracker.getActivities();
+  const days = 7; // Last 7 days
+  
+  // Create date labels for the last 7 days
+  const labels = [];
+  const datasets = {};
+  
+  activityTypes.forEach(type => {
+    datasets[type] = [];
+  });
+  
+  // Generate dates and initialize data points
+  for (let i = days - 1; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    
+    // Format date as short day name
+    const label = date.toLocaleDateString('en-US', { weekday: 'short' });
+    labels.push(label);
+    
+    // Initialize calorie counts for each activity type on this day
+    const dateString = date.toISOString().split('T')[0];
+    
+    activityTypes.forEach(type => {
+      datasets[type].push(
+        activities.filter(a => {
+          const activityDate = new Date(a.date);
+          return activityDate.toISOString().split('T')[0] === dateString && 
+                 a.type.toLowerCase() === type;
+        }).reduce((total, activity) => total + activity.calories, 0)
+      );
+    });
+  }
+  
+  return { labels, datasets };
 }
 
 /**
