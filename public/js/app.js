@@ -1983,7 +1983,12 @@ function handleEditActivityFormSubmit(event) {
  * @param {string} activityId - ID of the activity to delete
  */
 function handleDeleteActivity(activityId) {
-  if (confirm('Are you sure you want to delete this activity?')) {
+  // Store a flag to track if the delete was already confirmed (for when called from swipe)
+  const activityCard = document.querySelector(`.activity-card[data-activity-id="${activityId}"]`);
+  const isSwipeDeleteConfirmed = activityCard && activityCard.dataset.deleteConfirmed === 'true';
+  
+  // Only show confirmation if not already confirmed from swipe
+  if (isSwipeDeleteConfirmed || confirm('Are you sure you want to delete this activity?')) {
     const activity = fitnessTracker.getActivityById(activityId);
     
     // First delete the activity from the fitness tracker
@@ -2010,14 +2015,18 @@ function handleDeleteActivity(activityId) {
           connection.deleteActivityFromSource(activity.sourceId)
             .then(() => {
               console.log(`Successfully deleted activity from health source: ${activity.sourceConnection}`);
+              showMessage('Activity deleted from device and app', 'success');
             })
             .catch(error => {
               console.error(`Failed to delete activity from health source: ${error}`);
+              showMessage('Activity deleted from app, but failed to delete from connected device', 'warning');
             });
+        } else {
+          showMessage('Activity deleted successfully', 'success');
         }
+      } else {
+        showMessage('Activity deleted successfully', 'success');
       }
-      
-      showMessage('Activity deleted successfully', 'success');
     } else {
       showMessage('Error deleting activity', 'danger');
     }
@@ -2074,13 +2083,32 @@ function setupSwipeToDelete(element, itemId) {
     
     // Add a reset method to this element
     element.resetSwipe = function() {
+      // Skip reset if this card is no longer in the DOM
+      if (!document.body.contains(element)) {
+        return;
+      }
+      
       if (cardContainer) {
         // Clear any pending reset timeouts
         if (resetTimeoutId) {
           clearTimeout(resetTimeoutId);
+          resetTimeoutId = null;
         }
+        
+        // Force a reflow to ensure smooth transition back
+        void cardContainer.offsetWidth;
+        
+        // Reset card position
         cardContainer.style.transform = 'translateX(0)';
         deleteButton.style.opacity = '0';
+        
+        // Add a class briefly to help identify recently reset cards
+        element.classList.add('just-reset');
+        setTimeout(() => {
+          if (document.body.contains(element)) {
+            element.classList.remove('just-reset');
+          }
+        }, 300);
       }
     };
     
@@ -2191,9 +2219,20 @@ function setupSwipeToDelete(element, itemId) {
         isSwiping = false;
       } else {
         // If we weren't swiping at all, make sure we're reset
-        cardContainer.style.transform = 'translateX(0)';
-        deleteButton.style.opacity = 0;
+        element.resetSwipe();
       }
+      
+      // Set an auto-reset timeout for any card that remains partially swiped
+      // This handles cases where the user might tap away or not complete a swipe action
+      setTimeout(() => {
+        if (cardContainer.style.transform && 
+            cardContainer.style.transform !== 'translateX(0px)' && 
+            cardContainer.style.transform !== 'translateX(0)' &&
+            cardContainer.style.transform !== 'translateX(-100%)') {
+          // Only reset if in a partial state (not fully deleted or at rest)
+          element.resetSwipe();
+        }
+      }, 3500);
     }, { passive: true });
     
     // Add click handler to delete button
