@@ -125,7 +125,8 @@ args = "node static-server.js"
 waitForPort = 5001
 
 [deployment]
-run = ["sh", "-c", "cd /home/runner/workspace && flutter run -d web-server --web-port 5000 --web-hostname 0.0.0.0"]
+run = ["sh", "-c", "flutter run -d web-server --web-port=5000 --web-hostname=0.0.0.0"]
+build = ["sh", "-c", "flutter build web"]
 
 [[ports]]
 localPort = 5000
