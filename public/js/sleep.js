@@ -396,5 +396,4 @@ class SleepTracker {
   }
 }
 
-// Initialize the sleep tracker
-const sleepTracker = new SleepTracker();
+// SleepTracker will be instantiated in app.js
