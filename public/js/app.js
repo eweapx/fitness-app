@@ -2,6 +2,7 @@
 const fitnessTracker = new FitnessTracker();
 const habitTracker = new HabitTracker();
 const nutritionTracker = new NutritionTracker();
+const sleepTracker = new SleepTracker();
 
 // Set up event listeners when the document is ready
 document.addEventListener('DOMContentLoaded', function() {
@@ -25,6 +26,7 @@ function initializeTrackers() {
   console.log('Fitness tracker loaded', fitnessTracker.getActivitiesCount(), 'activities');
   console.log('Habit tracker loaded', habitTracker.getHabits().length, 'habits');
   console.log('Nutrition tracker loaded', nutritionTracker.getMeals().length, 'meals');
+  console.log('Sleep tracker loaded', sleepTracker.getSleepRecords().length, 'records');
 }
 
 /**
@@ -59,6 +61,12 @@ function setupEventListeners() {
   const mealForm = document.getElementById('add-meal-form');
   if (mealForm) {
     mealForm.addEventListener('submit', handleMealFormSubmit);
+  }
+  
+  // Sleep form submission
+  const sleepForm = document.getElementById('add-sleep-form');
+  if (sleepForm) {
+    sleepForm.addEventListener('submit', handleSleepFormSubmit);
   }
 }
 
@@ -273,6 +281,9 @@ function updateDashboard() {
 
   // Update nutrition statistics
   updateNutritionStats();
+  
+  // Update sleep statistics
+  updateSleepStats();
 }
 
 /**
@@ -874,6 +885,279 @@ function updateNutritionChart() {
         }
       }
     });
+  }
+}
+
+/**
+ * Update sleep statistics
+ */
+function updateSleepStats() {
+  // Get sleep stats
+  const stats = sleepTracker.getStats();
+  
+  // Update sleep duration
+  const durationElement = document.getElementById('sleep-duration');
+  if (durationElement) {
+    durationElement.textContent = `${stats.averageDuration.toFixed(1)} hrs`;
+  }
+  
+  // Update sleep quality
+  const qualityElement = document.getElementById('sleep-quality');
+  if (qualityElement) {
+    // Convert quality from 1-5 scale to percentage
+    const qualityPct = Math.round((stats.averageQuality / 5) * 100);
+    qualityElement.textContent = `${qualityPct}%`;
+  }
+  
+  // Update consistency
+  const consistencyElement = document.getElementById('sleep-consistency');
+  if (consistencyElement) {
+    consistencyElement.textContent = `${Math.round(stats.consistencyScore)}%`;
+  }
+  
+  // Get sleep records
+  updateSleepRecordsList();
+  
+  // Update sleep chart
+  updateSleepChart();
+}
+
+/**
+ * Update the sleep records list
+ */
+function updateSleepRecordsList() {
+  // Get elements
+  const sleepRecordsElement = document.getElementById('sleep-records-list');
+  if (!sleepRecordsElement) return;
+  
+  // Get recent sleep records
+  const sleepRecords = sleepTracker.getSleepRecords();
+  
+  // Check if we have sleep records
+  if (sleepRecords.length > 0) {
+    sleepRecordsElement.innerHTML = '';
+    
+    // Get the 5 most recent sleep records
+    const recentRecords = [...sleepRecords].sort((a, b) => b.date - a.date).slice(0, 5);
+    
+    recentRecords.forEach(record => {
+      const recordElement = document.createElement('div');
+      recordElement.className = 'd-flex align-items-center mb-3 p-2 border-bottom';
+      
+      // Determine icon class based on sleep quality
+      let qualityColor = 'danger';
+      let qualityText = 'Poor';
+      
+      if (record.quality >= 4) {
+        qualityColor = 'success';
+        qualityText = 'Excellent';
+      } else if (record.quality >= 3) {
+        qualityColor = 'info';
+        qualityText = 'Good';
+      } else if (record.quality >= 2) {
+        qualityColor = 'warning';
+        qualityText = 'Average';
+      }
+      
+      recordElement.innerHTML = `
+        <div class="activity-icon bg-primary text-white">
+          <i class="bi bi-moon-stars"></i>
+        </div>
+        <div class="flex-grow-1">
+          <div class="d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">${record.getFormattedDate()}</h6>
+            <span class="badge bg-${qualityColor}">${qualityText}</span>
+          </div>
+          <div class="text-muted small">
+            ${record.getFormattedTime(record.startTime)} - ${record.getFormattedTime(record.endTime)} (${record.getDuration()} hrs)
+          </div>
+          <div class="text-muted small">${record.notes}</div>
+        </div>
+        <div>
+          <button class="btn btn-sm btn-outline-danger" onclick="deleteSleepRecord('${record.id}')">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      `;
+      
+      sleepRecordsElement.appendChild(recordElement);
+    });
+  } else {
+    // No sleep records
+    sleepRecordsElement.innerHTML = `
+      <div class="text-center py-4">
+        <p class="text-muted">No sleep records yet.</p>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSleepModal">
+          Log Your First Sleep
+        </button>
+      </div>
+    `;
+  }
+}
+
+/**
+ * Update the sleep chart
+ */
+function updateSleepChart() {
+  const chartCanvas = document.getElementById('sleep-chart');
+  if (!chartCanvas) return;
+  
+  // Get weekly sleep data
+  const weeklyData = sleepTracker.getWeeklySleepSummary();
+  
+  // Format dates for labels
+  const labels = weeklyData.map(day => {
+    const date = day.date;
+    return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  });
+  
+  // Get data for each metric
+  const durationData = weeklyData.map(day => day.summary.totalDuration);
+  const qualityData = weeklyData.map(day => day.summary.averageQuality);
+  
+  // Create or update chart
+  if (window.sleepChart) {
+    // Update existing chart
+    window.sleepChart.data.labels = labels;
+    window.sleepChart.data.datasets[0].data = durationData;
+    window.sleepChart.data.datasets[1].data = qualityData;
+    window.sleepChart.update();
+  } else {
+    // Create new chart
+    window.sleepChart = new Chart(chartCanvas, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Sleep Duration (hours)',
+            data: durationData,
+            backgroundColor: 'rgba(54, 162, 235, 0.5)',
+            borderColor: 'rgb(54, 162, 235)',
+            borderWidth: 1,
+            yAxisID: 'y'
+          },
+          {
+            label: 'Sleep Quality (1-5)',
+            data: qualityData,
+            type: 'line',
+            backgroundColor: 'rgba(255, 99, 132, 0.5)',
+            borderColor: 'rgb(255, 99, 132)',
+            borderWidth: 2,
+            yAxisID: 'y1'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            type: 'linear',
+            display: true,
+            position: 'left',
+            title: {
+              display: true,
+              text: 'Hours'
+            },
+            min: 0,
+            suggestedMax: 12
+          },
+          y1: {
+            type: 'linear',
+            display: true,
+            position: 'right',
+            title: {
+              display: true,
+              text: 'Quality'
+            },
+            min: 0,
+            max: 5,
+            grid: {
+              drawOnChartArea: false
+            }
+          }
+        }
+      }
+    });
+  }
+}
+
+/**
+ * Handle the sleep form submission
+ * @param {Event} event - Form submission event
+ */
+function handleSleepFormSubmit(event) {
+  event.preventDefault();
+  
+  // Get form values
+  const bedtimeStr = document.getElementById('sleep-bedtime').value;
+  const wakeTimeStr = document.getElementById('sleep-waketime').value;
+  const quality = parseInt(document.getElementById('sleep-quality').value, 10);
+  const notes = document.getElementById('sleep-notes').value;
+  const disturbancesElement = document.querySelector('input[name="sleep-disturbances"]:checked');
+  
+  // Create date objects for bedtime and wake time
+  const bedDate = document.getElementById('sleep-date').value;
+  
+  // Create bedtime date
+  const [bedHours, bedMinutes] = bedtimeStr.split(':');
+  const bedtime = new Date(bedDate);
+  bedtime.setHours(parseInt(bedHours, 10), parseInt(bedMinutes, 10), 0, 0);
+  
+  // Create wake time date
+  const wakeDate = new Date(bedDate);
+  // If wake time is earlier than bedtime, it's the next day
+  const [wakeHours, wakeMinutes] = wakeTimeStr.split(':');
+  wakeDate.setHours(parseInt(wakeHours, 10), parseInt(wakeMinutes, 10), 0, 0);
+  
+  if (wakeDate <= bedtime) {
+    wakeDate.setDate(wakeDate.getDate() + 1);
+  }
+  
+  // Get disturbances
+  const disturbances = [];
+  if (disturbancesElement) {
+    disturbances.push(disturbancesElement.value);
+  }
+  
+  // Create and add the sleep record
+  const sleepRecord = new SleepRecord(bedtime, wakeDate, quality, notes, disturbances);
+  
+  if (sleepTracker.addSleepRecord(sleepRecord)) {
+    // Close the modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('addSleepModal'));
+    modal.hide();
+    
+    // Reset the form
+    event.target.reset();
+    
+    // Update the dashboard
+    updateDashboard();
+    
+    // Show success message
+    showMessage('Sleep logged successfully!', 'success');
+  } else {
+    // Show error message
+    showMessage('Please fill in all required fields correctly.', 'danger');
+  }
+}
+
+/**
+ * Delete a sleep record
+ * @param {string} recordId - ID of the record to delete
+ */
+function deleteSleepRecord(recordId) {
+  if (confirm('Are you sure you want to delete this sleep record? This cannot be undone.')) {
+    if (sleepTracker.deleteSleepRecord(recordId)) {
+      // Update the dashboard
+      updateDashboard();
+      
+      // Show success message
+      showMessage('Sleep record deleted successfully.', 'success');
+    } else {
+      // Show error message
+      showMessage('Error deleting sleep record. Please try again.', 'danger');
+    }
   }
 }
 
