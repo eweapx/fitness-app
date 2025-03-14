@@ -17,10 +17,6 @@ args = "Run Tests"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Web Server"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
 args = "Simple Web Server"
 
 [[workflows.workflow]]
@@ -36,21 +32,6 @@ task = "packager.installForAll"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npx jest"
-
-[[workflows.workflow]]
-name = "Web Server"
-author = "agent"
-
-[workflows.workflow.metadata]
-agentRequireRestartOnSave = false
-
-[[workflows.workflow.tasks]]
-task = "packager.installForAll"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "node server.js"
-waitForPort = 5000
 
 [[workflows.workflow]]
 name = "Simple Web Server"
