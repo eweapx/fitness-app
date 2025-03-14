@@ -2100,6 +2100,7 @@
   <script src="public/js/healthSnapshot.js"></script>
   <script src="public/js/user.js"></script>
   <script src="public/js/workout.js"></script>
+  <script src="public/js/workout-ui.js"></script>
   <script src="public/js/app.js"></script>
   
   <script>
@@ -2937,5 +2938,182 @@
       }
     }
   </script>
+  <!-- Workout Modals -->
+  <!-- Workout Plan Modal -->
+  <div class="modal fade" id="workoutModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Create Workout Plan</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="workout-form">
+            <div class="mb-3">
+              <label for="workout-name" class="form-label">Workout Name</label>
+              <input type="text" class="form-control" id="workout-name" required placeholder="e.g., Upper Body, Push Day">
+            </div>
+            
+            <div class="mb-3">
+              <label for="workout-description" class="form-label">Description</label>
+              <textarea class="form-control" id="workout-description" rows="2" placeholder="Describe your workout plan"></textarea>
+            </div>
+            
+            <p class="mb-2">After creating your workout plan, you'll be able to add exercises to it.</p>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="create-workout-btn">Create Plan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Exercise Modal -->
+  <div class="modal fade" id="exerciseModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add Exercise</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="exercise-form">
+            <div class="mb-3">
+              <label for="exercise-name" class="form-label">Exercise Name</label>
+              <div class="input-group">
+                <input type="text" class="form-control" id="exercise-name" required placeholder="e.g., Bench Press, Squats">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                  Library
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end exercise-library">
+                  <li><h6 class="dropdown-header">Chest</h6></li>
+                  <li><a class="dropdown-item" href="#" data-name="Bench Press" data-equipment="barbell">Bench Press</a></li>
+                  <li><a class="dropdown-item" href="#" data-name="Push-up" data-equipment="bodyweight">Push-up</a></li>
+                  <li><a class="dropdown-item" href="#" data-name="Dumbbell Fly" data-equipment="dumbbell">Dumbbell Fly</a></li>
+                  
+                  <li><div class="dropdown-divider"></div></li>
+                  <li><h6 class="dropdown-header">Back</h6></li>
+                  <li><a class="dropdown-item" href="#" data-name="Deadlift" data-equipment="barbell">Deadlift</a></li>
+                  <li><a class="dropdown-item" href="#" data-name="Pull-up" data-equipment="bodyweight">Pull-up</a></li>
+                  <li><a class="dropdown-item" href="#" data-name="Barbell Row" data-equipment="barbell">Barbell Row</a></li>
+                  
+                  <li><div class="dropdown-divider"></div></li>
+                  <li><h6 class="dropdown-header">Legs</h6></li>
+                  <li><a class="dropdown-item" href="#" data-name="Squat" data-equipment="barbell">Squat</a></li>
+                  <li><a class="dropdown-item" href="#" data-name="Leg Press" data-equipment="machine">Leg Press</a></li>
+                  <li><a class="dropdown-item" href="#" data-name="Lunge" data-equipment="bodyweight">Lunge</a></li>
+                </ul>
+              </div>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label d-block">Equipment</label>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="equipment-type" id="equipment-barbell" value="barbell" checked>
+                <label class="form-check-label" for="equipment-barbell">Barbell</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="equipment-type" id="equipment-dumbbell" value="dumbbell">
+                <label class="form-check-label" for="equipment-dumbbell">Dumbbell</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="equipment-type" id="equipment-machine" value="machine">
+                <label class="form-check-label" for="equipment-machine">Machine</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="equipment-type" id="equipment-bodyweight" value="bodyweight">
+                <label class="form-check-label" for="equipment-bodyweight">Bodyweight</label>
+              </div>
+            </div>
+            
+            <div id="exercise-sets" class="mb-3">
+              <label class="form-label d-flex justify-content-between">
+                <span>Sets</span>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="add-set-btn">+ Add Set</button>
+              </label>
+              
+              <div class="set-container mb-2" data-set-index="0">
+                <div class="d-flex align-items-center">
+                  <div class="me-2 set-number">1</div>
+                  <div class="flex-grow-1 row g-0">
+                    <div class="col-5 pe-1">
+                      <input type="number" class="form-control set-weight" placeholder="Weight" inputmode="numeric" min="0" max="999">
+                    </div>
+                    <div class="col-4 px-1">
+                      <input type="number" class="form-control set-reps" placeholder="Reps" inputmode="numeric" min="1" max="100">
+                    </div>
+                    <div class="col-3 ps-1 d-flex">
+                      <button type="button" class="btn btn-outline-danger btn-sm remove-set-btn" tabindex="-1">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                      <div class="form-check ms-1">
+                        <input class="form-check-input set-complete" type="checkbox" title="Completed">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="mb-3">
+              <label for="exercise-notes" class="form-label">Notes</label>
+              <textarea class="form-control" id="exercise-notes" rows="2" placeholder="Optional notes for this exercise"></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="add-exercise-btn">Add to Workout</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Active Workout Modal -->
+  <div class="modal fade" id="activeWorkoutModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header d-flex">
+          <h5 class="modal-title">Current Workout</h5>
+          <div class="rest-timer ms-auto me-2">
+            <span class="rest-timer-display">00:00</span>
+            <button class="btn btn-sm btn-outline-primary rest-timer-btn">Start Rest</button>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="workout-info mb-3">
+            <h4 id="active-workout-name">Workout Name</h4>
+            <p id="active-workout-description" class="text-muted">Workout description will appear here</p>
+          </div>
+          
+          <div id="workout-exercises-container">
+            <!-- Exercises will be added here dynamically -->
+            <div class="text-center py-4 empty-state">
+              <p class="text-muted">No exercises added yet. Click "Add Exercise" to begin.</p>
+            </div>
+          </div>
+          
+          <div class="d-flex justify-content-center mt-3">
+            <button class="btn btn-primary me-2" id="add-workout-exercise-btn">
+              <i class="bi bi-plus-circle me-1"></i> Add Exercise
+            </button>
+            <button class="btn btn-outline-primary" id="quick-add-exercise-btn">Quick Add</button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <div class="workout-stats me-auto">
+            <span class="me-3">Duration: <span id="workout-duration">0:00</span></span>
+            <span>Exercises: <span id="workout-exercise-count">0</span></span>
+          </div>
+          <button type="button" class="btn btn-outline-danger me-2" id="discard-workout-btn">Discard</button>
+          <button type="button" class="btn btn-success" id="complete-workout-btn">Finish Workout</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
