@@ -32,6 +32,42 @@ console.log('Health connections loaded', healthConnectionManager.getConnections(
 
 // Set up event listeners once the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', function() {
+  // Add custom styles for swipe-to-delete
+  const style = document.createElement('style');
+  style.textContent = `
+    .activity-card {
+      position: relative;
+      overflow: hidden;
+      touch-action: pan-y;
+      user-select: none;
+    }
+    .activity-card .card-body {
+      background-color: white;
+      position: relative;
+      z-index: 1;
+    }
+    .swipe-delete-btn {
+      z-index: 0;
+      font-size: 1.5rem;
+    }
+    .swipe-hint {
+      position: absolute;
+      top: 50%;
+      right: 10px;
+      transform: translateY(-50%);
+      font-size: 0.8rem;
+      color: #6c757d;
+      pointer-events: none;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 0.3; }
+      50% { opacity: 0.8; }
+      100% { opacity: 0.3; }
+    }
+  `;
+  document.head.appendChild(style);
+  
   // Set up event listeners for all forms
   setupEventListeners();
   
@@ -644,8 +680,14 @@ function updateActivitiesList() {
           </div>
         `;
         
+        // Store the activity ID as a data attribute
+        activityElement.dataset.activityId = activity.id;
+        
         // Make the activity card clickable
         activityElement.addEventListener('click', () => openActivityModal(activity.id));
+        
+        // Add swipe functionality
+        setupSwipeToDelete(activityElement, activity.id);
         
         activitiesList.appendChild(activityElement);
       });
@@ -687,6 +729,9 @@ function updateActivitiesList() {
         
         // Make the activity card clickable
         activityElement.addEventListener('click', () => openActivityModal(activity.id));
+        
+        // Add swipe functionality
+        setupSwipeToDelete(activityElement, activity.id);
         
         allActivitiesList.appendChild(activityElement);
       });
@@ -1804,21 +1849,30 @@ function openActivityModal(activityId) {
     document.body.appendChild(modal);
   }
   
+  // Get modal element after it's been added to the DOM
+  modal = document.getElementById('editActivityModal');
+  
   // Add event listeners for form submission and delete button
   const form = document.getElementById('editActivityForm');
   if (form) {
-    // Remove existing event listeners if any by cloning and replacing
+    // Clear existing event listeners
     const newForm = form.cloneNode(true);
     form.parentNode.replaceChild(newForm, form);
+    // Add new event listener
     newForm.addEventListener('submit', handleEditActivityFormSubmit);
   }
   
   const deleteBtn = document.getElementById('delete-activity-btn');
   if (deleteBtn) {
-    // Remove existing event listeners if any by cloning and replacing
+    // Clear existing event listeners
     const newBtn = deleteBtn.cloneNode(true);
     deleteBtn.parentNode.replaceChild(newBtn, deleteBtn);
-    newBtn.addEventListener('click', () => handleDeleteActivity(activity.id));
+    // Use a specific ID for the delete operation
+    const activityIdForDelete = activity.id;
+    // Add new event listener
+    newBtn.addEventListener('click', function() {
+      handleDeleteActivity(activityIdForDelete);
+    });
   }
   
   // Populate the form with activity data
@@ -1886,9 +1940,12 @@ function handleDeleteActivity(activityId) {
     const success = fitnessTracker.deleteActivity(activityId);
     
     if (success) {
-      // Close the modal
-      const modal = bootstrap.Modal.getInstance(document.getElementById('editActivityModal'));
-      modal.hide();
+      // Close the modal if it's open
+      const modalElement = document.getElementById('editActivityModal');
+      if (modalElement) {
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        if (modal) modal.hide();
+      }
       
       // Update the UI
       updateFitnessStats();
@@ -1899,5 +1956,95 @@ function handleDeleteActivity(activityId) {
     } else {
       showMessage('Error deleting activity', 'danger');
     }
+  }
+}
+
+/**
+ * Set up swipe-to-delete functionality for an element
+ * @param {HTMLElement} element - The element to enable swipe-to-delete on
+ * @param {string} itemId - ID of the item to delete when swiped
+ */
+function setupSwipeToDelete(element, itemId) {
+  let touchStartX = 0;
+  let touchEndX = 0;
+  let initialTransform = 'translateX(0px)';
+  let deleteThreshold = 100; // How far to swipe to trigger delete
+  
+  // Add a delete button that will be revealed on swipe
+  const deleteButton = document.createElement('div');
+  deleteButton.className = 'swipe-delete-btn';
+  deleteButton.innerHTML = '<i class="bi bi-trash"></i>';
+  deleteButton.style.cssText = `
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background-color: #dc3545;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  `;
+  
+  // Position the parent element for proper layering
+  element.style.position = 'relative';
+  element.style.overflow = 'hidden';
+  
+  // Add the card container to handle the sliding
+  const cardContainer = element.querySelector('.card-body');
+  if (cardContainer) {
+    cardContainer.style.transition = 'transform 0.3s';
+    element.appendChild(deleteButton);
+    
+    // Store the activity ID on the delete button
+    deleteButton.dataset.itemId = itemId;
+    
+    // Touch event handlers
+    element.addEventListener('touchstart', function(e) {
+      touchStartX = e.touches[0].clientX;
+      initialTransform = cardContainer.style.transform || 'translateX(0px)';
+    }, { passive: true });
+    
+    element.addEventListener('touchmove', function(e) {
+      touchEndX = e.touches[0].clientX;
+      const swipeDistance = touchStartX - touchEndX;
+      
+      // Only allow swiping left (negative values)
+      if (swipeDistance > 0) {
+        cardContainer.style.transform = `translateX(-${swipeDistance}px)`;
+        
+        // Show delete button with appropriate opacity
+        const opacity = Math.min(swipeDistance / deleteThreshold, 1);
+        deleteButton.style.opacity = opacity;
+      }
+    }, { passive: true });
+    
+    element.addEventListener('touchend', function() {
+      const swipeDistance = touchStartX - touchEndX;
+      
+      if (swipeDistance > deleteThreshold) {
+        // Swiped far enough to delete
+        cardContainer.style.transform = 'translateX(-100%)';
+        deleteButton.style.opacity = 1;
+        
+        // Delete after animation completes
+        setTimeout(() => {
+          handleDeleteActivity(itemId);
+        }, 300);
+      } else {
+        // Not swiped far enough, reset position
+        cardContainer.style.transform = initialTransform;
+        deleteButton.style.opacity = 0;
+      }
+    }, { passive: true });
+    
+    // Add click handler to delete button
+    deleteButton.addEventListener('click', function() {
+      const itemToDelete = this.dataset.itemId;
+      handleDeleteActivity(itemToDelete);
+    });
   }
 }
