@@ -69,6 +69,9 @@
                 <a class="nav-link" href="#" id="nutrition-tab">Nutrition</a>
               </li>
               <li class="nav-item">
+                <a class="nav-link" href="#" id="profile-link" data-bs-toggle="modal" data-bs-target="#profileModal">Profile</a>
+              </li>
+              <li class="nav-item">
                 <a class="nav-link" href="#" id="about-link" data-bs-toggle="modal" data-bs-target="#aboutModal">About</a>
               </li>
             </ul>
@@ -105,6 +108,21 @@
           </div>
         </div>
 
+        <!-- Progress Chart -->
+        <div class="card mb-4">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Activity Trends</h5>
+            <div class="btn-group" role="group">
+              <button type="button" class="btn btn-sm btn-outline-secondary active" id="weekly-view">Week</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" id="monthly-view">Month</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <canvas id="progress-chart" height="200"></canvas>
+          </div>
+        </div>
+        
+        <!-- Recent Activities -->
         <div class="card">
           <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Recent Activities</h5>
@@ -130,9 +148,17 @@
         <div class="card">
           <div class="card-body">
             <h4 class="mb-4">Your Workout Plans</h4>
-            <div class="alert alert-info">
-              <i class="bi bi-info-circle me-2"></i>
-              This section will allow you to create and manage your workout routines.
+            
+            <!-- Container for workout plans -->
+            <div id="workout-plans-container">
+              <div id="no-workout-plans" class="alert alert-info mb-4">
+                <i class="bi bi-info-circle me-2"></i>
+                You don't have any workout plans yet. Create your first plan to get started.
+              </div>
+              
+              <div id="workout-list" class="row">
+                <!-- Workout plans will be displayed here -->
+              </div>
             </div>
             
             <button class="btn btn-primary w-100 mt-3" data-bs-toggle="modal" data-bs-target="#workoutModal">
@@ -144,13 +170,55 @@
 
       <!-- Nutrition Section (Initially Hidden) -->
       <div id="nutrition-content" class="content-section" style="display: none;">
-        <div class="card">
+        <div class="card mb-4">
           <div class="card-body">
             <h4 class="mb-4">Nutrition Tracker</h4>
             
-            <div class="alert alert-info mb-4">
-              <i class="bi bi-info-circle me-2"></i>
-              This section will allow you to log your meals and track your nutrition intake.
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <div class="card">
+                  <div class="card-body text-center">
+                    <h5>Today's Calories</h5>
+                    <div class="display-4 fw-bold" id="today-calories">0</div>
+                    <div class="text-muted small">Daily Goal: 2000</div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6 mb-3">
+                <div class="card">
+                  <div class="card-body text-center">
+                    <h5>Macronutrients</h5>
+                    <div class="progress-stacked mb-2">
+                      <div class="progress" role="progressbar" style="width: 25%">
+                        <div class="progress-bar bg-success">Protein</div>
+                      </div>
+                      <div class="progress" role="progressbar" style="width: 40%">
+                        <div class="progress-bar bg-primary">Carbs</div>
+                      </div>
+                      <div class="progress" role="progressbar" style="width: 15%">
+                        <div class="progress-bar bg-warning">Fat</div>
+                      </div>
+                    </div>
+                    <div class="d-flex justify-content-between text-muted small">
+                      <span>Protein: <span id="protein-perc">25</span>%</span>
+                      <span>Carbs: <span id="carbs-perc">40</span>%</span>
+                      <span>Fat: <span id="fat-perc">15</span>%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Meal history section -->
+            <div class="mt-4">
+              <h5 class="mb-3">Recent Meals</h5>
+              <div id="no-meals" class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                You haven't logged any meals yet. Add your first meal to get started.
+              </div>
+              <div id="meal-list">
+                <!-- Meals will be displayed here -->
+              </div>
             </div>
             
             <button class="btn btn-primary w-100 mt-3" data-bs-toggle="modal" data-bs-target="#mealModal">
@@ -353,6 +421,183 @@
         </div>
       </div>
     </div>
+    
+    <!-- User Profile Modal -->
+    <div class="modal fade" id="profileModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">User Profile</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row">
+              <div class="col-md-4 mb-4 mb-md-0">
+                <div class="text-center">
+                  <div class="mb-3">
+                    <div style="width: 120px; height: 120px; background-color: #e9ecef; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;">
+                      <i class="bi bi-person" style="font-size: 60px; color: #6c757d;"></i>
+                    </div>
+                  </div>
+                  <h5 class="mb-1">John Doe</h5>
+                  <p class="text-muted">Member since March 2023</p>
+                  <div class="d-grid gap-2">
+                    <button class="btn btn-sm btn-outline-primary" disabled>Change Profile Photo</button>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-8">
+                <ul class="nav nav-tabs" id="profileTabs" role="tablist">
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="personal-tab" data-bs-toggle="tab" data-bs-target="#personal-tab-pane" type="button" role="tab">Personal Info</button>
+                  </li>
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="goals-tab" data-bs-toggle="tab" data-bs-target="#goals-tab-pane" type="button" role="tab">Goals</button>
+                  </li>
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="preferences-tab" data-bs-toggle="tab" data-bs-target="#preferences-tab-pane" type="button" role="tab">Preferences</button>
+                  </li>
+                </ul>
+                <div class="tab-content p-3 border border-top-0 rounded-bottom" id="profileTabContent">
+                  <div class="tab-pane fade show active" id="personal-tab-pane" role="tabpanel" tabindex="0">
+                    <form id="personal-info-form">
+                      <div class="row">
+                        <div class="col-md-6 mb-3">
+                          <label for="user-first-name" class="form-label">First Name</label>
+                          <input type="text" class="form-control" id="user-first-name" value="John">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                          <label for="user-last-name" class="form-label">Last Name</label>
+                          <input type="text" class="form-control" id="user-last-name" value="Doe">
+                        </div>
+                      </div>
+                      <div class="mb-3">
+                        <label for="user-email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="user-email" value="john.doe@example.com">
+                      </div>
+                      <div class="row">
+                        <div class="col-md-6 mb-3">
+                          <label for="user-height" class="form-label">Height (cm)</label>
+                          <input type="number" class="form-control" id="user-height" value="178">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                          <label for="user-weight" class="form-label">Weight (kg)</label>
+                          <input type="number" class="form-control" id="user-weight" value="75">
+                        </div>
+                      </div>
+                      <div class="row">
+                        <div class="col-md-6 mb-3">
+                          <label for="user-gender" class="form-label">Gender</label>
+                          <select class="form-select" id="user-gender">
+                            <option value="male" selected>Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
+                            <option value="prefer-not-to-say">Prefer not to say</option>
+                          </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                          <label for="user-birthdate" class="form-label">Date of Birth</label>
+                          <input type="date" class="form-control" id="user-birthdate" value="1990-01-01">
+                        </div>
+                      </div>
+                    </form>
+                  </div>
+                  <div class="tab-pane fade" id="goals-tab-pane" role="tabpanel" tabindex="0">
+                    <form id="goals-form">
+                      <div class="mb-3">
+                        <label for="goal-type" class="form-label">Primary Goal</label>
+                        <select class="form-select" id="goal-type">
+                          <option value="lose-weight" selected>Lose Weight</option>
+                          <option value="maintain-weight">Maintain Weight</option>
+                          <option value="gain-weight">Gain Weight/Muscle</option>
+                          <option value="increase-endurance">Increase Endurance</option>
+                          <option value="increase-strength">Increase Strength</option>
+                        </select>
+                      </div>
+                      <div class="mb-3">
+                        <label for="activity-level" class="form-label">Activity Level</label>
+                        <select class="form-select" id="activity-level">
+                          <option value="1">Sedentary (little or no exercise)</option>
+                          <option value="2" selected>Lightly active (light exercise 1-3 days/week)</option>
+                          <option value="3">Moderately active (moderate exercise 3-5 days/week)</option>
+                          <option value="4">Very active (hard exercise 6-7 days/week)</option>
+                          <option value="5">Extra active (very hard exercise, physical job or training twice a day)</option>
+                        </select>
+                      </div>
+                      <div class="mb-4">
+                        <label class="form-label">Daily Goals</label>
+                        <div class="row mb-2">
+                          <div class="col-md-6">
+                            <label for="goal-calories" class="form-label">Calories</label>
+                            <input type="number" class="form-control" id="goal-calories" value="2000">
+                          </div>
+                          <div class="col-md-6">
+                            <label for="goal-steps" class="form-label">Steps</label>
+                            <input type="number" class="form-control" id="goal-steps" value="10000">
+                          </div>
+                        </div>
+                        <div class="row">
+                          <div class="col-md-4">
+                            <label for="goal-protein" class="form-label">Protein (g)</label>
+                            <input type="number" class="form-control" id="goal-protein" value="140">
+                          </div>
+                          <div class="col-md-4">
+                            <label for="goal-carbs" class="form-label">Carbs (g)</label>
+                            <input type="number" class="form-control" id="goal-carbs" value="200">
+                          </div>
+                          <div class="col-md-4">
+                            <label for="goal-fat" class="form-label">Fat (g)</label>
+                            <input type="number" class="form-control" id="goal-fat" value="65">
+                          </div>
+                        </div>
+                      </div>
+                    </form>
+                  </div>
+                  <div class="tab-pane fade" id="preferences-tab-pane" role="tabpanel" tabindex="0">
+                    <form id="preferences-form">
+                      <div class="mb-3">
+                        <label class="form-label">Units of Measurement</label>
+                        <div class="form-check">
+                          <input class="form-check-input" type="radio" name="units" id="metric-units" value="metric" checked>
+                          <label class="form-check-label" for="metric-units">
+                            Metric (kg, cm, km)
+                          </label>
+                        </div>
+                        <div class="form-check">
+                          <input class="form-check-input" type="radio" name="units" id="imperial-units" value="imperial">
+                          <label class="form-check-label" for="imperial-units">
+                            Imperial (lb, ft, miles)
+                          </label>
+                        </div>
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label">Notifications</label>
+                        <div class="form-check form-switch mb-2">
+                          <input class="form-check-input" type="checkbox" role="switch" id="reminder-notifications" checked>
+                          <label class="form-check-label" for="reminder-notifications">Daily Reminders</label>
+                        </div>
+                        <div class="form-check form-switch mb-2">
+                          <input class="form-check-input" type="checkbox" role="switch" id="goal-notifications" checked>
+                          <label class="form-check-label" for="goal-notifications">Goal Achievements</label>
+                        </div>
+                        <div class="form-check form-switch">
+                          <input class="form-check-input" type="checkbox" role="switch" id="weekly-notifications" checked>
+                          <label class="form-check-label" for="weekly-notifications">Weekly Reports</label>
+                        </div>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" id="save-profile">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Bootstrap Icons -->
@@ -362,8 +607,13 @@
   <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
   
+  <!-- Chart.js for data visualization -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
   <script>
     document.addEventListener('DOMContentLoaded', function() {
+      // Initialize the progress chart with sample data
+      initializeProgressChart();
       // Initialize UI with placeholder data until the real data loads
       const placeholderData = {
         stepsCount: 5000,
@@ -472,6 +722,63 @@
       `;
       
       return activityElement;
+    }
+    
+    // Create workout plan element
+    function createWorkoutElement(workout) {
+      const colElement = document.createElement('div');
+      colElement.className = 'col-md-6 mb-3';
+      
+      // Define difficulty labels and colors
+      const difficultyLabels = ['Easy', 'Light', 'Moderate', 'Challenging', 'Intense'];
+      const difficultyColors = ['success', 'info', 'primary', 'warning', 'danger'];
+      
+      // Get the correct difficulty label and color (1-indexed)
+      const difficultyIndex = Math.min(Math.max(workout.difficulty - 1, 0), 4);
+      
+      colElement.innerHTML = `
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">${workout.name}</h5>
+            <span class="badge bg-${difficultyColors[difficultyIndex]} mb-2">${difficultyLabels[difficultyIndex]}</span>
+            <p class="card-text">${workout.description}</p>
+            <div class="d-flex justify-content-between align-items-center mt-3">
+              <small class="text-muted">${workout.frequency}x per week</small>
+              <button class="btn btn-sm btn-outline-primary">Start Workout</button>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      return colElement;
+    }
+    
+    // Create meal element
+    function createMealElement(meal) {
+      const mealElement = document.createElement('div');
+      mealElement.className = 'card mb-3';
+      
+      mealElement.innerHTML = `
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <h5 class="card-title">${meal.name}</h5>
+              <h6 class="card-subtitle mb-2 text-muted">${meal.description}</h6>
+              <div class="mt-2">
+                <span class="badge bg-primary me-1">${meal.calories} cal</span>
+                <span class="badge bg-success me-1">${meal.protein}g protein</span>
+                <span class="badge bg-info me-1">${meal.carbs}g carbs</span>
+                <span class="badge bg-warning me-1">${meal.fat}g fat</span>
+              </div>
+            </div>
+            <div class="text-end">
+              <small class="text-muted">${formatDate(meal.date)}</small>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      return mealElement;
     }
     
     // Format date helper
@@ -658,8 +965,22 @@
             return;
           }
           
-          // Here we would normally send data to the server
-          // but for demo purposes, just show success message
+          // Create a workout object
+          const workout = {
+            name: name,
+            description: description,
+            frequency: frequency,
+            difficulty: difficulty,
+            date: new Date().toISOString()
+          };
+          
+          // Hide the 'no workout plans' message if it's visible
+          document.getElementById('no-workout-plans').style.display = 'none';
+          
+          // Add the workout to the list
+          const workoutList = document.getElementById('workout-list');
+          const workoutElement = createWorkoutElement(workout);
+          workoutList.appendChild(workoutElement);
           
           // Close modal and reset form
           const modal = bootstrap.Modal.getInstance(document.getElementById('workoutModal'));
@@ -678,18 +999,48 @@
           const nameInput = document.getElementById('meal-name');
           const descriptionInput = document.getElementById('meal-description');
           const caloriesInput = document.getElementById('meal-calories');
+          const proteinInput = document.getElementById('meal-protein');
+          const carbsInput = document.getElementById('meal-carbs');
+          const fatInput = document.getElementById('meal-fat');
           
           const name = nameInput.value.trim();
           const description = descriptionInput.value.trim();
           const calories = parseInt(caloriesInput.value);
+          const protein = parseInt(proteinInput.value) || 0;
+          const carbs = parseInt(carbsInput.value) || 0;
+          const fat = parseInt(fatInput.value) || 0;
           
           if (!name || !description || isNaN(calories)) {
             alert('Please fill in all required fields');
             return;
           }
           
-          // Here we would normally send data to the server
-          // but for demo purposes, just show success message
+          // Create a meal object
+          const meal = {
+            name: name,
+            description: description,
+            calories: calories,
+            protein: protein,
+            carbs: carbs,
+            fat: fat,
+            date: new Date().toISOString()
+          };
+          
+          // Hide the 'no meals' message if it's visible
+          document.getElementById('no-meals').style.display = 'none';
+          
+          // Add the meal to the list
+          const mealList = document.getElementById('meal-list');
+          const mealElement = createMealElement(meal);
+          mealList.prepend(mealElement); // Add at the top
+          
+          // Update the daily calories counter
+          const todayCalories = document.getElementById('today-calories');
+          const currentCalories = parseInt(todayCalories.textContent) || 0;
+          todayCalories.textContent = currentCalories + calories;
+          
+          // Update macronutrient percentages
+          updateMacroPercentages(protein, carbs, fat);
           
           // Close modal and reset form
           const modal = bootstrap.Modal.getInstance(document.getElementById('mealModal'));
@@ -698,6 +1049,137 @@
           
           // Show success alert
           alert('Meal logged successfully!');
+        });
+      }
+      
+      // Function to update macronutrient percentages in the UI
+      function updateMacroPercentages(protein, carbs, fat) {
+        const totalGrams = protein + carbs + fat;
+        if (totalGrams === 0) return;
+        
+        const proteinPerc = Math.round((protein / totalGrams) * 100);
+        const carbsPerc = Math.round((carbs / totalGrams) * 100);
+        const fatPerc = Math.round((fat / totalGrams) * 100);
+        
+        // Update the UI elements
+        document.getElementById('protein-perc').textContent = proteinPerc;
+        document.getElementById('carbs-perc').textContent = carbsPerc;
+        document.getElementById('fat-perc').textContent = fatPerc;
+        
+        // Update the progress bars
+        const progressBars = document.querySelectorAll('.progress-stacked .progress');
+        progressBars[0].style.width = proteinPerc + '%';
+        progressBars[1].style.width = carbsPerc + '%';
+        progressBars[2].style.width = fatPerc + '%';
+      }
+      
+      // Initialize the progress chart with sample data
+      function initializeProgressChart() {
+        const ctx = document.getElementById('progress-chart');
+        
+        // Sample data for the chart (7 days)
+        const labels = [];
+        const calorieData = [];
+        const stepsData = [];
+        
+        // Generate dates for the last 7 days
+        for (let i = 6; i >= 0; i--) {
+          const date = new Date();
+          date.setDate(date.getDate() - i);
+          labels.push(date.toLocaleDateString('en-US', { weekday: 'short' }));
+          
+          // Random data for demonstration
+          calorieData.push(Math.floor(Math.random() * 500) + 100);
+          stepsData.push(Math.floor(Math.random() * 5000) + 2000);
+        }
+        
+        // Create the chart
+        const progressChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: 'Calories Burned',
+                data: calorieData,
+                borderColor: '#e74c3c',
+                backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.3,
+                yAxisID: 'y'
+              },
+              {
+                label: 'Steps',
+                data: stepsData,
+                borderColor: '#3498db',
+                backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.3,
+                yAxisID: 'y1'
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            interaction: {
+              mode: 'index',
+              intersect: false,
+            },
+            scales: {
+              y: {
+                type: 'linear',
+                display: true,
+                position: 'left',
+                title: {
+                  display: true,
+                  text: 'Calories'
+                }
+              },
+              y1: {
+                type: 'linear',
+                display: true,
+                position: 'right',
+                title: {
+                  display: true,
+                  text: 'Steps'
+                },
+                grid: {
+                  drawOnChartArea: false
+                }
+              }
+            }
+          }
+        });
+        
+        // Set up event listeners for the chart view toggle
+        document.getElementById('weekly-view').addEventListener('click', function() {
+          this.classList.add('active');
+          document.getElementById('monthly-view').classList.remove('active');
+          // In a real app, we would fetch weekly data and update the chart
+        });
+        
+        document.getElementById('monthly-view').addEventListener('click', function() {
+          this.classList.add('active');
+          document.getElementById('weekly-view').classList.remove('active');
+          // In a real app, we would fetch monthly data and update the chart
+        });
+      }
+      
+      // Save profile button
+      const saveProfileBtn = document.getElementById('save-profile');
+      if (saveProfileBtn) {
+        saveProfileBtn.addEventListener('click', function() {
+          // Here we would normally send data to the server
+          // but for demo purposes, just show success message
+          
+          // Close modal
+          const modal = bootstrap.Modal.getInstance(document.getElementById('profileModal'));
+          modal.hide();
+          
+          // Show success alert
+          alert('Profile updated successfully!');
         });
       }
     }
