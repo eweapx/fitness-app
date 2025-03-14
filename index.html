@@ -216,6 +216,9 @@
           </div>
           <div class="stat-value" id="steps">0</div>
           <div class="stat-label">Steps</div>
+          <button class="btn btn-sm btn-outline-primary mt-2" id="add-steps-btn">
+            <i class="bi bi-plus-lg"></i> Add
+          </button>
         </div>
         <div class="col-4">
           <div class="stat-icon text-success">
@@ -379,6 +382,30 @@
     </div>
   </div>
 
+  <!-- Add Steps Modal -->
+  <div class="modal fade" id="addStepsModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add Steps</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="steps-form">
+            <div class="mb-3">
+              <label for="steps-count" class="form-label">Number of Steps</label>
+              <input type="number" class="form-control" id="steps-count" placeholder="e.g. 1000" min="1" required>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="save-steps">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Firebase Config Modal -->
   <div class="modal fade" id="firebaseConfigModal" tabindex="-1">
     <div class="modal-dialog">
@@ -419,13 +446,53 @@
       }
     }
 
-    // App state
+    // App state with localStorage persistence
     const state = {
       caloriesBurned: 0,
       stepsCount: 0,
       activitiesLogged: 0,
       activities: []
     };
+    
+    // Load data from localStorage if available
+    function loadFromLocalStorage() {
+      try {
+        const savedState = localStorage.getItem('fitnessAppState');
+        if (savedState) {
+          const parsedState = JSON.parse(savedState);
+          
+          // Convert string dates back to Date objects
+          if (parsedState.activities) {
+            parsedState.activities = parsedState.activities.map(activity => {
+              return {
+                ...activity,
+                date: new Date(activity.date)
+              };
+            });
+          }
+          
+          // Update state with saved data
+          state.caloriesBurned = parsedState.caloriesBurned || 0;
+          state.stepsCount = parsedState.stepsCount || 0;
+          state.activitiesLogged = parsedState.activitiesLogged || 0;
+          state.activities = parsedState.activities || [];
+          
+          console.log('Loaded data from localStorage:', state);
+        }
+      } catch (error) {
+        console.error('Error loading data from localStorage:', error);
+      }
+    }
+    
+    // Save data to localStorage
+    function saveToLocalStorage() {
+      try {
+        localStorage.setItem('fitnessAppState', JSON.stringify(state));
+        console.log('Saved data to localStorage');
+      } catch (error) {
+        console.error('Error saving data to localStorage:', error);
+      }
+    }
 
     // Activity icon and color mapping
     const activityIcons = {
@@ -490,12 +557,37 @@
       state.caloriesBurned += parseInt(activity.calories);
       state.activitiesLogged += 1;
       
+      // Add steps if the activity is running (simplified calculation)
+      if (activity.type === 'running') {
+        // Estimate: ~100 steps per minute for running
+        const stepsFromActivity = activity.duration * 100;
+        state.stepsCount += stepsFromActivity;
+      }
+      
+      // Save to localStorage
+      saveToLocalStorage();
+      
       // Update UI
       updateStats();
       renderActivities();
       
       // Show success message
       showAlert('Activity logged successfully!', 'success');
+    }
+    
+    // Add steps manually
+    function addSteps(steps) {
+      if (isNaN(steps) || steps < 0) {
+        showAlert('Please enter a valid number of steps', 'danger');
+        return false;
+      }
+      
+      state.stepsCount += parseInt(steps);
+      saveToLocalStorage();
+      updateStats();
+      
+      showAlert(`Added ${steps} steps successfully!`, 'success');
+      return true;
     }
 
     // Show alert
@@ -1008,6 +1100,9 @@
 
     // Initialize the app
     function initApp() {
+      // Load data from localStorage
+      loadFromLocalStorage();
+      
       // Initialize Bootstrap components safely
       // Enable navbar toggler
       const navbarToggler = document.querySelector('.navbar-toggler');
@@ -1027,14 +1122,77 @@
         });
       }
       
-      // Add sample activities
-      const runningActivity = new Activity('Running', 250, 30, 'running', new Date(Date.now() - 3 * 60 * 60 * 1000));
-      const weightsActivity = new Activity('Weight Training', 150, 45, 'weights', new Date(Date.now() - 5 * 60 * 60 * 1000));
+      // Add Steps button
+      const addStepsBtn = document.getElementById('add-steps-btn');
+      if (addStepsBtn) {
+        addStepsBtn.addEventListener('click', function() {
+          try {
+            const addStepsModalEl = document.getElementById('addStepsModal');
+            if (addStepsModalEl && typeof bootstrap !== 'undefined') {
+              const addStepsModal = new bootstrap.Modal(addStepsModalEl);
+              addStepsModal.show();
+            }
+          } catch (error) {
+            console.log('Error showing Add Steps modal:', error);
+            showAlert('Could not open Add Steps modal. Please try again.', 'warning');
+          }
+        });
+      }
       
-      state.activities.push(runningActivity, weightsActivity);
-      state.caloriesBurned = 400;
-      state.stepsCount = 5000;
-      state.activitiesLogged = 2;
+      // Save Steps button
+      const saveStepsBtn = document.getElementById('save-steps');
+      if (saveStepsBtn) {
+        saveStepsBtn.addEventListener('click', function() {
+          try {
+            const stepsCountInput = document.getElementById('steps-count');
+            if (!stepsCountInput) {
+              showAlert('Steps count input not found', 'danger');
+              return;
+            }
+            
+            const stepsCount = parseInt(stepsCountInput.value);
+            if (isNaN(stepsCount) || stepsCount <= 0) {
+              showAlert('Please enter a valid number of steps', 'danger');
+              return;
+            }
+            
+            // Add steps and save to localStorage
+            if (addSteps(stepsCount)) {
+              // Close modal and reset form
+              try {
+                const addStepsModalEl = document.getElementById('addStepsModal');
+                if (addStepsModalEl && typeof bootstrap !== 'undefined') {
+                  const modal = bootstrap.Modal.getInstance(addStepsModalEl);
+                  if (modal) {
+                    modal.hide();
+                  }
+                }
+                document.getElementById('steps-form').reset();
+              } catch (error) {
+                console.log('Error closing modal:', error);
+              }
+            }
+          } catch (error) {
+            console.log('Error saving steps:', error);
+            showAlert('An error occurred while saving steps. Please try again.', 'danger');
+          }
+        });
+      }
+      
+      // Only add sample activities if none were loaded from localStorage
+      if (state.activities.length === 0) {
+        // Add sample activities
+        const runningActivity = new Activity('Running', 250, 30, 'running', new Date(Date.now() - 3 * 60 * 60 * 1000));
+        const weightsActivity = new Activity('Weight Training', 150, 45, 'weights', new Date(Date.now() - 5 * 60 * 60 * 1000));
+        
+        state.activities.push(runningActivity, weightsActivity);
+        state.caloriesBurned = 400;
+        state.stepsCount = 5000;
+        state.activitiesLogged = 2;
+        
+        // Save the initial sample data to localStorage
+        saveToLocalStorage();
+      }
       
       // Set up tab navigation
       setupTabNavigation();
