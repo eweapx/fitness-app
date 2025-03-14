@@ -1498,7 +1498,9 @@ function initializeScrollWheel(inputId, maxValue) {
     // Special handling for weight input - snap to 5-pound increments
     if (input.id === 'other-weight-input') {
       // Convert index to a value in 5-pound increments
-      value = Math.max(0, Math.min(maxValue, index * 5));
+      // Ensure the index is within reasonable bounds before multiplying
+      const safeIndex = Math.max(0, Math.min(maxValue / 5, index));
+      value = safeIndex * 5;
     } else {
       // For other inputs use standard values
       value = Math.max(0, Math.min(maxValue, index));
@@ -1519,10 +1521,32 @@ function initializeScrollWheel(inputId, maxValue) {
       // Ensure all options remain visible while scrolling
       option.style.visibility = 'visible';
       
+      // For weight input, we need to compare with the option's dataset value
       if (parseInt(option.dataset.value) === value) {
         option.classList.add('selected-value');
+        // Ensure this option is visible by scrolling to it if needed
+        option.style.opacity = '1';
       } else {
         option.classList.remove('selected-value');
+        
+        // Fade out options that are far from the current selection for a nicer visual effect
+        const optVal = parseInt(option.dataset.value);
+        const distance = Math.abs(optVal - value);
+        if (input.id === 'other-weight-input') {
+          // For weight inputs, adjust distance based on 5-pound increments
+          if (distance <= 20) { // Only nearby options fully visible
+            option.style.opacity = 1 - (distance / 25);
+          } else {
+            option.style.opacity = '0.1';  // Far options barely visible
+          }
+        } else {
+          // For standard inputs
+          if (distance <= 4) { // Only nearby options fully visible
+            option.style.opacity = 1 - (distance / 5);
+          } else {
+            option.style.opacity = '0.1';  // Far options barely visible
+          }
+        }
       }
     });
     
@@ -1561,23 +1585,34 @@ function updateScrollWheelPosition(input, value) {
   
   // Special handling for weight input with 5lb increments
   let position;
+  let index;
+  
   if (input.id === 'other-weight-input') {
-    // For weight inputs, we need to divide by 5 since we're using 5lb increments
-    position = -((value / 5) * optionHeight) + (input.scrollWheel.container.offsetHeight / 2 - optionHeight / 2);
+    // For weight inputs, we need to handle 5lb increments
+    // First, round the value to the nearest 5-pound increment
+    const roundedValue = Math.round(value / 5) * 5;
+    
+    // Now calculate the index based on the rounded value (each 5lb increment is one option)
+    index = roundedValue / 5;
+    position = -(index * optionHeight) + (input.scrollWheel.container.offsetHeight / 2 - optionHeight / 2);
+    
+    // Update the input value to show the rounded value
+    input.value = roundedValue;
+    input.scrollWheel.currentValue = roundedValue;
   } else {
     // For other inputs (sets, reps), use standard positioning
-    position = -(value * optionHeight) + (input.scrollWheel.container.offsetHeight / 2 - optionHeight / 2);
+    index = value;
+    position = -(index * optionHeight) + (input.scrollWheel.container.offsetHeight / 2 - optionHeight / 2);
+    
+    // Update the input value
+    input.value = value;
+    input.scrollWheel.currentValue = value;
   }
   
+  // Apply the visual transformation
   wheel.style.transition = 'transform 0.3s ease-out';
   wheel.style.transform = `translateY(${position}px)`;
   input.scrollWheel.currentY = position;
-  input.scrollWheel.currentValue = value;
-  
-  // Ensure the input value is always set and preserved
-  if (input.value !== value.toString()) {
-    input.value = value;
-  }
   
   // Make sure selected value is highlighted and all options are visible
   const options = input.scrollWheel.options;
@@ -1585,7 +1620,8 @@ function updateScrollWheelPosition(input, value) {
     // Ensure all options are visible during and after scrolling
     option.style.visibility = 'visible';
     
-    if (parseInt(option.dataset.value) === value) {
+    // Check if this option is the selected value
+    if (parseInt(option.dataset.value) === input.scrollWheel.currentValue) {
       option.classList.add('selected-value');
     } else {
       option.classList.remove('selected-value');
