@@ -647,6 +647,47 @@ function updateActivitiesList() {
   
   const activities = fitnessTracker.getActivities();
   
+  /**
+   * Creates an activity card element with separate view details button
+   * @param {Activity} activity - The activity to create a card for
+   * @returns {HTMLElement} The created activity card
+   */
+  function createActivityCard(activity) {
+    const activityElement = document.createElement('div');
+    activityElement.className = 'card mb-2 activity-card';
+    activityElement.dataset.activityId = activity.id;
+    activityElement.innerHTML = `
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h6 class="mb-1">${activity.name}</h6>
+            <p class="text-muted mb-0 small">${activity.getFormattedDate()} | ${activity.duration} mins | ${activity.type}</p>
+          </div>
+          <div class="d-flex align-items-center">
+            <span class="badge bg-primary rounded-pill me-2">${activity.calories} cal</span>
+            <button type="button" class="btn btn-sm btn-outline-primary view-details-btn">
+              <i class="bi bi-info-circle"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Add swipe functionality
+    setupSwipeToDelete(activityElement, activity.id);
+    
+    // Add view details button functionality
+    const viewButton = activityElement.querySelector('.view-details-btn');
+    if (viewButton) {
+      viewButton.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent the swipe from triggering
+        openActivityModal(activity.id);
+      });
+    }
+    
+    return activityElement;
+  }
+  
   // Update the dashboard activities list (recent activities only)
   if (activitiesList && noActivities) {
     if (activities.length === 0) {
@@ -663,32 +704,7 @@ function updateActivitiesList() {
       const recentActivities = activities.slice(0, 5);
       
       recentActivities.forEach(activity => {
-        const activityElement = document.createElement('div');
-        activityElement.className = 'card mb-2 activity-card';
-        activityElement.dataset.activityId = activity.id;
-        activityElement.innerHTML = `
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center">
-              <div>
-                <h6 class="mb-1">${activity.name}</h6>
-                <p class="text-muted mb-0 small">${activity.getFormattedDate()} | ${activity.duration} mins | ${activity.type}</p>
-              </div>
-              <div>
-                <span class="badge bg-primary rounded-pill">${activity.calories} cal</span>
-              </div>
-            </div>
-          </div>
-        `;
-        
-        // Store the activity ID as a data attribute
-        activityElement.dataset.activityId = activity.id;
-        
-        // Make the activity card clickable
-        activityElement.addEventListener('click', () => openActivityModal(activity.id));
-        
-        // Add swipe functionality
-        setupSwipeToDelete(activityElement, activity.id);
-        
+        const activityElement = createActivityCard(activity);
         activitiesList.appendChild(activityElement);
       });
     }
@@ -710,29 +726,7 @@ function updateActivitiesList() {
       const sortedActivities = [...activities].sort((a, b) => b.date - a.date);
       
       sortedActivities.forEach(activity => {
-        const activityElement = document.createElement('div');
-        activityElement.className = 'card mb-2 activity-card';
-        activityElement.dataset.activityId = activity.id;
-        activityElement.innerHTML = `
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center">
-              <div>
-                <h6 class="mb-1">${activity.name}</h6>
-                <p class="text-muted mb-0 small">${activity.getFormattedDate()} | ${activity.duration} mins | ${activity.type}</p>
-              </div>
-              <div>
-                <span class="badge bg-primary rounded-pill">${activity.calories} cal</span>
-              </div>
-            </div>
-          </div>
-        `;
-        
-        // Make the activity card clickable
-        activityElement.addEventListener('click', () => openActivityModal(activity.id));
-        
-        // Add swipe functionality
-        setupSwipeToDelete(activityElement, activity.id);
-        
+        const activityElement = createActivityCard(activity);
         allActivitiesList.appendChild(activityElement);
       });
     }
@@ -1938,6 +1932,9 @@ function handleEditActivityFormSubmit(event) {
  */
 function handleDeleteActivity(activityId) {
   if (confirm('Are you sure you want to delete this activity?')) {
+    const activity = fitnessTracker.getActivityById(activityId);
+    
+    // First delete the activity from the fitness tracker
     const success = fitnessTracker.deleteActivity(activityId);
     
     if (success) {
@@ -1952,6 +1949,21 @@ function handleDeleteActivity(activityId) {
       updateFitnessStats();
       updateActivitiesList();
       updateActivityChart();
+      
+      // If the activity was synced from a health source, update the connection
+      if (activity && activity.sourceConnection) {
+        // Tell the connected health source to delete this activity
+        const connection = healthConnectionManager.getConnectionById(activity.sourceConnection);
+        if (connection) {
+          connection.deleteActivityFromSource(activity.sourceId)
+            .then(() => {
+              console.log(`Successfully deleted activity from health source: ${activity.sourceConnection}`);
+            })
+            .catch(error => {
+              console.error(`Failed to delete activity from health source: ${error}`);
+            });
+        }
+      }
       
       showMessage('Activity deleted successfully', 'success');
     } else {
