@@ -82,6 +82,9 @@
           <a class="nav-link" id="sleep-tab" href="#">Sleep</a>
         </li>
         <li class="nav-item">
+          <a class="nav-link" id="connections-tab" href="#">Connections</a>
+        </li>
+        <li class="nav-item">
           <a class="nav-link" id="about-tab" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal">About</a>
         </li>
       </ul>
@@ -351,6 +354,97 @@
               <canvas id="sleep-chart" height="200"></canvas>
             </div>
           </div>
+        </div>
+      </div>
+      
+      <!-- Connections Section (Initially Hidden) -->
+      <div id="connections-content" class="content-section" style="display: none;">
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">External Health Data Connections</h5>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addConnectionModal">
+              Connect a Device
+            </button>
+          </div>
+          <div class="card-body">
+            <div class="alert alert-info mb-4">
+              <i class="bi bi-info-circle me-2"></i>
+              Connect to your fitness devices and health apps to automatically import activity, calories, and workout data.
+            </div>
+            
+            <div class="row mb-4">
+              <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                  <div class="card-body text-center py-4">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/AppleHealth.png" alt="Apple Health" style="width: 60px; height: 60px;">
+                    <h5 class="mt-3">Apple Health</h5>
+                    <p class="text-muted small">Import activities, steps, workouts, and more from Apple Health</p>
+                    <button class="btn btn-outline-primary btn-connect" data-service="apple-health">Connect</button>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                  <div class="card-body text-center py-4">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/5/5c/Google_Fit_2018_Logo.svg" alt="Google Fit" style="width: 60px; height: 60px;">
+                    <h5 class="mt-3">Google Fit</h5>
+                    <p class="text-muted small">Import activities, steps, workouts, and more from Google Fit</p>
+                    <button class="btn btn-outline-primary btn-connect" data-service="google-fit">Connect</button>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                  <div class="card-body text-center py-4">
+                    <i class="bi bi-smartwatch" style="font-size: 60px;"></i>
+                    <h5 class="mt-3">Fitness Watch</h5>
+                    <p class="text-muted small">Connect your fitness watch to sync workout and activity data</p>
+                    <button class="btn btn-outline-primary btn-connect" data-service="fitness-watch">Connect</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <h5 class="mb-3">Connected Devices</h5>
+            <div id="connected-devices-list">
+              <!-- No devices connected yet -->
+              <div class="text-center py-4" id="no-connected-devices">
+                <p class="text-muted">No devices connected yet.</p>
+                <p class="small">Connect your devices to automatically import health and fitness data</p>
+              </div>
+            </div>
+            
+            <h5 class="mb-3 mt-4">Synced Data</h5>
+            <div id="synced-data-stats">
+              <div class="row">
+                <div class="col-md-3 col-6 mb-3">
+                  <div class="card stat-card">
+                    <h6>Last Sync</h6>
+                    <div class="stat-value" id="last-sync-time">Never</div>
+                  </div>
+                </div>
+                <div class="col-md-3 col-6 mb-3">
+                  <div class="card stat-card">
+                    <h6>Workouts</h6>
+                    <div class="stat-value" id="synced-workouts-count">0</div>
+                  </div>
+                </div>
+                <div class="col-md-3 col-6 mb-3">
+                  <div class="card stat-card">
+                    <h6>Steps</h6>
+                    <div class="stat-value" id="synced-steps-count">0</div>
+                  </div>
+                </div>
+                <div class="col-md-3 col-6 mb-3">
+                  <div class="card stat-card">
+                    <h6>Calories</h6>
+                    <div class="stat-value" id="synced-calories-count">0</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         </div>
       </div>
     </main>
