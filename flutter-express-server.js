@@ -2,73 +2,99 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const app = express();
-const PORT = 5000; // Try port 5000 first
 
-// Function to find an available port
-function startServerWithAvailablePort(initialPort) {
-  const server = app.listen(initialPort, '0.0.0.0', () => {
-    console.log(`Flutter Web App server running on http://0.0.0.0:${initialPort}`);
-    
-    // Log a clear message every 5 seconds to indicate the server is running
-    setInterval(() => {
-      console.log(`[HEALTH CHECK] Flutter Web App still running on port ${initialPort} - ${new Date().toISOString()}`);
-    }, 5000);
-    
-    // Log a message to ensure port is visible to port detection
-    console.log(`PORT=${initialPort} EXPLICITLY LISTENING`);
-  }).on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-      console.error(`Port ${initialPort} is already in use. Trying another port.`);
-      startServerWithAvailablePort(initialPort + 1);
-    } else {
-      console.error(`Error starting server: ${err.message}`);
-      process.exit(1);
-    }
-  });
+// Diagnostic information
+console.log('Starting Fitness Tracker Flutter Web Server');
+
+// Define directories to check for serving
+const publicDir = path.join(__dirname, 'public');
+const flutterBuildDir = path.join(__dirname, 'fitness_tracker/build/web');
+
+// Check if directories exist
+console.log(`Public directory exists: ${fs.existsSync(publicDir)}`);
+console.log(`Flutter build directory exists: ${fs.existsSync(flutterBuildDir)}`);
+
+// Serve static files from multiple directories
+if (fs.existsSync(publicDir)) {
+  console.log('Serving from public directory');
+  app.use(express.static(publicDir));
 }
 
-// Console logging middleware
+if (fs.existsSync(flutterBuildDir)) {
+  console.log('Serving from Flutter build directory');
+  app.use(express.static(flutterBuildDir));
+}
+
+// Middleware for logging
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  console.log(`Request: ${req.method} ${req.url}`);
   next();
 });
 
-// Check if required files exist and log their status
-const publicDir = path.join(__dirname, 'public');
-console.log(`Checking public directory at: ${publicDir}`);
-console.log(`Directory exists: ${fs.existsSync(publicDir)}`);
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).send('Server is healthy!');
+});
 
-if (fs.existsSync(publicDir)) {
-  const filesCheck = [
-    'index.html',
-    'flutter.js',
-    'main.dart.js'
-  ];
+// SPA fallback for Flutter routing
+app.get('*', (req, res) => {
+  // Try to serve index.html from either directory
+  let indexPath = path.join(publicDir, 'index.html');
+  let flutterIndexPath = path.join(flutterBuildDir, 'index.html');
   
-  filesCheck.forEach(file => {
-    const filePath = path.join(publicDir, file);
-    console.log(`File ${file} exists: ${fs.existsSync(filePath)}`);
-  });
+  if (fs.existsSync(indexPath)) {
+    console.log(`Serving index.html from public directory for: ${req.url}`);
+    res.sendFile(indexPath);
+  } else if (fs.existsSync(flutterIndexPath)) {
+    console.log(`Serving index.html from Flutter build directory for: ${req.url}`);
+    res.sendFile(flutterIndexPath);
+  } else {
+    console.log(`No index.html found for: ${req.url}`);
+    res.status(404).send('No index.html found in any directory');
+  }
+});
+
+// Function to start server with port conflict resolution
+function startServerWithAvailablePort(initialPort) {
+  let port = initialPort;
+  const maxPortAttempts = 10;
+  
+  function attemptToStart(currentPort, attempts) {
+    if (attempts >= maxPortAttempts) {
+      console.error(`Failed to find an available port after ${attempts} attempts.`);
+      process.exit(1);
+      return;
+    }
+    
+    const server = app.listen(currentPort, '0.0.0.0', () => {
+      console.log(`\n====================================`);
+      console.log(`✅ SERVER STARTED SUCCESSFULLY`);
+      console.log(`✅ PORT: ${currentPort}`);
+      console.log(`✅ Access URL: http://0.0.0.0:${currentPort}`);
+      console.log(`====================================\n`);
+      
+      // Print file diagnostics
+      console.log('File Diagnostics:');
+      ['index.html', 'flutter.js', 'main.dart.js'].forEach(file => {
+        const publicFilePath = path.join(publicDir, file);
+        const flutterFilePath = path.join(flutterBuildDir, file);
+        console.log(`${file} in public: ${fs.existsSync(publicFilePath)}`);
+        console.log(`${file} in Flutter build: ${fs.existsSync(flutterFilePath)}`);
+      });
+    }).on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.log(`Port ${currentPort} is in use, trying port ${currentPort + 1}...`);
+        attemptToStart(currentPort + 1, attempts + 1);
+      } else {
+        console.error(`Error starting server: ${err.message}`);
+        process.exit(1);
+      }
+    });
+  }
+  
+  // Start the first attempt
+  attemptToStart(port, 0);
 }
 
-// Serve static files from the public directory
-app.use(express.static(publicDir));
-
-// Custom health check route
-app.get('/health', (req, res) => {
-  res.status(200).send('Flutter Web App Server is healthy');
-});
-
-// For all other routes, serve index.html (SPA routing)
-app.get('*', (req, res) => {
-  res.sendFile(path.join(publicDir, 'index.html'));
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(`Error: ${err.message}`);
-  res.status(500).send('Something went wrong!');
-});
-
-// Start the server with the port finding function
-startServerWithAvailablePort(PORT);
+// Start the server at port 5002 (avoiding 5000 which might be in use)
+startServerWithAvailablePort(5002);

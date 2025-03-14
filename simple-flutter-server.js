@@ -1,70 +1,64 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
-const http = require('http');
 const app = express();
 
-// Console logging middleware
+// Immediately log that we're starting
+console.log('STARTING FLUTTER WEB SERVER');
+
+// Define directories
+const publicDir = path.join(__dirname, 'public');
+const flutterBuildDir = path.join(__dirname, 'fitness_tracker/build/web');
+
+// Serve static files
+console.log(`Public directory exists: ${fs.existsSync(publicDir)}`);
+app.use(express.static(publicDir));
+
+console.log(`Flutter build directory exists: ${fs.existsSync(flutterBuildDir)}`);
+app.use(express.static(flutterBuildDir));
+
+// Middleware for logging
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  console.log(`Request: ${req.method} ${req.url}`);
   next();
 });
 
-// Check if required files exist and log their status
-const publicDir = path.join(__dirname, 'public');
-console.log(`Checking public directory at: ${publicDir}`);
-console.log(`Directory exists: ${fs.existsSync(publicDir)}`);
-
-if (fs.existsSync(publicDir)) {
-  const filesCheck = [
-    'index.html',
-    'flutter.js',
-    'main.dart.js'
-  ];
-  
-  filesCheck.forEach(file => {
-    const filePath = path.join(publicDir, file);
-    console.log(`File ${file} exists: ${fs.existsSync(filePath)}`);
-  });
-}
-
-// Serve static files from the public directory
-app.use(express.static(publicDir));
-
-// Custom health check route
+// Health check endpoint
 app.get('/health', (req, res) => {
-  res.status(200).send('Flutter Web App Server is healthy');
+  res.status(200).send('Server is healthy!');
 });
 
-// For all other routes, serve index.html (SPA routing)
+// SPA fallback
 app.get('*', (req, res) => {
-  res.sendFile(path.join(publicDir, 'index.html'));
+  // Try to serve index.html from either directory
+  const indexPath = path.join(publicDir, 'index.html');
+  const flutterIndexPath = path.join(flutterBuildDir, 'index.html');
+  
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else if (fs.existsSync(flutterIndexPath)) {
+    res.sendFile(flutterIndexPath);
+  } else {
+    res.status(404).send('No index.html found');
+  }
 });
 
-// Function to find an available port and start the server
+// Fixed port - use port 5000 which is what Replit expects
 function startServer(preferredPort = 5000) {
-  const server = http.createServer(app);
-  
-  server.on('error', (e) => {
-    if (e.code === 'EADDRINUSE') {
-      console.log(`Port ${preferredPort} is in use, trying ${preferredPort + 1}...`);
-      startServer(preferredPort + 1);
-    } else {
-      console.error(`Server error: ${e.message}`);
-    }
-  });
-
-  server.listen(preferredPort, '0.0.0.0', () => {
-    const address = server.address();
-    console.log(`Flutter Web App server running on http://0.0.0.0:${address.port}`);
-    console.log(`PORT=${address.port}`);
+  // Start server immediately on the preferred port
+  app.listen(preferredPort, '0.0.0.0', () => {
+    console.log(`Flutter Web Server running at http://0.0.0.0:${preferredPort}`);
     
-    // Set up a ping every 5 seconds to keep the server detectable
-    setInterval(() => {
-      console.log(`SERVER HEALTH: Still running on port ${address.port} at ${new Date().toISOString()}`);
-    }, 5000);
+    // Check required files
+    console.log('File availability:');
+    ['index.html', 'flutter.js', 'main.dart.js'].forEach(file => {
+      console.log(`${file} in public: ${fs.existsSync(path.join(publicDir, file))}`);
+      console.log(`${file} in Flutter build: ${fs.existsSync(path.join(flutterBuildDir, file))}`);
+    });
+  }).on('error', (err) => {
+    console.error(`Server failed to start on port ${preferredPort}:`, err.message);
   });
 }
 
-// Try to start on port 5001 directly
-startServer(5001);
+// Start the server on port 5000
+startServer();

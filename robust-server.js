@@ -1,103 +1,76 @@
-// Basic HTTP server with minimal dependencies and maximum resilience
-const http = require('http');
-const fs = require('fs');
+const express = require('express');
 const path = require('path');
+const fs = require('fs');
+const app = express();
 
-// Common MIME types for file extensions
-const mimeTypes = {
-  '.html': 'text/html',
-  '.js': 'text/javascript',
-  '.css': 'text/css',
-  '.json': 'application/json',
-  '.png': 'image/png',
-  '.jpg': 'image/jpg',
-  '.gif': 'image/gif',
-  '.svg': 'image/svg+xml',
-  '.ico': 'image/x-icon'
-};
+// Serve static files from the public directory
+const publicDir = path.join(__dirname, 'public');
+app.use(express.static(publicDir));
 
-// Create simple HTTP server with synchronous file serving
-const server = http.createServer((req, res) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
-  
-  // Special API endpoint for health check
-  if (req.url === '/api/health') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'healthy', time: new Date().toISOString() }));
-    return;
-  }
-  
-  // Set default file path to index.html if root is requested
-  let filePath = req.url === '/' ? './index.html' : '.' + req.url;
-  
-  try {
-    // Check if file exists
-    if (fs.existsSync(filePath)) {
-      // Get file extension and content type
-      const extname = path.extname(filePath);
-      const contentType = mimeTypes[extname] || 'application/octet-stream';
-      
-      // Read and serve file synchronously to avoid any async issues
-      const content = fs.readFileSync(filePath);
-      res.writeHead(200, { 'Content-Type': contentType });
-      res.end(content);
-    } else {
-      // For single-page apps, serve index.html for any non-file path
-      if (!path.extname(req.url) && req.url !== '/') {
-        const content = fs.readFileSync('./index.html');
-        res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end(content);
-      } else {
-        // 404 for files that don't exist
-        res.writeHead(404);
-        res.end('404 Not Found');
-      }
-    }
-  } catch (error) {
-    console.error('Error serving file:', error);
-    res.writeHead(500);
-    res.end('Internal Server Error');
-  }
-});
-
-// Try multiple ports if needed
-function startServer(port) {
-  try {
-    server.listen(port, '0.0.0.0', () => {
-      console.log(`Server is running on http://0.0.0.0:${port}`);
-      console.log(`Server started at: ${new Date().toISOString()}`);
-    });
-  } catch (error) {
-    console.error(`Could not start server on port ${port}:`, error);
-    // Try next port
-    if (port < 5010) {
-      console.log(`Trying port ${port + 1}...`);
-      startServer(port + 1);
-    }
-  }
+// Important: Also serve from the fitness_tracker/build/web directory
+// This is where the Flutter build output is located
+const flutterBuildDir = path.join(__dirname, 'fitness_tracker/build/web');
+if (fs.existsSync(flutterBuildDir)) {
+  console.log(`Flutter build directory found: ${flutterBuildDir}`);
+  app.use(express.static(flutterBuildDir));
+} else {
+  console.log(`Flutter build directory not found: ${flutterBuildDir}`);
 }
 
-// Handle server errors
-server.on('error', (error) => {
-  if (error.code === 'EADDRINUSE') {
-    console.log(`Port 5003 is in use, trying 5004...`);
-    startServer(5004);
+// Logging middleware
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  next();
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).send('Server is healthy!');
+});
+
+// SPA route handling (important for Flutter web apps)
+app.get('*', (req, res) => {
+  const indexPath = path.join(publicDir, 'index.html');
+  const flutterIndexPath = path.join(flutterBuildDir, 'index.html');
+  
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else if (fs.existsSync(flutterIndexPath)) {
+    res.sendFile(flutterIndexPath);
   } else {
-    console.error('Server error:', error);
+    res.status(404).send('No index.html found');
   }
 });
 
-// Start the server on port 5003 (changed from 5000 to avoid conflicts with Flutter and Basic servers)
-startServer(5003);
+// Fixed port approach - will try to start on port 5000
+function startServer(port) {
+  console.log(`Attempting to start server on port ${port}...`);
+  
+  app.listen(port, '0.0.0.0', () => {
+    console.log(`\n====================================`);
+    console.log(`✅ SERVER STARTED SUCCESSFULLY`);
+    console.log(`✅ PORT: ${port}`);
+    console.log(`✅ Access URL: http://0.0.0.0:${port}`);
+    console.log(`====================================\n`);
+    
+    // Print file diagnostics
+    console.log('File Diagnostics:');
+    const requiredFiles = ['index.html', 'flutter.js', 'main.dart.js'];
+    requiredFiles.forEach(file => {
+      const filePath = path.join(publicDir, file);
+      const flutterFilePath = path.join(flutterBuildDir, file);
+      console.log(`${file} in public: ${fs.existsSync(filePath)}`);
+      console.log(`${file} in Flutter build: ${fs.existsSync(flutterFilePath)}`);
+    });
+    
+    // Keep-alive heartbeat
+    setInterval(() => {
+      console.log(`Server health: Running on port ${port} at ${new Date().toISOString()}`);
+    }, 10000);
+  }).on('error', (err) => {
+    console.error(`Failed to start server on port ${port}: ${err.message}`);
+  });
+}
 
-// Handle process termination
-process.on('SIGINT', () => {
-  console.log('Server shutting down...');
-  process.exit(0);
-});
-
-// Handle uncaught exceptions
-process.on('uncaughtException', (error) => {
-  console.error('Uncaught exception:', error);
-  console.log('Server will continue running');
-});
+// Start the server on port 5000
+startServer(5000);
