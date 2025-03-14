@@ -2634,6 +2634,86 @@ function initializeWorkoutForm() {
       e.preventDefault();
       const exerciseName = this.dataset.name;
       activityNameInput.value = exerciseName;
+      
+      // Check if this is a weight training exercise with additional data
+      if (this.dataset.equipment) {
+        // Set workout category to weights
+        document.getElementById('workout-weights').checked = true;
+        weightTrainingOptions.style.display = 'block';
+        document.getElementById('activity-type').value = 'weights';
+        
+        // Select the appropriate equipment type
+        const equipment = this.dataset.equipment;
+        document.getElementById(`equipment-${equipment}`).checked = true;
+        
+        // Update UI based on equipment type
+        updateEquipmentOptions(equipment);
+        
+        // Set sets and reps values
+        if (this.dataset.sets) {
+          const setsInput = document.getElementById('sets-input');
+          setsInput.value = this.dataset.sets;
+          updateScrollWheelPosition(setsInput, parseInt(this.dataset.sets));
+        }
+        
+        if (this.dataset.reps) {
+          const repsInput = document.getElementById('reps-input');
+          repsInput.value = this.dataset.reps;
+          updateScrollWheelPosition(repsInput, parseInt(this.dataset.reps));
+        }
+        
+        // Handle weight
+        if (this.dataset.weight && equipment !== 'bodyweight') {
+          const weight = parseFloat(this.dataset.weight);
+          
+          if (equipment === 'barbell') {
+            // For barbell, calculate which plates to add to match the weight
+            const barWeight = 45; // Standard barbell weight
+            let plateWeight = weight - barWeight;
+            
+            // Clear existing plates
+            document.getElementById('clear-plates-btn').click();
+            
+            // If there's weight to add beyond the bar
+            if (plateWeight > 0) {
+              // Weight needs to be distributed on both sides
+              plateWeight = plateWeight / 2;
+              
+              // Standard plate weights (descending order)
+              const plateWeights = [45, 35, 25, 15, 10, 5, 2.5];
+              let remainingWeight = plateWeight;
+              
+              // Add plates to match the target weight as closely as possible
+              plateWeights.forEach(pw => {
+                while (remainingWeight >= pw) {
+                  // Find and click the button for this plate weight
+                  const plateButtons = document.querySelectorAll('.plate-btn');
+                  for (const btn of plateButtons) {
+                    if (parseFloat(btn.dataset.weight) === pw) {
+                      btn.click();
+                      break;
+                    }
+                  }
+                  remainingWeight -= pw;
+                }
+              });
+            }
+          } else {
+            // For dumbbell or machine, just set the weight input
+            const otherWeightInput = document.getElementById('other-weight-input');
+            otherWeightInput.value = weight;
+            updateScrollWheelPosition(otherWeightInput, weight);
+          }
+        }
+        
+        // Update exercise presets visibility
+        updateExercisePresets('weights');
+      } else {
+        // Assume cardio exercise if no equipment data
+        document.getElementById('workout-cardio').checked = true;
+        weightTrainingOptions.style.display = 'none';
+        updateExercisePresets('cardio');
+      }
     });
   });
   
