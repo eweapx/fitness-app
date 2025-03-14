@@ -270,6 +270,9 @@ function updateDashboard() {
   
   // Update habits list
   updateHabitsList();
+
+  // Update nutrition statistics
+  updateNutritionStats();
 }
 
 /**
@@ -609,6 +612,269 @@ function createHabitElement(habit, showDetails = false) {
   habitElement.innerHTML = habitHTML;
   
   return habitElement;
+}
+
+/**
+ * Handle the meal form submission
+ * @param {Event} event - Form submission event
+ */
+function handleMealFormSubmit(event) {
+  event.preventDefault();
+  
+  // Get form values
+  const name = document.getElementById('meal-name').value;
+  const description = document.getElementById('meal-description').value;
+  const calories = document.getElementById('meal-calories').value;
+  const protein = document.getElementById('meal-protein').value;
+  const carbs = document.getElementById('meal-carbs').value;
+  const fat = document.getElementById('meal-fat').value;
+  const category = document.getElementById('meal-category').value;
+  const timeStr = document.getElementById('meal-time').value;
+  
+  // Create date with the specified time if available
+  let date = new Date();
+  if (timeStr) {
+    const [hours, minutes] = timeStr.split(':');
+    date.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+  }
+  
+  // Create and add the meal
+  const meal = new Meal(name, description, calories, protein, carbs, fat, category, date);
+  
+  if (nutritionTracker.addMeal(meal)) {
+    // Close the modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('addMealModal'));
+    modal.hide();
+    
+    // Reset the form
+    event.target.reset();
+    
+    // Update the dashboard
+    updateDashboard();
+    
+    // Show success message
+    showMessage('Meal logged successfully!', 'success');
+  } else {
+    // Show error message
+    showMessage('Please fill in all required fields correctly.', 'danger');
+  }
+}
+
+/**
+ * Update nutrition statistics
+ */
+function updateNutritionStats() {
+  // Get today's nutrition summary
+  const today = new Date();
+  const nutritionSummary = nutritionTracker.getNutritionSummaryByDate(today);
+  const goals = nutritionTracker.getGoals();
+  
+  // Update nutrition stats in the UI
+  const caloriesElement = document.getElementById('nutrition-calories');
+  if (caloriesElement) {
+    caloriesElement.textContent = nutritionSummary.calories.toLocaleString();
+  }
+  
+  const proteinElement = document.getElementById('nutrition-protein');
+  if (proteinElement) {
+    proteinElement.textContent = `${nutritionSummary.protein.toLocaleString()}g`;
+  }
+  
+  const carbsElement = document.getElementById('nutrition-carbs');
+  if (carbsElement) {
+    carbsElement.textContent = `${nutritionSummary.carbs.toLocaleString()}g`;
+  }
+  
+  const fatElement = document.getElementById('nutrition-fat');
+  if (fatElement) {
+    fatElement.textContent = `${nutritionSummary.fat.toLocaleString()}g`;
+  }
+  
+  // Update meals list
+  updateMealsList();
+  
+  // Update nutrition chart
+  updateNutritionChart();
+}
+
+/**
+ * Update meals list
+ */
+function updateMealsList() {
+  // Get meals element
+  const mealsListElement = document.getElementById('meals-list');
+  if (!mealsListElement) return;
+  
+  // Get today's meals
+  const today = new Date();
+  const todaysMeals = nutritionTracker.getMealsByDate(today);
+  
+  // Check if we have meals for today
+  if (todaysMeals.length > 0) {
+    mealsListElement.innerHTML = '';
+    
+    // Sort by time (earliest first)
+    const sortedMeals = [...todaysMeals].sort((a, b) => a.date - b.date);
+    
+    sortedMeals.forEach(meal => {
+      const mealElement = document.createElement('div');
+      mealElement.className = 'd-flex align-items-center mb-3 p-2 border-bottom';
+      
+      // Determine icon class based on meal category
+      let iconClass = 'bi-egg-fried';
+      let iconBg = 'bg-primary';
+      
+      if (meal.category === 'breakfast') {
+        iconClass = 'bi-cup-hot';
+        iconBg = 'bg-warning';
+      } else if (meal.category === 'lunch') {
+        iconClass = 'bi-egg-fried';
+        iconBg = 'bg-success';
+      } else if (meal.category === 'dinner') {
+        iconClass = 'bi-cup';
+        iconBg = 'bg-danger';
+      } else if (meal.category === 'snack') {
+        iconClass = 'bi-apple';
+        iconBg = 'bg-info';
+      } else if (meal.category === 'dessert') {
+        iconClass = 'bi-cake';
+        iconBg = 'bg-secondary';
+      }
+      
+      mealElement.innerHTML = `
+        <div class="activity-icon ${iconBg} text-white">
+          <i class="bi ${iconClass}"></i>
+        </div>
+        <div class="flex-grow-1">
+          <div class="d-flex justify-content-between">
+            <h6 class="mb-0">${meal.name}</h6>
+            <span class="text-muted small">${meal.getFormattedTime()}</span>
+          </div>
+          <p class="mb-0 text-muted small">${meal.description || ''}</p>
+          <div class="text-muted small d-flex flex-wrap">
+            <span class="me-3"><i class="bi bi-fire me-1"></i> ${meal.calories} cal</span>
+            <span class="me-3"><i class="bi bi-egg me-1"></i> ${meal.protein}g protein</span>
+            <span class="me-3"><i class="bi bi-circle me-1"></i> ${meal.carbs}g carbs</span>
+            <span><i class="bi bi-droplet me-1"></i> ${meal.fat}g fat</span>
+          </div>
+        </div>
+      `;
+      
+      mealsListElement.appendChild(mealElement);
+    });
+  } else {
+    // No meals for today
+    mealsListElement.innerHTML = `
+      <div class="text-center py-4">
+        <p class="text-muted">No meals logged yet today.</p>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addMealModal">
+          Log Your First Meal
+        </button>
+      </div>
+    `;
+  }
+}
+
+/**
+ * Update nutrition chart
+ */
+function updateNutritionChart() {
+  const chartCanvas = document.getElementById('nutrition-chart');
+  if (!chartCanvas) return;
+  
+  // Get weekly nutrition data
+  const weeklyData = nutritionTracker.getWeeklyNutritionSummary();
+  
+  // Format dates for labels
+  const labels = weeklyData.map(day => {
+    const date = day.date;
+    return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  });
+  
+  // Get data for each nutrient
+  const caloriesData = weeklyData.map(day => day.summary.calories);
+  const proteinData = weeklyData.map(day => day.summary.protein);
+  const carbsData = weeklyData.map(day => day.summary.carbs);
+  const fatData = weeklyData.map(day => day.summary.fat);
+  
+  // Create or update chart
+  if (window.nutritionChart) {
+    // Update existing chart
+    window.nutritionChart.data.labels = labels;
+    window.nutritionChart.data.datasets[0].data = caloriesData;
+    window.nutritionChart.data.datasets[1].data = proteinData;
+    window.nutritionChart.data.datasets[2].data = carbsData;
+    window.nutritionChart.data.datasets[3].data = fatData;
+    window.nutritionChart.update();
+  } else {
+    // Create new chart
+    window.nutritionChart = new Chart(chartCanvas, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Calories',
+            data: caloriesData,
+            backgroundColor: 'rgba(54, 162, 235, 0.5)',
+            borderColor: 'rgb(54, 162, 235)',
+            borderWidth: 1,
+            yAxisID: 'y'
+          },
+          {
+            label: 'Protein (g)',
+            data: proteinData,
+            backgroundColor: 'rgba(255, 99, 132, 0.5)',
+            borderColor: 'rgb(255, 99, 132)',
+            borderWidth: 1,
+            yAxisID: 'y1'
+          },
+          {
+            label: 'Carbs (g)',
+            data: carbsData,
+            backgroundColor: 'rgba(75, 192, 192, 0.5)',
+            borderColor: 'rgb(75, 192, 192)',
+            borderWidth: 1,
+            yAxisID: 'y1'
+          },
+          {
+            label: 'Fat (g)',
+            data: fatData,
+            backgroundColor: 'rgba(255, 205, 86, 0.5)',
+            borderColor: 'rgb(255, 205, 86)',
+            borderWidth: 1,
+            yAxisID: 'y1'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            type: 'linear',
+            display: true,
+            position: 'left',
+            title: {
+              display: true,
+              text: 'Calories'
+            }
+          },
+          y1: {
+            type: 'linear',
+            display: true,
+            position: 'right',
+            title: {
+              display: true,
+              text: 'Grams'
+            },
+            grid: {
+              drawOnChartArea: false
+            }
+          }
+        }
+      }
+    });
+  }
 }
 
 /**
