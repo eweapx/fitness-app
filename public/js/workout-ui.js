@@ -22,6 +22,15 @@ let workoutStartTime = null;
  * Initialize workout UI
  */
 function initializeWorkoutUI() {
+  // Connect main UI buttons for workout management
+  const createEmptyWorkoutBtn = document.getElementById('create-empty-workout');
+  if (createEmptyWorkoutBtn) {
+    createEmptyWorkoutBtn.addEventListener('click', () => {
+      // Start an empty workout without a template
+      startWorkout(null);
+    });
+  }
+  
   // Set up event listeners for workout creation
   document.getElementById('create-workout-btn').addEventListener('click', handleCreateWorkout);
   
@@ -166,22 +175,35 @@ function handleCreateWorkout() {
 
 /**
  * Start a workout from a routine
- * @param {string} routineId - ID of the routine to start
+ * @param {string|null} routineId - ID of the routine to start, or null for empty workout
  */
 function startWorkout(routineId) {
-  const routine = workoutManager.getRoutineById(routineId);
-  if (!routine) return;
+  let workout;
   
-  // Start new workout
-  const workout = workoutManager.startWorkout(routine);
+  if (routineId) {
+    // Get the routine if an ID was provided
+    const routine = workoutManager.getRoutineById(routineId);
+    if (!routine) return;
+    
+    // Start a workout from the routine
+    workout = workoutManager.startWorkout(routine);
+    
+    // Update UI with routine details
+    document.getElementById('active-workout-name').textContent = routine.name;
+    document.getElementById('active-workout-description').textContent = routine.description || 'No description';
+  } else {
+    // Start an empty workout
+    workout = workoutManager.startWorkout(null);
+    
+    // Set default values for empty workout
+    document.getElementById('active-workout-name').textContent = 'Quick Workout';
+    document.getElementById('active-workout-description').textContent = 'Custom workout session';
+  }
+  
   currentWorkoutId = workout.id;
   workoutStartTime = new Date();
   
-  // Update UI
-  document.getElementById('active-workout-name').textContent = routine.name;
-  document.getElementById('active-workout-description').textContent = routine.description || 'No description';
-  
-  // Populate exercises
+  // Populate exercises (will be empty for new workout)
   renderWorkoutExercises(workout);
   
   // Start workout timer
