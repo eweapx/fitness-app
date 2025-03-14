@@ -1,695 +1,685 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
-
 import '../providers/user_provider.dart';
 import '../providers/settings_provider.dart';
-import '../services/notification_service.dart';
-import '../utils/constants.dart';
-import '../widgets/common_widgets.dart';
-import 'auth/login_screen.dart';
+import '../themes/app_text_styles.dart';
+import '../utils/app_constants.dart';
+import '../utils/app_helpers.dart';
 import 'profile_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  _SettingsScreenState createState() => _SettingsScreenState();
+  State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _isLoading = false;
-  final NotificationService _notificationService = NotificationService();
-  
-  Future<void> _signOut() async {
-    setState(() => _isLoading = true);
-    
-    try {
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
-      await userProvider.signOut();
-      
-      // Navigate to login screen
-      if (mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(
-            builder: (context) => const LoginScreen(),
-          ),
-          (route) => false,
-        );
-      }
-    } catch (e) {
-      print('Error signing out: $e');
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error signing out: ${e.toString()}')),
-        );
-      }
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-  
-  Future<void> _resetSettings() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Reset Settings'),
-        content: const Text('Are you sure you want to reset all settings to defaults?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Reset'),
-          ),
-        ],
-      ),
-    );
-    
-    if (confirm == true) {
-      setState(() => _isLoading = true);
-      
-      try {
-        final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
-        await settingsProvider.resetToDefaults();
-        
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Settings reset to defaults'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      } catch (e) {
-        print('Error resetting settings: $e');
-        
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error resetting settings: ${e.toString()}')),
-          );
-        }
-      } finally {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-  
   Future<void> _launchURL(String url) async {
-    final uri = Uri.parse(url);
-    try {
-      await launchUrl(uri);
-    } catch (e) {
-      print('Error launching URL: $e');
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error opening link: ${e.toString()}')),
-        );
-      }
+    final Uri uri = Uri.parse(url);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not launch $url')),
+      );
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final userProvider = Provider.of<UserProvider>(context);
     final settingsProvider = Provider.of<SettingsProvider>(context);
-    final user = userProvider.user;
-    final userProfile = userProvider.userProfile;
     
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
       ),
-      body: _isLoading
-          ? const LoadingIndicator(message: 'Loading settings...')
-          : ListView(
-              children: [
-                // User profile section
-                if (user != null) _buildProfileSection(user, userProfile),
-                
-                // App settings section
-                _buildAppSettingsSection(settingsProvider),
-                
-                // Notifications section
-                _buildNotificationsSection(settingsProvider),
-                
-                // Goals section
-                _buildGoalsSection(settingsProvider),
-                
-                // Support section
-                _buildSupportSection(),
-                
-                // About section
-                _buildAboutSection(),
-                
-                // Sign out button
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: AppButton(
-                    label: 'Sign Out',
-                    icon: Icons.logout,
-                    onPressed: _signOut,
-                    isFullWidth: true,
-                    color: Colors.red,
-                  ),
-                ),
-                
-                // Reset settings button
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: AppButton(
-                    label: 'Reset Settings',
-                    icon: Icons.restore,
-                    onPressed: _resetSettings,
-                    isFullWidth: true,
-                    isOutlined: true,
-                    color: Colors.orange,
-                  ),
-                ),
-                
-                const SizedBox(height: 32),
-              ],
-            ),
+      body: ListView(
+        children: [
+          // Profile section
+          if (userProvider.isAuthenticated) _buildProfileSection(userProvider),
+          
+          // Units & Preferences
+          _buildUnitsSection(settingsProvider),
+          
+          // Goal settings
+          _buildGoalsSection(settingsProvider),
+          
+          // Display settings
+          _buildDisplaySection(settingsProvider),
+          
+          // Notifications settings
+          _buildNotificationsSection(settingsProvider),
+          
+          // Support section
+          _buildSupportSection(),
+          
+          // About section
+          _buildAboutSection(),
+          
+          // Logout button
+          if (userProvider.isAuthenticated) _buildLogoutButton(userProvider),
+          
+          const SizedBox(height: 40),
+        ],
+      ),
     );
   }
-  
-  Widget _buildProfileSection(User user, Map<String, dynamic>? userProfile) {
+
+  Widget _buildProfileSection(UserProvider userProvider) {
     return Card(
-      margin: const EdgeInsets.all(16),
+      margin: const EdgeInsets.all(8.0),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: AppColors.primary.withOpacity(0.1),
-                  backgroundImage: user.photoURL != null ? NetworkImage(user.photoURL!) : null,
-                  child: user.photoURL == null
-                      ? Text(
-                          (user.displayName ?? user.email ?? 'U')[0].toUpperCase(),
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary,
-                          ),
-                        )
-                      : null,
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        user.displayName ?? 'User',
-                        style: AppTextStyles.heading3,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        user.email ?? '',
-                        style: AppTextStyles.body.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            Text(
+              'Profile',
+              style: AppTextStyles.heading3,
             ),
-            const SizedBox(height: 16),
-            AppButton(
-              label: 'Edit Profile',
-              icon: Icons.edit,
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ProfileScreen(),
-                  ),
-                );
-              },
-              isOutlined: true,
+            ListTile(
+              leading: CircleAvatar(
+                backgroundImage: userProvider.userPhotoUrl != null
+                    ? NetworkImage(userProvider.userPhotoUrl!)
+                    : null,
+                child: userProvider.userPhotoUrl == null
+                    ? const Icon(Icons.person)
+                    : null,
+              ),
+              title: Text(userProvider.userName ?? 'User'),
+              subtitle: Text(userProvider.userEmail ?? 'No email'),
+              trailing: IconButton(
+                icon: const Icon(Icons.edit),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ProfileScreen(),
+                    ),
+                  );
+                },
+              ),
             ),
           ],
         ),
       ),
     );
   }
-  
-  Widget _buildAppSettingsSection(SettingsProvider settingsProvider) {
+
+  Widget _buildUnitsSection(SettingsProvider settingsProvider) {
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text(
-              'App Settings',
+      margin: const EdgeInsets.all(8.0),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Units & Preferences',
               style: AppTextStyles.heading3,
             ),
-          ),
-          const Divider(height: 1),
-          
-          // Theme mode
-          ListTile(
-            leading: const Icon(Icons.brightness_6),
-            title: const Text('Theme'),
-            subtitle: const Text('Light, dark, or system default'),
-            trailing: DropdownButton<ThemeMode>(
-              value: settingsProvider.themeMode,
-              underline: Container(),
-              items: const [
-                DropdownMenuItem(
-                  value: ThemeMode.system,
-                  child: Text('System'),
-                ),
-                DropdownMenuItem(
-                  value: ThemeMode.light,
-                  child: Text('Light'),
-                ),
-                DropdownMenuItem(
-                  value: ThemeMode.dark,
-                  child: Text('Dark'),
-                ),
-              ],
-              onChanged: (value) {
-                if (value != null) {
-                  settingsProvider.setThemeMode(value);
-                }
-              },
-            ),
-          ),
-          
-          // Measurement system
-          SwitchListTile(
-            secondary: const Icon(Icons.straighten),
-            title: const Text('Use Metric System'),
-            subtitle: Text(
-              settingsProvider.useMetricSystem
-                  ? 'Using kg, km, cm'
-                  : 'Using lbs, miles, feet',
-            ),
-            value: settingsProvider.useMetricSystem,
-            onChanged: (value) {
-              settingsProvider.setUseMetricSystem(value);
-            },
-          ),
-          
-          // Time format
-          ListTile(
-            leading: const Icon(Icons.access_time),
-            title: const Text('Time Format'),
-            subtitle: Text(
-              settingsProvider.timeFormat == AppConstants.timeFormat24h
-                  ? '24-hour (13:00)'
-                  : '12-hour (1:00 PM)',
-            ),
-            trailing: DropdownButton<String>(
-              value: settingsProvider.timeFormat,
-              underline: Container(),
-              items: [
-                DropdownMenuItem(
-                  value: AppConstants.timeFormat24h,
-                  child: const Text('24-hour'),
-                ),
-                DropdownMenuItem(
-                  value: AppConstants.timeFormat12h,
-                  child: const Text('12-hour'),
-                ),
-              ],
-              onChanged: (value) {
-                if (value != null) {
-                  settingsProvider.setTimeFormat(value);
-                }
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildNotificationsSection(SettingsProvider settingsProvider) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text(
-              'Notifications',
-              style: AppTextStyles.heading3,
-            ),
-          ),
-          const Divider(height: 1),
-          
-          // Notifications master switch
-          SwitchListTile(
-            secondary: const Icon(Icons.notifications),
-            title: const Text('Enable Notifications'),
-            subtitle: const Text('Turn on/off all notifications'),
-            value: settingsProvider.notificationsEnabled,
-            onChanged: (value) async {
-              await settingsProvider.setNotificationsEnabled(value);
-              
-              // Request permissions if turning on
-              if (value) {
-                await _notificationService.requestPermissions();
-              }
-            },
-          ),
-          
-          if (settingsProvider.notificationsEnabled) ...[
-            // Workout reminders
             SwitchListTile(
-              secondary: const Icon(Icons.fitness_center),
-              title: const Text('Workout Reminders'),
-              subtitle: const Text('Get reminded about scheduled workouts'),
-              value: settingsProvider.notificationChannels[AppConstants.notificationChannelWorkouts] ?? false,
+              title: const Text('Use Metric System'),
+              subtitle: const Text('Switch between metric and imperial units'),
+              value: settingsProvider.useMetricUnits,
               onChanged: (value) {
-                settingsProvider.setNotificationChannelEnabled(
-                  AppConstants.notificationChannelWorkouts,
-                  value,
-                );
+                settingsProvider.setUseMetricUnits(value);
               },
             ),
-            
-            // Habit reminders
-            SwitchListTile(
-              secondary: const Icon(Icons.repeat),
-              title: const Text('Habit Reminders'),
-              subtitle: const Text('Get reminded about your habits'),
-              value: settingsProvider.notificationChannels[AppConstants.notificationChannelHabits] ?? false,
-              onChanged: (value) {
-                settingsProvider.setNotificationChannelEnabled(
-                  AppConstants.notificationChannelHabits,
-                  value,
-                );
-              },
-            ),
-            
-            // Water reminders
-            SwitchListTile(
-              secondary: const Icon(Icons.water_drop),
-              title: const Text('Water Reminders'),
-              subtitle: const Text('Get reminders to stay hydrated'),
-              value: settingsProvider.notificationChannels[AppConstants.notificationChannelWater] ?? false,
-              onChanged: (value) {
-                settingsProvider.setNotificationChannelEnabled(
-                  AppConstants.notificationChannelWater,
-                  value,
-                );
-                
-                // Schedule or cancel water reminders
-                if (value) {
-                  _notificationService.scheduleWaterReminders();
-                } else {
-                  // Cancel water reminders (this would need to be implemented in the service)
-                }
-              },
-            ),
-            
-            // Meal reminders
-            SwitchListTile(
-              secondary: const Icon(Icons.restaurant_menu),
-              title: const Text('Meal Planning Reminders'),
-              subtitle: const Text('Get reminders to plan your meals'),
-              value: settingsProvider.notificationChannels[AppConstants.notificationChannelMeals] ?? false,
-              onChanged: (value) {
-                settingsProvider.setNotificationChannelEnabled(
-                  AppConstants.notificationChannelMeals,
-                  value,
-                );
-                
-                // Schedule or cancel meal reminders
-                if (value) {
-                  _notificationService.scheduleMealPlanningReminder();
-                } else {
-                  // Cancel meal reminders (this would need to be implemented in the service)
-                }
-              },
-            ),
+            if (!settingsProvider.useMetricUnits) ...[
+              const Divider(),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: Text(
+                  'You are using imperial units (lb, ft, mi, oz)',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            ] else ...[
+              const Divider(),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: Text(
+                  'You are using metric units (kg, cm, km, ml)',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
-  
+
   Widget _buildGoalsSection(SettingsProvider settingsProvider) {
-    final isMetric = settingsProvider.useMetricSystem;
-    
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text(
+      margin: const EdgeInsets.all(8.0),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
               'Goals',
               style: AppTextStyles.heading3,
             ),
-          ),
-          const Divider(height: 1),
-          
-          // Steps goal
-          ListTile(
-            leading: const Icon(Icons.directions_walk),
-            title: const Text('Daily Steps Goal'),
-            subtitle: Text('${settingsProvider.stepsGoal} steps'),
-            trailing: IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () => _showGoalEditDialog(
-                'Steps Goal',
-                'Enter your daily steps goal',
-                settingsProvider.stepsGoal.toString(),
-                (value) {
-                  final steps = int.tryParse(value);
-                  if (steps != null && steps > 0) {
-                    settingsProvider.setStepsGoal(steps);
-                  }
+            ListTile(
+              title: const Text('Daily Step Goal'),
+              subtitle: Text('${AppHelpers.formatNumber(settingsProvider.stepGoal)} steps'),
+              trailing: IconButton(
+                icon: const Icon(Icons.edit),
+                onPressed: () {
+                  _showStepGoalDialog(settingsProvider);
                 },
               ),
             ),
-          ),
-          
-          // Calories goal
-          ListTile(
-            leading: const Icon(Icons.local_fire_department),
-            title: const Text('Daily Calories Goal'),
-            subtitle: Text('${settingsProvider.caloriesGoal} kcal'),
-            trailing: IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () => _showGoalEditDialog(
-                'Calories Goal',
-                'Enter your daily calories goal',
-                settingsProvider.caloriesGoal.toString(),
-                (value) {
-                  final calories = int.tryParse(value);
-                  if (calories != null && calories > 0) {
-                    settingsProvider.setCaloriesGoal(calories);
-                  }
+            ListTile(
+              title: const Text('Daily Water Goal'),
+              subtitle: settingsProvider.useMetricUnits
+                  ? Text('${settingsProvider.waterGoal} ml')
+                  : Text('${AppHelpers.mlToOz(settingsProvider.waterGoal.toDouble()).toStringAsFixed(1)} oz'),
+              trailing: IconButton(
+                icon: const Icon(Icons.edit),
+                onPressed: () {
+                  _showWaterGoalDialog(settingsProvider);
                 },
               ),
             ),
-          ),
-          
-          // Water goal
-          ListTile(
-            leading: const Icon(Icons.water_drop),
-            title: const Text('Daily Water Intake Goal'),
-            subtitle: Text(
-              isMetric
-                  ? '${settingsProvider.waterGoal} ml'
-                  : '${AppHelpers.mlToOz(settingsProvider.waterGoal.toDouble()).toStringAsFixed(1)} oz',
-            ),
-            trailing: IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () => _showGoalEditDialog(
-                'Water Intake Goal',
-                isMetric
-                    ? 'Enter your daily water intake goal (ml)'
-                    : 'Enter your daily water intake goal (oz)',
-                isMetric
-                    ? settingsProvider.waterGoal.toString()
-                    : AppHelpers.mlToOz(settingsProvider.waterGoal.toDouble()).toStringAsFixed(0),
-                (value) {
-                  final water = int.tryParse(value);
-                  if (water != null && water > 0) {
-                    if (isMetric) {
-                      settingsProvider.setWaterGoal(water);
-                    } else {
-                      // Convert oz to ml
-                      final waterMl = AppHelpers.ozToMl(water.toDouble()).round();
-                      settingsProvider.setWaterGoal(waterMl);
-                    }
-                  }
+            ListTile(
+              title: const Text('Daily Calorie Goal'),
+              subtitle: Text('${AppHelpers.formatNumber(settingsProvider.calorieGoal)} calories'),
+              trailing: IconButton(
+                icon: const Icon(Icons.edit),
+                onPressed: () {
+                  _showCalorieGoalDialog(settingsProvider);
                 },
               ),
             ),
-          ),
-          
-          // Sleep goal
-          ListTile(
-            leading: const Icon(Icons.nightlight),
-            title: const Text('Daily Sleep Goal'),
-            subtitle: Text('${settingsProvider.sleepGoal} hours'),
-            trailing: IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () => _showGoalEditDialog(
-                'Sleep Goal',
-                'Enter your daily sleep goal (hours)',
-                settingsProvider.sleepGoal.toString(),
-                (value) {
-                  final sleep = int.tryParse(value);
-                  if (sleep != null && sleep > 0 && sleep <= 24) {
-                    settingsProvider.setSleepGoal(sleep);
-                  }
+            ListTile(
+              title: const Text('Daily Sleep Goal'),
+              subtitle: Text(AppHelpers.formatDuration(settingsProvider.sleepGoal)),
+              trailing: IconButton(
+                icon: const Icon(Icons.edit),
+                onPressed: () {
+                  _showSleepGoalDialog(settingsProvider);
                 },
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
-  
+
+  Widget _buildDisplaySection(SettingsProvider settingsProvider) {
+    return Card(
+      margin: const EdgeInsets.all(8.0),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Display',
+              style: AppTextStyles.heading3,
+            ),
+            ListTile(
+              title: const Text('Theme'),
+              subtitle: Text(
+                settingsProvider.themeMode == ThemeMode.system
+                    ? 'System Default'
+                    : settingsProvider.themeMode == ThemeMode.light
+                        ? 'Light'
+                        : 'Dark',
+              ),
+              trailing: DropdownButton<ThemeMode>(
+                value: settingsProvider.themeMode,
+                onChanged: (ThemeMode? newValue) {
+                  if (newValue != null) {
+                    settingsProvider.setThemeMode(newValue);
+                  }
+                },
+                items: const [
+                  DropdownMenuItem(
+                    value: ThemeMode.system,
+                    child: Text('System'),
+                  ),
+                  DropdownMenuItem(
+                    value: ThemeMode.light,
+                    child: Text('Light'),
+                  ),
+                  DropdownMenuItem(
+                    value: ThemeMode.dark,
+                    child: Text('Dark'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotificationsSection(SettingsProvider settingsProvider) {
+    return Card(
+      margin: const EdgeInsets.all(8.0),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Notifications',
+              style: AppTextStyles.heading3,
+            ),
+            SwitchListTile(
+              title: const Text('Daily Reminders'),
+              subtitle: Text(
+                'Remind me at ${settingsProvider.reminderTime.format(context)}',
+              ),
+              value: settingsProvider.reminderEnabled,
+              onChanged: (value) {
+                if (value) {
+                  _showReminderTimeDialog(settingsProvider);
+                } else {
+                  settingsProvider.setReminder(false);
+                }
+              },
+            ),
+            ListTile(
+              title: const Text('Reminder Time'),
+              subtitle: Text(settingsProvider.reminderTime.format(context)),
+              trailing: IconButton(
+                icon: const Icon(Icons.access_time),
+                onPressed: settingsProvider.reminderEnabled
+                    ? () {
+                        _showReminderTimeDialog(settingsProvider);
+                      }
+                    : null,
+              ),
+              enabled: settingsProvider.reminderEnabled,
+            ),
+            const Divider(),
+            SwitchListTile(
+              title: const Text('Activity Reminders'),
+              subtitle: const Text('Remind me to move if inactive'),
+              value: true,
+              onChanged: (value) {
+                // This would be implemented with a provider method
+              },
+            ),
+            SwitchListTile(
+              title: const Text('Water Reminders'),
+              subtitle: const Text('Remind me to drink water'),
+              value: true,
+              onChanged: (value) {
+                // This would be implemented with a provider method
+              },
+            ),
+            SwitchListTile(
+              title: const Text('Meal Reminders'),
+              subtitle: const Text(
+                'Remind me to log meals',
+              ),
+              value: true,
+              onChanged: (value) {
+                // This would be implemented with a provider method
+              },
+              secondary: const Icon(Icons.notifications_active),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildSupportSection() {
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text(
+      margin: const EdgeInsets.all(8.0),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
               'Support',
               style: AppTextStyles.heading3,
             ),
-          ),
-          const Divider(height: 1),
-          
-          ListTile(
-            leading: const Icon(Icons.help_outline),
-            title: const Text('Help & FAQ'),
-            onTap: () => _launchURL(AppConstants.supportUrl),
-          ),
-          
-          ListTile(
-            leading: const Icon(Icons.feedback),
-            title: const Text('Send Feedback'),
-            onTap: () => _launchURL('mailto:support@fitnesstracker.com?subject=Feedback'),
-          ),
-          
-          ListTile(
-            leading: const Icon(Icons.bug_report),
-            title: const Text('Report a Bug'),
-            onTap: () => _launchURL('mailto:support@fitnesstracker.com?subject=Bug%20Report'),
-          ),
-        ],
+            ListTile(
+              leading: const Icon(Icons.help_outline),
+              title: const Text('Help & Support'),
+              subtitle: const Text('Get help using the app'),
+              onTap: () => _launchURL(AppConstants.supportUrl),
+            ),
+            ListTile(
+              leading: const Icon(Icons.feedback_outlined),
+              title: const Text('Send Feedback'),
+              subtitle: const Text('Help us improve the app'),
+              onTap: () {
+                // Implement feedback form
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Feedback form not implemented yet')),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
-  
+
   Widget _buildAboutSection() {
-    const appVersion = '1.0.0';
-    
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text(
+      margin: const EdgeInsets.all(8.0),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
               'About',
               style: AppTextStyles.heading3,
             ),
-          ),
-          const Divider(height: 1),
-          
-          ListTile(
-            leading: const Icon(Icons.info_outline),
-            title: const Text('Version'),
-            subtitle: const Text(appVersion),
-          ),
-          
-          ListTile(
-            leading: const Icon(Icons.description),
-            title: const Text('Terms of Service'),
-            onTap: () => _launchURL(AppConstants.termsUrl),
-          ),
-          
-          ListTile(
-            leading: const Icon(Icons.privacy_tip),
-            title: const Text('Privacy Policy'),
-            onTap: () => _launchURL(AppConstants.privacyUrl),
-          ),
-          
-          const AboutListTile(
-            icon: Icon(Icons.code),
-            applicationName: 'Fitness Tracker',
-            applicationVersion: appVersion,
-            applicationLegalese: '© 2024 Fitness Tracker App',
-            aboutBoxChildren: [
-              SizedBox(height: 16),
-              Text(
-                'A comprehensive health and fitness tracking mobile application featuring activity monitoring, nutrition logging, habit tracking, sleep tracking, and detailed progress visualization.',
-              ),
-            ],
-          ),
-        ],
+            ListTile(
+              title: const Text('App Version'),
+              subtitle: Text(AppConstants.appVersion),
+            ),
+            ListTile(
+              leading: const Icon(Icons.description_outlined),
+              title: const Text('Terms of Service'),
+              onTap: () => _launchURL(AppConstants.termsUrl),
+            ),
+            ListTile(
+              leading: const Icon(Icons.privacy_tip_outlined),
+              title: const Text('Privacy Policy'),
+              onTap: () => _launchURL(AppConstants.privacyUrl),
+            ),
+          ],
+        ),
       ),
     );
   }
-  
-  Future<void> _showGoalEditDialog(
-    String title,
-    String hint,
-    String initialValue,
-    Function(String) onSave,
-  ) async {
-    final controller = TextEditingController(text: initialValue);
+
+  Widget _buildLogoutButton(UserProvider userProvider) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: ElevatedButton.icon(
+        onPressed: () async {
+          final confirm = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Confirm Logout'),
+              content: const Text('Are you sure you want to log out?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('CANCEL'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('LOGOUT'),
+                ),
+              ],
+            ),
+          );
+          
+          if (confirm == true && mounted) {
+            await userProvider.logout();
+          }
+        },
+        icon: const Icon(Icons.logout),
+        label: const Text('LOGOUT'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.red,
+          foregroundColor: Colors.white,
+          minimumSize: const Size(double.infinity, 50),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showStepGoalDialog(SettingsProvider settingsProvider) async {
+    final controller = TextEditingController(
+      text: settingsProvider.stepGoal.toString(),
+    );
     
-    return showDialog(
+    return showDialog<void>(
       context: context,
-      builder: (context) {
+      builder: (BuildContext context) {
         return AlertDialog(
-          title: Text(title),
+          title: const Text('Set Daily Step Goal'),
           content: TextField(
             controller: controller,
             keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              hintText: hint,
-              border: const OutlineInputBorder(),
+            decoration: const InputDecoration(
+              labelText: 'Steps',
+              hintText: 'Enter your daily step goal',
             ),
           ),
-          actions: [
+          actions: <Widget>[
             TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
+              child: const Text('CANCEL'),
               onPressed: () {
-                onSave(controller.text);
-                Navigator.pop(context);
+                Navigator.of(context).pop();
               },
-              child: const Text('Save'),
+            ),
+            TextButton(
+              child: const Text('SAVE'),
+              onPressed: () {
+                final steps = int.tryParse(controller.text);
+                if (steps != null && steps > 0) {
+                  settingsProvider.setStepGoal(steps);
+                }
+                Navigator.of(context).pop();
+              },
             ),
           ],
         );
       },
     );
+  }
+
+  Future<void> _showWaterGoalDialog(SettingsProvider settingsProvider) async {
+    final isMetric = settingsProvider.useMetricUnits;
+    final waterValue = isMetric
+        ? settingsProvider.waterGoal
+        : AppHelpers.mlToOz(settingsProvider.waterGoal.toDouble()).round();
+    
+    final controller = TextEditingController(
+      text: waterValue.toString(),
+    );
+    
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Set Daily Water Goal'),
+          content: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: isMetric ? 'Milliliters (ml)' : 'Fluid Ounces (oz)',
+              hintText: 'Enter your daily water goal',
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('CANCEL'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('SAVE'),
+              onPressed: () {
+                final water = int.tryParse(controller.text);
+                if (water != null && water > 0) {
+                  final waterMl = isMetric
+                      ? water
+                      : AppHelpers.ozToMl(water.toDouble()).round();
+                  settingsProvider.setWaterGoal(waterMl);
+                }
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _showCalorieGoalDialog(SettingsProvider settingsProvider) async {
+    final controller = TextEditingController(
+      text: settingsProvider.calorieGoal.toString(),
+    );
+    
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Set Daily Calorie Goal'),
+          content: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Calories',
+              hintText: 'Enter your daily calorie goal',
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('CANCEL'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('SAVE'),
+              onPressed: () {
+                final calories = int.tryParse(controller.text);
+                if (calories != null && calories > 0) {
+                  settingsProvider.setCalorieGoal(calories);
+                }
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _showSleepGoalDialog(SettingsProvider settingsProvider) async {
+    // Convert minutes to hours and minutes
+    final hours = settingsProvider.sleepGoal ~/ 60;
+    final minutes = settingsProvider.sleepGoal % 60;
+    
+    int selectedHours = hours;
+    int selectedMinutes = minutes;
+    
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Set Daily Sleep Goal'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Select your target sleep duration:'),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Hours
+                  SizedBox(
+                    width: 60,
+                    child: DropdownButton<int>(
+                      value: selectedHours,
+                      onChanged: (int? value) {
+                        if (value != null) {
+                          setState(() {
+                            selectedHours = value;
+                          });
+                        }
+                      },
+                      items: List.generate(
+                        12,
+                        (index) => DropdownMenuItem<int>(
+                          value: index,
+                          child: Text('$index'),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text('hours'),
+                  const SizedBox(width: 16),
+                  
+                  // Minutes
+                  SizedBox(
+                    width: 60,
+                    child: DropdownButton<int>(
+                      value: selectedMinutes,
+                      onChanged: (int? value) {
+                        if (value != null) {
+                          setState(() {
+                            selectedMinutes = value;
+                          });
+                        }
+                      },
+                      items: List.generate(
+                        12,
+                        (index) => DropdownMenuItem<int>(
+                          value: index * 5,
+                          child: Text('${index * 5}'),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text('minutes'),
+                ],
+              ),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('CANCEL'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('SAVE'),
+              onPressed: () {
+                final totalMinutes = (selectedHours * 60) + selectedMinutes;
+                settingsProvider.setSleepGoal(totalMinutes);
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _showReminderTimeDialog(SettingsProvider settingsProvider) async {
+    final TimeOfDay? selectedTime = await showTimePicker(
+      context: context,
+      initialTime: settingsProvider.reminderTime,
+    );
+    
+    if (selectedTime != null) {
+      settingsProvider.setReminder(true, selectedTime);
+    }
   }
 }

@@ -1,213 +1,226 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../utils/constants.dart';
 
+/// Provider to manage application settings
 class SettingsProvider extends ChangeNotifier {
-  ThemeMode _themeMode = ThemeMode.system;
-  bool _useMetricSystem = true;
-  String _timeFormat = AppConstants.timeFormat24h;
-  bool _notificationsEnabled = true;
-  Map<String, bool> _notificationChannels = {
-    AppConstants.notificationChannelWorkouts: true,
-    AppConstants.notificationChannelHabits: true,
-    AppConstants.notificationChannelWater: true,
-    AppConstants.notificationChannelMeals: true,
-  };
+  // Default values
+  bool _useMetricUnits = true;
+  bool _enableNotifications = true;
+  bool _darkMode = false;
+  String _timeFormat = '24h';
+  String _dateFormat = 'yyyy-MM-dd';
+  int _reminderTime = 20 * 60; // Default 8:00 PM in minutes from midnight
+  List<String> _activeDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   
-  // Goals
-  int _stepsGoal = AppConstants.defaultStepsGoal;
-  int _caloriesGoal = AppConstants.defaultCalorieGoal;
-  int _waterGoal = AppConstants.defaultWaterGoal;
-  int _sleepGoal = AppConstants.defaultSleepGoal;
-  
+  // Keys for SharedPreferences
+  static const String _useMetricUnitsKey = 'use_metric_units';
+  static const String _enableNotificationsKey = 'enable_notifications';
+  static const String _darkModeKey = 'dark_mode';
+  static const String _timeFormatKey = 'time_format';
+  static const String _dateFormatKey = 'date_format';
+  static const String _reminderTimeKey = 'reminder_time';
+  static const String _activeDaysKey = 'active_days';
+
   // Getters
-  ThemeMode get themeMode => _themeMode;
-  bool get useMetricSystem => _useMetricSystem;
+  bool get useMetricUnits => _useMetricUnits;
+  bool get enableNotifications => _enableNotifications;
+  bool get darkMode => _darkMode;
   String get timeFormat => _timeFormat;
-  bool get notificationsEnabled => _notificationsEnabled;
-  Map<String, bool> get notificationChannels => _notificationChannels;
-  int get stepsGoal => _stepsGoal;
-  int get caloriesGoal => _caloriesGoal;
-  int get waterGoal => _waterGoal;
-  int get sleepGoal => _sleepGoal;
-  
+  String get dateFormat => _dateFormat;
+  int get reminderTime => _reminderTime;
+  List<String> get activeDays => _activeDays;
+
+  // Return formatted reminder time
+  String get formattedReminderTime {
+    final hours = (_reminderTime ~/ 60).toString().padLeft(2, '0');
+    final minutes = (_reminderTime % 60).toString().padLeft(2, '0');
+    return '$hours:$minutes';
+  }
+
+  // Constructor - load settings from SharedPreferences
   SettingsProvider() {
     _loadSettings();
   }
-  
+
+  // Load settings from SharedPreferences
   Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      _useMetricUnits = prefs.getBool(_useMetricUnitsKey) ?? true;
+      _enableNotifications = prefs.getBool(_enableNotificationsKey) ?? true;
+      _darkMode = prefs.getBool(_darkModeKey) ?? false;
+      _timeFormat = prefs.getString(_timeFormatKey) ?? '24h';
+      _dateFormat = prefs.getString(_dateFormatKey) ?? 'yyyy-MM-dd';
+      _reminderTime = prefs.getInt(_reminderTimeKey) ?? 20 * 60; // Default 8:00 PM
+      _activeDays = prefs.getStringList(_activeDaysKey) ?? 
+        ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error loading settings: $e');
+    }
+  }
+
+  // Set measurement units (metric or imperial)
+  Future<void> setUseMetricUnits(bool value) async {
+    if (_useMetricUnits == value) return;
     
-    // Load theme mode
-    final themeModeString = prefs.getString('theme_mode') ?? 'system';
-    if (themeModeString == 'light') {
-      _themeMode = ThemeMode.light;
-    } else if (themeModeString == 'dark') {
-      _themeMode = ThemeMode.dark;
+    _useMetricUnits = value;
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_useMetricUnitsKey, value);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error saving metric units setting: $e');
+    }
+  }
+
+  // Toggle units between metric and imperial
+  Future<void> toggleMetricUnits() async {
+    await setUseMetricUnits(!_useMetricUnits);
+  }
+
+  // Set notifications enabled/disabled
+  Future<void> setEnableNotifications(bool value) async {
+    if (_enableNotifications == value) return;
+    
+    _enableNotifications = value;
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_enableNotificationsKey, value);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error saving notifications setting: $e');
+    }
+  }
+
+  // Toggle notifications enabled/disabled
+  Future<void> toggleNotifications() async {
+    await setEnableNotifications(!_enableNotifications);
+  }
+
+  // Set dark mode enabled/disabled
+  Future<void> setDarkMode(bool value) async {
+    if (_darkMode == value) return;
+    
+    _darkMode = value;
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_darkModeKey, value);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error saving dark mode setting: $e');
+    }
+  }
+
+  // Toggle dark mode enabled/disabled
+  Future<void> toggleDarkMode() async {
+    await setDarkMode(!_darkMode);
+  }
+
+  // Set time format (12h or 24h)
+  Future<void> setTimeFormat(String value) async {
+    if (_timeFormat == value) return;
+    
+    _timeFormat = value;
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_timeFormatKey, value);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error saving time format setting: $e');
+    }
+  }
+
+  // Set date format
+  Future<void> setDateFormat(String value) async {
+    if (_dateFormat == value) return;
+    
+    _dateFormat = value;
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_dateFormatKey, value);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error saving date format setting: $e');
+    }
+  }
+
+  // Set reminder time
+  Future<void> setReminderTime(int hours, int minutes) async {
+    final newTime = hours * 60 + minutes;
+    if (_reminderTime == newTime) return;
+    
+    _reminderTime = newTime;
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_reminderTimeKey, newTime);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error saving reminder time setting: $e');
+    }
+  }
+
+  // Set active days for reminders
+  Future<void> setActiveDays(List<String> days) async {
+    if (_activeDays.length == days.length && 
+        _activeDays.every((day) => days.contains(day))) return;
+    
+    _activeDays = List.from(days);
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_activeDaysKey, days);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error saving active days setting: $e');
+    }
+  }
+
+  // Toggle a specific day in active days
+  Future<void> toggleActiveDay(String day) async {
+    final newDays = List<String>.from(_activeDays);
+    
+    if (newDays.contains(day)) {
+      newDays.remove(day);
     } else {
-      _themeMode = ThemeMode.system;
+      newDays.add(day);
     }
     
-    // Load measurement system
-    _useMetricSystem = prefs.getBool('use_metric_system') ?? true;
-    
-    // Load time format
-    _timeFormat = prefs.getString('time_format') ?? AppConstants.timeFormat24h;
-    
-    // Load notification settings
-    _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
-    
-    // Load notification channels
-    final workoutsEnabled = prefs.getBool('notification_workouts') ?? true;
-    final habitsEnabled = prefs.getBool('notification_habits') ?? true;
-    final waterEnabled = prefs.getBool('notification_water') ?? true;
-    final mealsEnabled = prefs.getBool('notification_meals') ?? true;
-    
-    _notificationChannels = {
-      AppConstants.notificationChannelWorkouts: workoutsEnabled,
-      AppConstants.notificationChannelHabits: habitsEnabled,
-      AppConstants.notificationChannelWater: waterEnabled,
-      AppConstants.notificationChannelMeals: mealsEnabled,
-    };
-    
-    // Load goals
-    _stepsGoal = prefs.getInt('steps_goal') ?? AppConstants.defaultStepsGoal;
-    _caloriesGoal = prefs.getInt('calories_goal') ?? AppConstants.defaultCalorieGoal;
-    _waterGoal = prefs.getInt('water_goal') ?? AppConstants.defaultWaterGoal;
-    _sleepGoal = prefs.getInt('sleep_goal') ?? AppConstants.defaultSleepGoal;
-    
-    notifyListeners();
+    await setActiveDays(newDays);
   }
-  
-  // Theme mode setter
-  Future<void> setThemeMode(ThemeMode mode) async {
-    if (_themeMode == mode) return;
-    
-    _themeMode = mode;
-    notifyListeners();
-    
-    final prefs = await SharedPreferences.getInstance();
-    String themeModeString;
-    
-    if (mode == ThemeMode.light) {
-      themeModeString = 'light';
-    } else if (mode == ThemeMode.dark) {
-      themeModeString = 'dark';
-    } else {
-      themeModeString = 'system';
-    }
-    
-    await prefs.setString('theme_mode', themeModeString);
-  }
-  
-  // Measurement system setter
-  Future<void> setUseMetricSystem(bool useMetric) async {
-    if (_useMetricSystem == useMetric) return;
-    
-    _useMetricSystem = useMetric;
-    notifyListeners();
-    
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('use_metric_system', useMetric);
-  }
-  
-  // Time format setter
-  Future<void> setTimeFormat(String format) async {
-    if (_timeFormat == format) return;
-    
-    _timeFormat = format;
-    notifyListeners();
-    
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('time_format', format);
-  }
-  
-  // Notifications enabled setter
-  Future<void> setNotificationsEnabled(bool enabled) async {
-    if (_notificationsEnabled == enabled) return;
-    
-    _notificationsEnabled = enabled;
-    notifyListeners();
-    
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('notifications_enabled', enabled);
-  }
-  
-  // Notification channel setter
-  Future<void> setNotificationChannelEnabled(String channel, bool enabled) async {
-    if (_notificationChannels[channel] == enabled) return;
-    
-    _notificationChannels[channel] = enabled;
-    notifyListeners();
-    
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('notification_${channel}', enabled);
-  }
-  
-  // Steps goal setter
-  Future<void> setStepsGoal(int goal) async {
-    if (goal <= 0 || _stepsGoal == goal) return;
-    
-    _stepsGoal = goal;
-    notifyListeners();
-    
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('steps_goal', goal);
-  }
-  
-  // Calories goal setter
-  Future<void> setCaloriesGoal(int goal) async {
-    if (goal <= 0 || _caloriesGoal == goal) return;
-    
-    _caloriesGoal = goal;
-    notifyListeners();
-    
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('calories_goal', goal);
-  }
-  
-  // Water goal setter
-  Future<void> setWaterGoal(int goal) async {
-    if (goal <= 0 || _waterGoal == goal) return;
-    
-    _waterGoal = goal;
-    notifyListeners();
-    
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('water_goal', goal);
-  }
-  
-  // Sleep goal setter
-  Future<void> setSleepGoal(int goal) async {
-    if (goal <= 0 || _sleepGoal == goal) return;
-    
-    _sleepGoal = goal;
-    notifyListeners();
-    
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('sleep_goal', goal);
-  }
-  
+
   // Reset all settings to defaults
   Future<void> resetToDefaults() async {
-    _themeMode = ThemeMode.system;
-    _useMetricSystem = true;
-    _timeFormat = AppConstants.timeFormat24h;
-    _notificationsEnabled = true;
-    _notificationChannels = {
-      AppConstants.notificationChannelWorkouts: true,
-      AppConstants.notificationChannelHabits: true,
-      AppConstants.notificationChannelWater: true,
-      AppConstants.notificationChannelMeals: true,
-    };
-    _stepsGoal = AppConstants.defaultStepsGoal;
-    _caloriesGoal = AppConstants.defaultCalorieGoal;
-    _waterGoal = AppConstants.defaultWaterGoal;
-    _sleepGoal = AppConstants.defaultSleepGoal;
-    
-    notifyListeners();
-    
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      await prefs.remove(_useMetricUnitsKey);
+      await prefs.remove(_enableNotificationsKey);
+      await prefs.remove(_darkModeKey);
+      await prefs.remove(_timeFormatKey);
+      await prefs.remove(_dateFormatKey);
+      await prefs.remove(_reminderTimeKey);
+      await prefs.remove(_activeDaysKey);
+      
+      _useMetricUnits = true;
+      _enableNotifications = true;
+      _darkMode = false;
+      _timeFormat = '24h';
+      _dateFormat = 'yyyy-MM-dd';
+      _reminderTime = 20 * 60; // Default 8:00 PM
+      _activeDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error resetting settings: $e');
+    }
   }
 }

@@ -1,74 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-import '../utils/constants.dart';
-import '../widgets/common_widgets.dart';
+import '../themes/app_text_styles.dart';
+import '../utils/app_constants.dart';
 import 'auth/login_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
   @override
-  _OnboardingScreenState createState() => _OnboardingScreenState();
+  State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
-  bool _isLastPage = false;
   
   final List<OnboardingPage> _pages = [
     OnboardingPage(
       title: 'Track Your Activities',
-      description: 'Record your workouts, runs, walks and other physical activities. Monitor your progress over time.',
-      image: 'assets/images/onboarding_activity.png',
-      color: AppColors.running,
-      icon: Icons.directions_run,
+      description: 'Record workouts, steps, and activities to monitor your fitness journey.',
+      image: Icons.directions_run_rounded,
     ),
     OnboardingPage(
       title: 'Monitor Your Nutrition',
-      description: 'Track your meals, water intake and calories. Stay on top of your nutritional goals.',
-      image: 'assets/images/onboarding_nutrition.png',
-      color: AppColors.carbs,
-      icon: Icons.restaurant_menu,
+      description: 'Log meals, count calories, and track nutrients to maintain a balanced diet.',
+      image: Icons.restaurant_menu_rounded,
     ),
     OnboardingPage(
-      title: 'Optimize Your Sleep',
-      description: 'Log your sleep patterns and quality. Improve your rest for better overall health.',
-      image: 'assets/images/onboarding_sleep.png',
-      color: Colors.indigo,
-      icon: Icons.nightlight,
-    ),
-    OnboardingPage(
-      title: 'Build Healthy Habits',
-      description: 'Create and maintain healthy habits. Break bad ones. Track your streaks and celebrate milestones.',
-      image: 'assets/images/onboarding_habits.png',
-      color: AppColors.tertiary,
-      icon: Icons.repeat,
+      title: 'Analyze Your Sleep',
+      description: 'Track sleep patterns and quality to improve your rest and recovery.',
+      image: Icons.bedtime_rounded,
     ),
     OnboardingPage(
       title: 'Visualize Your Progress',
-      description: 'See your health journey with detailed charts and analytics. Gain insights to improve your fitness.',
-      image: 'assets/images/onboarding_progress.png',
-      color: AppColors.primary,
-      icon: Icons.bar_chart,
+      description: 'View detailed stats and charts to see your improvements over time.',
+      image: Icons.insights_rounded,
     ),
   ];
-  
-  @override
-  void initState() {
-    super.initState();
-    _pageController.addListener(() {
-      int page = _pageController.page?.round() ?? 0;
-      
-      if (page != _currentPage) {
-        setState(() {
-          _currentPage = page;
-          _isLastPage = page == _pages.length - 1;
-        });
-      }
-    });
-  }
   
   @override
   void dispose() {
@@ -79,32 +47,28 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void _onPageChanged(int page) {
     setState(() {
       _currentPage = page;
-      _isLastPage = page == _pages.length - 1;
     });
   }
   
   void _nextPage() {
-    if (_isLastPage) {
-      _completeOnboarding();
-    } else {
+    if (_currentPage < _pages.length - 1) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
+    } else {
+      _completeOnboarding();
     }
   }
   
   Future<void> _completeOnboarding() async {
-    // Save that onboarding is completed
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(AppConstants.prefOnboardingComplete, true);
     
-    // Navigate to login screen
-    if (mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-      );
-    }
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+    );
   }
   
   @override
@@ -113,7 +77,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Skip button
             Align(
               alignment: Alignment.topRight,
               child: TextButton(
@@ -121,108 +84,89 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 child: const Text('Skip'),
               ),
             ),
-            
-            // Page view
             Expanded(
               child: PageView.builder(
                 controller: _pageController,
-                itemCount: _pages.length,
                 onPageChanged: _onPageChanged,
+                itemCount: _pages.length,
                 itemBuilder: (context, index) {
-                  final page = _pages[index];
-                  
-                  return Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Icon or image
-                        if (page.image != null) ...[
-                          // Try to load image, if not available, show icon
-                          Container(
-                            height: 200,
-                            width: 200,
-                            decoration: BoxDecoration(
-                              color: page.color.withOpacity(0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              page.icon,
-                              size: 100,
-                              color: page.color,
-                            ),
-                          ),
-                        ] else ...[
-                          Container(
-                            height: 200,
-                            width: 200,
-                            decoration: BoxDecoration(
-                              color: page.color.withOpacity(0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              page.icon,
-                              size: 100,
-                              color: page.color,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 32),
-                        
-                        // Title
-                        Text(
-                          page.title,
-                          style: AppTextStyles.heading2,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // Description
-                        Text(
-                          page.description,
-                          style: AppTextStyles.body,
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  );
+                  return _buildPage(_pages[index]);
                 },
               ),
             ),
-            
-            // Page indicators
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(
-                _pages.length,
-                (index) => AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  height: 8,
-                  width: _currentPage == index ? 24 : 8,
-                  decoration: BoxDecoration(
-                    color: _currentPage == index
-                        ? AppColors.primary
-                        : Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 32),
-            
-            // Next/Get Started button
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              child: AppButton(
-                label: _isLastPage ? 'Get Started' : 'Next',
-                icon: _isLastPage ? Icons.rocket_launch : Icons.arrow_forward,
-                onPressed: _nextPage,
-                isFullWidth: true,
+              padding: const EdgeInsets.all(24.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Page indicators
+                  Row(
+                    children: List.generate(
+                      _pages.length,
+                      (index) => _buildDotIndicator(index),
+                    ),
+                  ),
+                  
+                  // Next/Get Started button
+                  ElevatedButton(
+                    onPressed: _nextPage,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24.0,
+                        vertical: 12.0,
+                      ),
+                    ),
+                    child: Text(
+                      _currentPage == _pages.length - 1 ? 'GET STARTED' : 'NEXT',
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+  
+  Widget _buildPage(OnboardingPage page) {
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            page.image,
+            size: 120,
+            color: Theme.of(context).primaryColor,
+          ),
+          const SizedBox(height: 40),
+          Text(
+            page.title,
+            style: AppTextStyles.heading1,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 20),
+          Text(
+            page.description,
+            style: AppTextStyles.bodyLarge,
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildDotIndicator(int index) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      width: 10,
+      height: 10,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: _currentPage == index
+            ? Theme.of(context).primaryColor
+            : Colors.grey.shade300,
       ),
     );
   }
@@ -231,15 +175,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 class OnboardingPage {
   final String title;
   final String description;
-  final String? image;
-  final Color color;
-  final IconData icon;
+  final IconData image;
   
   OnboardingPage({
     required this.title,
     required this.description,
-    this.image,
-    required this.color,
-    required this.icon,
+    required this.image,
   });
 }

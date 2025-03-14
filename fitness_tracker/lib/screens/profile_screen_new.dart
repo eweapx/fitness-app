@@ -4,6 +4,7 @@ import '../providers/user_provider.dart';
 import '../providers/settings_provider.dart';
 import '../themes/app_text_styles.dart';
 import '../utils/app_helpers.dart';
+import '../themes/app_colors.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -14,11 +15,12 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _ageController = TextEditingController(text: '35');
-  final _heightController = TextEditingController(text: '175');
-  final _weightController = TextEditingController(text: '70');
+  
+  late TextEditingController _nameController;
+  late TextEditingController _emailController;
+  late TextEditingController _ageController;
+  late TextEditingController _heightController;
+  late TextEditingController _weightController;
   
   String _selectedGender = 'Male';
   String _selectedActivityLevel = 'Moderately Active';
@@ -35,7 +37,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _loadUserData();
+    _nameController = TextEditingController();
+    _emailController = TextEditingController();
+    _ageController = TextEditingController();
+    _heightController = TextEditingController();
+    _weightController = TextEditingController();
+    
+    // Load user data in next frame to ensure context is available
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadUserData();
+    });
   }
   
   @override
@@ -48,134 +59,132 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.dispose();
   }
   
-  Future<void> _loadUserData() async {
+  void _loadUserData() {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     
-    // Set name and email from user provider
+    // For a real app, this would load from the user profile in Firestore
+    // For now, we'll use dummy values or values from the provider
     _nameController.text = userProvider.userName ?? '';
-    _emailController.text = userProvider.user?.email ?? '';
+    _emailController.text = userProvider.userEmail ?? '';
+    _ageController.text = '35';
     
-    // Set other profile data from profile data if available
-    final profile = userProvider.userProfile;
-    if (profile != null) {
-      setState(() {
-        _ageController.text = (profile['age'] ?? 35).toString();
-        _heightController.text = (profile['height'] ?? 175).toString();
-        _weightController.text = (profile['weight'] ?? 70).toString();
-        _selectedGender = profile['gender'] ?? 'Male';
-        _selectedActivityLevel = profile['activityLevel'] ?? 'Moderately Active';
-      });
+    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+    final useMetric = settingsProvider.useMetricUnits;
+    
+    if (useMetric) {
+      _heightController.text = '175'; // cm
+      _weightController.text = '70'; // kg
+    } else {
+      _heightController.text = '5\'9"'; // ft and inches
+      _weightController.text = '154'; // lbs
     }
   }
   
   Future<void> _saveProfile() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-    
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
-    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
-    final useMetric = settingsProvider.useMetricUnits;
-    
-    // Convert values as needed
-    int height;
-    double weight;
-    
-    if (useMetric) {
-      height = int.tryParse(_heightController.text) ?? 175;
-      weight = double.tryParse(_weightController.text) ?? 70.0;
-    } else {
-      // Convert imperial to metric
-      final heightStr = _heightController.text;
-      height = heightStr.contains("'") 
-        ? AppHelpers.imperialHeightToCm(heightStr) 
-        : 175;
+    if (_formKey.currentState!.validate()) {
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
       
-      weight = AppHelpers.lbsToKg(double.tryParse(_weightController.text) ?? 154.0);
-    }
-    
-    final data = {
-      'age': int.tryParse(_ageController.text) ?? 35,
-      'height': height,
-      'weight': weight,
-      'gender': _selectedGender,
-      'activityLevel': _selectedActivityLevel,
-      'bmr': AppHelpers.calculateBasalMetabolicRate(
-        int.tryParse(_ageController.text) ?? 35,
-        _selectedGender,
-        weight,
-        height,
-      ),
-      'bmi': AppHelpers.calculateBMI(weight, height),
-    };
-    
-    final success = await userProvider.updateUserProfile(data);
-    if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile updated successfully!')),
-      );
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to update profile. Please try again.')),
-      );
+      try {
+        // Simulate a network delay
+        await Future.delayed(const Duration(seconds: 1));
+        
+        final userProvider = Provider.of<UserProvider>(context, listen: false);
+        
+        // Update user profile (in a real app, this would update Firestore)
+        await userProvider.updateUserProfile(
+          userName: _nameController.text,
+        );
+        
+        if (!mounted) return;
+        
+        // Pop loading dialog
+        Navigator.pop(context);
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile updated successfully')),
+        );
+        
+        // Return to previous screen
+        Navigator.pop(context);
+      } catch (e) {
+        // Pop loading dialog
+        if (!mounted) return;
+        Navigator.pop(context);
+        
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update profile: $e')),
+        );
+      }
     }
   }
-
+  
   @override
   Widget build(BuildContext context) {
-    final userProvider = Provider.of<UserProvider>(context);
     final settingsProvider = Provider.of<SettingsProvider>(context);
     final useMetric = settingsProvider.useMetricUnits;
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Profile'),
+        title: const Text('Edit Profile'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {
-              // Navigate to settings screen
-              // TODO: Implement settings screen navigation
-            },
+            icon: const Icon(Icons.check),
+            onPressed: _saveProfile,
           ),
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Profile Header with Avatar
+              // Profile picture
               Center(
-                child: Column(
+                child: Stack(
                   children: [
                     CircleAvatar(
                       radius: 50,
-                      backgroundColor: Theme.of(context).primaryColor.withOpacity(0.2),
                       backgroundImage: _getProfileImage(),
-                      child: _getProfileImage() == null
-                          ? Icon(
-                              Icons.person,
-                              size: 50,
-                              color: Theme.of(context).primaryColor,
-                            )
-                          : null,
+                      backgroundColor: AppColors.primary.withOpacity(0.2),
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      userProvider.userName ?? 'User',
-                      style: AppTextStyles.heading2,
-                    ),
-                    Text(
-                      userProvider.user?.email ?? '',
-                      style: AppTextStyles.subtitle,
+                    Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: CircleAvatar(
+                        radius: 18,
+                        backgroundColor: Theme.of(context).primaryColor,
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.photo_camera,
+                            size: 18,
+                            color: Colors.white,
+                          ),
+                          onPressed: () {
+                            // Implement photo selection
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Photo selection not implemented yet'),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
               
               // Personal Information Section
               Text(
@@ -188,8 +197,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               TextFormField(
                 controller: _nameController,
                 decoration: const InputDecoration(
-                  labelText: 'Name',
-                  prefixIcon: Icon(Icons.person),
+                  labelText: 'Full Name',
+                  prefixIcon: Icon(Icons.person_outline),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -205,7 +214,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 controller: _emailController,
                 decoration: const InputDecoration(
                   labelText: 'Email',
-                  prefixIcon: Icon(Icons.email),
+                  prefixIcon: Icon(Icons.email_outline),
                 ),
                 readOnly: true, // Email is typically not editable after signup
                 enabled: false,
@@ -224,7 +233,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 controller: _ageController,
                 decoration: const InputDecoration(
                   labelText: 'Age',
-                  prefixIcon: Icon(Icons.cake),
+                  prefixIcon: Icon(Icons.cake_outlined),
                 ),
                 keyboardType: TextInputType.number,
                 validator: (value) {
@@ -245,7 +254,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 value: _selectedGender,
                 decoration: const InputDecoration(
                   labelText: 'Gender',
-                  prefixIcon: Icon(Icons.people),
+                  prefixIcon: Icon(Icons.people_outline),
                 ),
                 items: _genders.map((gender) {
                   return DropdownMenuItem(

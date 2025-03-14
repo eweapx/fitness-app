@@ -1,277 +1,365 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart';
-import '../utils/constants.dart';
 
-/// Represents a food or nutrition entry in the fitness tracking app
-class NutritionModel {
-  final String? id;
-  final String userId;
-  final String name;
-  final String category; // fruits, vegetables, grains, protein, etc.
-  final int calories;
-  final int protein; // in grams
-  final int carbs; // in grams
-  final int fat; // in grams
-  final int? sugar; // in grams
-  final int? fiber; // in grams
-  final int? sodium; // in milligrams
-  final double? servingSize; // in grams or milliliters
-  final String? servingUnit; // g, ml, oz, etc.
-  final int? servingCount;
-  final String? mealType; // breakfast, lunch, dinner, snack
-  final DateTime date;
-  final String? notes;
-  final Map<String, dynamic>? additionalNutrients;
+/// Enum representing different types of meals
+enum MealType {
+  breakfast,
+  lunch,
+  dinner,
+  snack,
+  other
+}
 
-  NutritionModel({
-    this.id,
-    required this.userId,
-    required this.name,
-    required this.category,
-    required this.calories,
-    required this.protein,
-    required this.carbs,
-    required this.fat,
-    this.sugar,
-    this.fiber,
-    this.sodium,
-    this.servingSize,
-    this.servingUnit,
-    this.servingCount,
-    this.mealType,
-    required this.date,
-    this.notes,
-    this.additionalNutrients,
-  });
-
-  /// Create a NutritionModel from a map (typically from Firestore)
-  factory NutritionModel.fromMap(Map<String, dynamic> map, String id) {
-    return NutritionModel(
-      id: id,
-      userId: map['userId'] ?? '',
-      name: map['name'] ?? '',
-      category: map['category'] ?? FoodCategories.other,
-      calories: map['calories']?.toInt() ?? 0,
-      protein: map['protein']?.toInt() ?? 0,
-      carbs: map['carbs']?.toInt() ?? 0,
-      fat: map['fat']?.toInt() ?? 0,
-      sugar: map['sugar']?.toInt(),
-      fiber: map['fiber']?.toInt(),
-      sodium: map['sodium']?.toInt(),
-      servingSize: map['servingSize']?.toDouble(),
-      servingUnit: map['servingUnit'],
-      servingCount: map['servingCount']?.toInt(),
-      mealType: map['mealType'],
-      date: map['date'] != null 
-          ? (map['date'] as Timestamp).toDate()
-          : DateTime.now(),
-      notes: map['notes'],
-      additionalNutrients: map['additionalNutrients'],
+/// Extension to provide helper methods for MealType enum
+extension MealTypeExtension on MealType {
+  String get displayName {
+    switch (this) {
+      case MealType.breakfast:
+        return 'Breakfast';
+      case MealType.lunch:
+        return 'Lunch';
+      case MealType.dinner:
+        return 'Dinner';
+      case MealType.snack:
+        return 'Snack';
+      case MealType.other:
+        return 'Other';
+    }
+  }
+  
+  String get icon {
+    switch (this) {
+      case MealType.breakfast:
+        return 'free_breakfast';
+      case MealType.lunch:
+        return 'lunch_dining';
+      case MealType.dinner:
+        return 'dinner_dining';
+      case MealType.snack:
+        return 'bakery_dining';
+      case MealType.other:
+        return 'restaurant';
+    }
+  }
+  
+  static MealType fromString(String value) {
+    return MealType.values.firstWhere(
+      (type) => type.toString().split('.').last.toLowerCase() == value.toLowerCase(),
+      orElse: () => MealType.other,
     );
   }
+}
 
-  /// Convert this NutritionModel to a map for storing in Firestore
-  Map<String, dynamic> toMap() {
+/// Enum for food categories
+enum FoodCategory {
+  fruits,
+  vegetables,
+  grains,
+  protein,
+  dairy,
+  sweets,
+  beverages,
+  other
+}
+
+/// Extension methods for FoodCategory
+extension FoodCategoryExtension on FoodCategory {
+  String get displayName {
+    switch (this) {
+      case FoodCategory.fruits:
+        return 'Fruits';
+      case FoodCategory.vegetables:
+        return 'Vegetables';
+      case FoodCategory.grains:
+        return 'Grains';
+      case FoodCategory.protein:
+        return 'Protein';
+      case FoodCategory.dairy:
+        return 'Dairy';
+      case FoodCategory.sweets:
+        return 'Sweets';
+      case FoodCategory.beverages:
+        return 'Beverages';
+      case FoodCategory.other:
+        return 'Other';
+    }
+  }
+  
+  static FoodCategory fromString(String value) {
+    return FoodCategory.values.firstWhere(
+      (category) => category.toString().split('.').last.toLowerCase() == value.toLowerCase(),
+      orElse: () => FoodCategory.other,
+    );
+  }
+}
+
+/// Model class for food items
+class FoodItem {
+  final String id;
+  final String name;
+  final int calories;
+  final double? protein; // in grams
+  final double? carbs; // in grams
+  final double? fat; // in grams
+  final double? fiber; // in grams
+  final double? sugar; // in grams
+  final FoodCategory category;
+  final String? servingSize;
+  final double? servingWeight; // in grams
+  final Map<String, dynamic>? nutrients;
+  final String? barcode;
+  final String? imageUrl;
+  final bool isCustom;
+  
+  FoodItem({
+    required this.id,
+    required this.name,
+    required this.calories,
+    this.protein,
+    this.carbs,
+    this.fat,
+    this.fiber,
+    this.sugar,
+    required this.category,
+    this.servingSize,
+    this.servingWeight,
+    this.nutrients,
+    this.barcode,
+    this.imageUrl,
+    this.isCustom = false,
+  });
+  
+  /// Create a FoodItem from Firestore document
+  factory FoodItem.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return FoodItem(
+      id: doc.id,
+      name: data['name'] ?? '',
+      calories: data['calories'] ?? 0,
+      protein: data['protein']?.toDouble(),
+      carbs: data['carbs']?.toDouble(),
+      fat: data['fat']?.toDouble(),
+      fiber: data['fiber']?.toDouble(),
+      sugar: data['sugar']?.toDouble(),
+      category: FoodCategoryExtension.fromString(data['category'] ?? 'other'),
+      servingSize: data['servingSize'],
+      servingWeight: data['servingWeight']?.toDouble(),
+      nutrients: data['nutrients'],
+      barcode: data['barcode'],
+      imageUrl: data['imageUrl'],
+      isCustom: data['isCustom'] ?? false,
+    );
+  }
+  
+  /// Convert FoodItem to a map for Firestore
+  Map<String, dynamic> toFirestore() {
     return {
-      'userId': userId,
       'name': name,
-      'category': category,
       'calories': calories,
       'protein': protein,
       'carbs': carbs,
       'fat': fat,
-      'sugar': sugar,
       'fiber': fiber,
-      'sodium': sodium,
+      'sugar': sugar,
+      'category': category.toString().split('.').last,
       'servingSize': servingSize,
-      'servingUnit': servingUnit,
-      'servingCount': servingCount,
-      'mealType': mealType,
-      'date': date,
-      'notes': notes,
-      'additionalNutrients': additionalNutrients,
+      'servingWeight': servingWeight,
+      'nutrients': nutrients,
+      'barcode': barcode,
+      'imageUrl': imageUrl,
+      'isCustom': isCustom,
     };
   }
-
-  /// Create a copy of this NutritionModel with some values replaced
-  NutritionModel copyWith({
-    String? userId,
+  
+  /// Create a copy with updated fields
+  FoodItem copyWith({
+    String? id,
     String? name,
-    String? category,
     int? calories,
-    int? protein,
-    int? carbs,
-    int? fat,
-    int? sugar,
-    int? fiber,
-    int? sodium,
-    double? servingSize,
-    String? servingUnit,
-    int? servingCount,
-    String? mealType,
-    DateTime? date,
-    String? notes,
-    Map<String, dynamic>? additionalNutrients,
+    double? protein,
+    double? carbs,
+    double? fat,
+    double? fiber,
+    double? sugar,
+    FoodCategory? category,
+    String? servingSize,
+    double? servingWeight,
+    Map<String, dynamic>? nutrients,
+    String? barcode,
+    String? imageUrl,
+    bool? isCustom,
   }) {
-    return NutritionModel(
-      id: id,
-      userId: userId ?? this.userId,
+    return FoodItem(
+      id: id ?? this.id,
       name: name ?? this.name,
-      category: category ?? this.category,
       calories: calories ?? this.calories,
       protein: protein ?? this.protein,
       carbs: carbs ?? this.carbs,
       fat: fat ?? this.fat,
-      sugar: sugar ?? this.sugar,
       fiber: fiber ?? this.fiber,
-      sodium: sodium ?? this.sodium,
+      sugar: sugar ?? this.sugar,
+      category: category ?? this.category,
       servingSize: servingSize ?? this.servingSize,
-      servingUnit: servingUnit ?? this.servingUnit,
-      servingCount: servingCount ?? this.servingCount,
-      mealType: mealType ?? this.mealType,
-      date: date ?? this.date,
-      notes: notes ?? this.notes,
-      additionalNutrients: additionalNutrients ?? this.additionalNutrients,
+      servingWeight: servingWeight ?? this.servingWeight,
+      nutrients: nutrients ?? this.nutrients,
+      barcode: barcode ?? this.barcode,
+      imageUrl: imageUrl ?? this.imageUrl,
+      isCustom: isCustom ?? this.isCustom,
     );
-  }
-
-  /// Get a formatted date string
-  String getFormattedDate([String format = DateTimeFormats.monthDayYear]) {
-    return DateFormat(format).format(date);
-  }
-
-  /// Get the macronutrient ratio (protein:carbs:fat)
-  String getMacroRatio() {
-    final total = protein + carbs + fat;
-    if (total <= 0) return '0:0:0';
-    
-    final proteinPercent = (protein / total * 100).round();
-    final carbsPercent = (carbs / total * 100).round();
-    final fatPercent = (fat / total * 100).round();
-    
-    return '$proteinPercent:$carbsPercent:$fatPercent';
-  }
-
-  /// Get the serving description
-  String? getServingDescription() {
-    if (servingSize == null || servingUnit == null) return null;
-    
-    final count = servingCount != null && servingCount! > 1 
-        ? '${servingCount!} servings of ' 
-        : '';
-    
-    return '$count$servingSize $servingUnit';
-  }
-
-  /// Calculate calories from macronutrients
-  int calculateCaloriesFromMacros() {
-    // 1g protein = 4 calories, 1g carbs = 4 calories, 1g fat = 9 calories
-    return protein * 4 + carbs * 4 + fat * 9;
-  }
-
-  /// Check if the nutritional values match the macronutrient calorie count
-  bool isCalorieMatchingMacros([int tolerance = 20]) {
-    final calculatedCalories = calculateCaloriesFromMacros();
-    return (calculatedCalories - calories).abs() <= tolerance;
-  }
-
-  /// Check if the nutrition entry is valid
-  bool isValid() {
-    return name.isNotEmpty && 
-           calories >= 0 && 
-           protein >= 0 && 
-           carbs >= 0 && 
-           fat >= 0;
   }
 }
 
-/// Extension for operations on lists of NutritionModel objects
-extension NutritionModelListExtension on List<NutritionModel> {
-  /// Sort nutrition entries by date (most recent first)
-  List<NutritionModel> sortByDateDescending() {
-    return [...this]..sort((a, b) => b.date.compareTo(a.date));
-  }
-
-  /// Sort nutrition entries by date (oldest first)
-  List<NutritionModel> sortByDateAscending() {
-    return [...this]..sort((a, b) => a.date.compareTo(b.date));
-  }
-
-  /// Filter nutrition entries by category
-  List<NutritionModel> filterByCategory(String category) {
-    return where((entry) => entry.category == category).toList();
-  }
-
-  /// Filter nutrition entries by meal type
-  List<NutritionModel> filterByMealType(String mealType) {
-    return where((entry) => entry.mealType == mealType).toList();
-  }
-
-  /// Filter nutrition entries by date range
-  List<NutritionModel> filterByDateRange(DateTime startDate, DateTime endDate) {
-    return where((entry) => 
-      entry.date.isAfter(startDate.subtract(const Duration(days: 1))) && 
-      entry.date.isBefore(endDate.add(const Duration(days: 1)))
-    ).toList();
-  }
-
-  /// Get total calories
-  int getTotalCalories() {
-    return fold(0, (sum, entry) => sum + entry.calories);
-  }
-
-  /// Get total protein in grams
-  int getTotalProtein() {
-    return fold(0, (sum, entry) => sum + entry.protein);
-  }
-
-  /// Get total carbs in grams
-  int getTotalCarbs() {
-    return fold(0, (sum, entry) => sum + entry.carbs);
-  }
-
-  /// Get total fat in grams
-  int getTotalFat() {
-    return fold(0, (sum, entry) => sum + entry.fat);
-  }
-
-  /// Get average macronutrient ratio
-  String getAverageMacroRatio() {
-    final totalProtein = getTotalProtein();
-    final totalCarbs = getTotalCarbs();
-    final totalFat = getTotalFat();
+/// Model for logged meals
+class MealEntry {
+  final String id;
+  final String userId;
+  final DateTime dateTime;
+  final MealType mealType;
+  final List<MealFoodItem> foodItems;
+  final int totalCalories;
+  final double? totalProtein;
+  final double? totalCarbs;
+  final double? totalFat;
+  final String? notes;
+  final String? imageUrl;
+  final bool isSynced;
+  final DateTime createdAt;
+  final DateTime? updatedAt;
+  
+  MealEntry({
+    required this.id,
+    required this.userId,
+    required this.dateTime,
+    required this.mealType,
+    required this.foodItems,
+    required this.totalCalories,
+    this.totalProtein,
+    this.totalCarbs,
+    this.totalFat,
+    this.notes,
+    this.imageUrl,
+    this.isSynced = false,
+    required this.createdAt,
+    this.updatedAt,
+  });
+  
+  /// Create a MealEntry from Firestore document
+  factory MealEntry.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
     
-    final total = totalProtein + totalCarbs + totalFat;
-    if (total <= 0) return '0:0:0';
-    
-    final proteinPercent = (totalProtein / total * 100).round();
-    final carbsPercent = (totalCarbs / total * 100).round();
-    final fatPercent = (totalFat / total * 100).round();
-    
-    return '$proteinPercent:$carbsPercent:$fatPercent';
-  }
-
-  /// Group nutrition entries by meal type and count calories
-  Map<String, int> getCaloriesByMealType() {
-    final result = <String, int>{};
-    for (final entry in this) {
-      if (entry.mealType != null) {
-        result[entry.mealType!] = (result[entry.mealType!] ?? 0) + entry.calories;
+    final List<MealFoodItem> foodItems = [];
+    if (data['foodItems'] != null) {
+      for (var item in (data['foodItems'] as List)) {
+        foodItems.add(MealFoodItem.fromMap(item));
       }
     }
-    return result;
+    
+    return MealEntry(
+      id: doc.id,
+      userId: data['userId'] ?? '',
+      dateTime: (data['dateTime'] as Timestamp).toDate(),
+      mealType: MealTypeExtension.fromString(data['mealType'] ?? 'other'),
+      foodItems: foodItems,
+      totalCalories: data['totalCalories'] ?? 0,
+      totalProtein: data['totalProtein']?.toDouble(),
+      totalCarbs: data['totalCarbs']?.toDouble(),
+      totalFat: data['totalFat']?.toDouble(),
+      notes: data['notes'],
+      imageUrl: data['imageUrl'],
+      isSynced: data['isSynced'] ?? false,
+      createdAt: (data['createdAt'] as Timestamp).toDate(),
+      updatedAt: data['updatedAt'] != null 
+          ? (data['updatedAt'] as Timestamp).toDate() 
+          : null,
+    );
   }
+  
+  /// Convert MealEntry to a map for Firestore
+  Map<String, dynamic> toFirestore() {
+    return {
+      'userId': userId,
+      'dateTime': Timestamp.fromDate(dateTime),
+      'mealType': mealType.toString().split('.').last,
+      'foodItems': foodItems.map((item) => item.toMap()).toList(),
+      'totalCalories': totalCalories,
+      'totalProtein': totalProtein,
+      'totalCarbs': totalCarbs,
+      'totalFat': totalFat,
+      'notes': notes,
+      'imageUrl': imageUrl,
+      'isSynced': isSynced,
+      'createdAt': Timestamp.fromDate(createdAt),
+      'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
+    };
+  }
+}
 
-  /// Get nutrition entries grouped by day
-  Map<DateTime, List<NutritionModel>> groupByDay() {
-    final result = <DateTime, List<NutritionModel>>{};
-    for (final entry in this) {
-      final day = DateTime(entry.date.year, entry.date.month, entry.date.day);
-      if (!result.containsKey(day)) {
-        result[day] = [];
-      }
-      result[day]!.add(entry);
-    }
-    return result;
+/// Model for food items within a meal
+class MealFoodItem {
+  final String foodItemId;
+  final String name;
+  final int calories;
+  final double? protein;
+  final double? carbs;
+  final double? fat;
+  final double servingSize;
+  final String? servingSizeUnit;
+  final double quantity;
+  final String? notes;
+  
+  MealFoodItem({
+    required this.foodItemId,
+    required this.name,
+    required this.calories,
+    this.protein,
+    this.carbs,
+    this.fat,
+    required this.servingSize,
+    this.servingSizeUnit,
+    required this.quantity,
+    this.notes,
+  });
+  
+  /// Create a MealFoodItem from a map
+  factory MealFoodItem.fromMap(Map<String, dynamic> map) {
+    return MealFoodItem(
+      foodItemId: map['foodItemId'] ?? '',
+      name: map['name'] ?? '',
+      calories: map['calories'] ?? 0,
+      protein: map['protein']?.toDouble(),
+      carbs: map['carbs']?.toDouble(),
+      fat: map['fat']?.toDouble(),
+      servingSize: map['servingSize']?.toDouble() ?? 1.0,
+      servingSizeUnit: map['servingSizeUnit'],
+      quantity: map['quantity']?.toDouble() ?? 1.0,
+      notes: map['notes'],
+    );
   }
+  
+  /// Convert MealFoodItem to a map
+  Map<String, dynamic> toMap() {
+    return {
+      'foodItemId': foodItemId,
+      'name': name,
+      'calories': calories,
+      'protein': protein,
+      'carbs': carbs,
+      'fat': fat,
+      'servingSize': servingSize,
+      'servingSizeUnit': servingSizeUnit,
+      'quantity': quantity,
+      'notes': notes,
+    };
+  }
+  
+  /// Get the total calories for this food item with quantity applied
+  int get totalCalories => (calories * quantity).round();
+  
+  /// Get the total protein for this food item with quantity applied
+  double? get totalProtein => protein != null ? protein! * quantity : null;
+  
+  /// Get the total carbs for this food item with quantity applied
+  double? get totalCarbs => carbs != null ? carbs! * quantity : null;
+  
+  /// Get the total fat for this food item with quantity applied
+  double? get totalFat => fat != null ? fat! * quantity : null;
 }

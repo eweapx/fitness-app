@@ -2,223 +2,380 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+/// Provider to manage user data and authentication state
 class UserProvider extends ChangeNotifier {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  
+  // User information
   User? _user;
+  String? _userName;
+  String? _userPhotoUrl;
   Map<String, dynamic>? _userProfile;
   bool _isLoading = false;
+  String? _error;
   
   // Getters
   User? get user => _user;
+  String? get userName => _userName;
+  String? get userPhotoUrl => _userPhotoUrl;
   Map<String, dynamic>? get userProfile => _userProfile;
   bool get isLoading => _isLoading;
+  String? get error => _error;
+  bool get isLoggedIn => _user != null;
+  String get userId => _user?.uid ?? '';
   
+  // Constructor - initialize auth state
   UserProvider() {
-    _init();
+    _initializeAuthState();
   }
   
-  Future<void> _init() async {
-    _isLoading = true;
-    notifyListeners();
-    
-    FirebaseAuth.instance.authStateChanges().listen((User? user) async {
+  // Initialize auth state listener
+  void _initializeAuthState() {
+    _auth.authStateChanges().listen((User? user) async {
       _user = user;
-      
       if (user != null) {
-        await _fetchUserProfile();
+        _userName = user.displayName;
+        _userPhotoUrl = user.photoURL;
+        await fetchUserProfile();
       } else {
+        _userName = null;
+        _userPhotoUrl = null;
         _userProfile = null;
       }
-      
-      _isLoading = false;
       notifyListeners();
     });
   }
   
-  Future<void> _fetchUserProfile() async {
+  // Login with email and password
+  Future<bool> loginWithEmailPassword(String email, String password) async {
+    _setLoading(true);
+    try {
+      await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      _setError(null);
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _handleAuthError(e);
+      _setLoading(false);
+      return false;
+    }
+  }
+  
+  // Register with email and password
+  Future<bool> registerWithEmailPassword(
+    String email, 
+    String password, 
+    String name,
+  ) async {
+    _setLoading(true);
+    try {
+      final userCredential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      
+      // Update display name
+      await userCredential.user?.updateDisplayName(name);
+      
+      // Create user profile in Firestore
+      if (userCredential.user != null) {
+        await _createUserProfile(userCredential.user!.uid, name, email);
+      }
+      
+      _setError(null);
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _handleAuthError(e);
+      _setLoading(false);
+      return false;
+    }
+  }
+  
+  // Create initial user profile in Firestore
+  Future<void> _createUserProfile(String uid, String name, String email) async {
+    try {
+      await _firestore.collection('users').doc(uid).set({
+        'name': name,
+        'email': email,
+        'createdAt': FieldValue.serverTimestamp(),
+        'lastActive': FieldValue.serverTimestamp(),
+        'isOnboardingComplete': false,
+      });
+    } catch (e) {
+      debugPrint('Error creating user profile: $e');
+    }
+  }
+  
+  // Fetch user profile from Firestore
+  Future<void> fetchUserProfile() async {
     if (_user == null) return;
     
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(_user!.uid)
-          .get();
-          
+      final doc = await _firestore.collection('users').doc(_user!.uid).get();
       if (doc.exists) {
         _userProfile = doc.data();
       } else {
-        // Create default profile if it doesn't exist
-        _userProfile = {
-          'displayName': _user!.displayName ?? 'User',
-          'email': _user!.email ?? '',
-          'photoURL': _user!.photoURL ?? '',
-          'createdAt': DateTime.now(),
-          'height': 0,
-          'weight': 0,
-          'gender': '',
-          'dateOfBirth': null,
-          'fitnessLevel': 'beginner', // beginner, intermediate, advanced
-        };
-        
-        // Save the default profile
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(_user!.uid)
-            .set(_userProfile!);
+        // If profile doesn't exist in Firestore, create it
+        await _createUserProfile(
+          _user!.uid, 
+          _user!.displayName ?? 'User', 
+          _user!.email ?? '',
+        );
+        final newDoc = await _firestore.collection('users').doc(_user!.uid).get();
+        _userProfile = newDoc.data();
       }
-      
       notifyListeners();
     } catch (e) {
-      print('Error fetching user profile: $e');
+      debugPrint('Error fetching user profile: $e');
     }
   }
   
   // Update user profile
-  Future<void> updateUserProfile(Map<String, dynamic> data) async {
-    if (_user == null) return;
+  Future<bool> updateUserProfile(Map<String, dynamic> data) async {
+    if (_user == null) return false;
     
-    _isLoading = true;
-    notifyListeners();
-    
+    _setLoading(true);
     try {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(_user!.uid)
-          .update(data);
-          
-      // Update local profile
-      _userProfile = {
-        ..._userProfile ?? {},
+      await _firestore.collection('users').doc(_user!.uid).update({
         ...data,
-      };
+        'lastUpdated': FieldValue.serverTimestamp(),
+      });
       
-      _isLoading = false;
-      notifyListeners();
+      // Refresh the profile data
+      await fetchUserProfile();
+      
+      _setLoading(false);
+      return true;
     } catch (e) {
-      _isLoading = false;
-      notifyListeners();
-      print('Error updating user profile: $e');
-      rethrow;
+      debugPrint('Error updating user profile: $e');
+      _setLoading(false);
+      return false;
     }
   }
   
-  // Sign out
-  Future<void> signOut() async {
-    _isLoading = true;
-    notifyListeners();
+  // Update user profile photo URL
+  Future<bool> updateUserPhoto(String photoUrl) async {
+    if (_user == null) return false;
     
     try {
-      await FirebaseAuth.instance.signOut();
-      _user = null;
-      _userProfile = null;
+      await _user!.updatePhotoURL(photoUrl);
+      _userPhotoUrl = photoUrl;
       
-      _isLoading = false;
+      // Update in Firestore too
+      await _firestore.collection('users').doc(_user!.uid).update({
+        'photoUrl': photoUrl,
+        'lastUpdated': FieldValue.serverTimestamp(),
+      });
+      
       notifyListeners();
+      return true;
     } catch (e) {
-      _isLoading = false;
+      debugPrint('Error updating user photo: $e');
+      return false;
+    }
+  }
+  
+  // Reset password
+  Future<bool> resetPassword(String email) async {
+    _setLoading(true);
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+      _setError(null);
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _handleAuthError(e);
+      _setLoading(false);
+      return false;
+    }
+  }
+  
+  // Update user name
+  Future<bool> updateUserName(String name) async {
+    if (_user == null) return false;
+    
+    try {
+      await _user!.updateDisplayName(name);
+      _userName = name;
+      
+      // Update in Firestore too
+      await _firestore.collection('users').doc(_user!.uid).update({
+        'name': name,
+        'lastUpdated': FieldValue.serverTimestamp(),
+      });
+      
       notifyListeners();
-      print('Error signing out: $e');
-      rethrow;
+      return true;
+    } catch (e) {
+      debugPrint('Error updating user name: $e');
+      return false;
     }
   }
   
-  // Get user's age from date of birth
-  int? getUserAge() {
-    if (_userProfile == null || _userProfile!['dateOfBirth'] == null) {
-      return null;
-    }
+  // Update email
+  Future<bool> updateEmail(String newEmail, String password) async {
+    if (_user == null) return false;
     
-    final dateOfBirth = (_userProfile!['dateOfBirth'] as Timestamp).toDate();
-    final now = DateTime.now();
-    int age = now.year - dateOfBirth.year;
-    
-    // Adjust age if birthday hasn't occurred yet this year
-    if (now.month < dateOfBirth.month || 
-        (now.month == dateOfBirth.month && now.day < dateOfBirth.day)) {
-      age--;
-    }
-    
-    return age;
-  }
-  
-  // Get BMI (Body Mass Index)
-  double? getUserBMI() {
-    if (_userProfile == null) return null;
-    
-    final weight = _userProfile!['weight'] as num?;
-    final height = _userProfile!['height'] as num?;
-    
-    if (weight == null || height == null || weight <= 0 || height <= 0) {
-      return null;
-    }
-    
-    // BMI = weight(kg) / height(m)²
-    final heightInMeters = height / 100; // Convert cm to meters
-    return weight / (heightInMeters * heightInMeters);
-  }
-  
-  // Get BMI category
-  String? getUserBMICategory() {
-    final bmi = getUserBMI();
-    if (bmi == null) return null;
-    
-    if (bmi < 18.5) {
-      return 'Underweight';
-    } else if (bmi >= 18.5 && bmi < 25) {
-      return 'Normal';
-    } else if (bmi >= 25 && bmi < 30) {
-      return 'Overweight';
-    } else {
-      return 'Obese';
+    _setLoading(true);
+    try {
+      // Re-authenticate user first
+      final credential = EmailAuthProvider.credential(
+        email: _user!.email!,
+        password: password,
+      );
+      await _user!.reauthenticateWithCredential(credential);
+      
+      // Update email
+      await _user!.updateEmail(newEmail);
+      
+      // Update in Firestore too
+      await _firestore.collection('users').doc(_user!.uid).update({
+        'email': newEmail,
+        'lastUpdated': FieldValue.serverTimestamp(),
+      });
+      
+      _setError(null);
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _handleAuthError(e);
+      _setLoading(false);
+      return false;
     }
   }
   
-  // Get daily calorie needs
-  int? getUserDailyCalorieNeeds() {
-    if (_userProfile == null) return null;
+  // Update password
+  Future<bool> updatePassword(String currentPassword, String newPassword) async {
+    if (_user == null || _user!.email == null) return false;
     
-    final weight = _userProfile!['weight'] as num?;
-    final height = _userProfile!['height'] as num?;
-    final gender = _userProfile!['gender'] as String?;
-    final age = getUserAge();
+    _setLoading(true);
+    try {
+      // Re-authenticate user first
+      final credential = EmailAuthProvider.credential(
+        email: _user!.email!,
+        password: currentPassword,
+      );
+      await _user!.reauthenticateWithCredential(credential);
+      
+      // Update password
+      await _user!.updatePassword(newPassword);
+      
+      _setError(null);
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _handleAuthError(e);
+      _setLoading(false);
+      return false;
+    }
+  }
+  
+  // Log out
+  Future<void> logout() async {
+    try {
+      // Update last active time before logging out
+      if (_user != null) {
+        await _firestore.collection('users').doc(_user!.uid).update({
+          'lastActive': FieldValue.serverTimestamp(),
+        });
+      }
+      
+      await _auth.signOut();
+      _setError(null);
+    } catch (e) {
+      debugPrint('Error logging out: $e');
+    }
+  }
+  
+  // Handle common Firebase Auth errors
+  void _handleAuthError(dynamic error) {
+    String errorMessage = 'An unknown error occurred';
     
-    if (weight == null || height == null || gender == null || age == null ||
-        weight <= 0 || height <= 0 || gender.isEmpty) {
-      return null;
+    if (error is FirebaseAuthException) {
+      switch (error.code) {
+        case 'invalid-email':
+          errorMessage = 'The email address is not valid.';
+          break;
+        case 'user-disabled':
+          errorMessage = 'This user has been disabled.';
+          break;
+        case 'user-not-found':
+          errorMessage = 'No user found with this email.';
+          break;
+        case 'wrong-password':
+          errorMessage = 'Incorrect password.';
+          break;
+        case 'email-already-in-use':
+          errorMessage = 'This email is already in use.';
+          break;
+        case 'weak-password':
+          errorMessage = 'The password is too weak.';
+          break;
+        case 'operation-not-allowed':
+          errorMessage = 'Operation not allowed.';
+          break;
+        case 'requires-recent-login':
+          errorMessage = 'Please log in again before retrying this request.';
+          break;
+        default:
+          errorMessage = error.message ?? 'An unknown error occurred';
+      }
     }
     
-    // Get activity level (default to moderate)
-    final activityLevel = _userProfile!['activityLevel'] as String? ?? 'moderate';
-    double activityMultiplier;
-    
-    switch (activityLevel) {
-      case 'sedentary':
-        activityMultiplier = 1.2;
-        break;
-      case 'light':
-        activityMultiplier = 1.375;
-        break;
-      case 'moderate':
-        activityMultiplier = 1.55;
-        break;
-      case 'active':
-        activityMultiplier = 1.725;
-        break;
-      case 'very_active':
-        activityMultiplier = 1.9;
-        break;
-      default:
-        activityMultiplier = 1.55; // Default to moderate
+    _setError(errorMessage);
+  }
+  
+  // Set loading state
+  void _setLoading(bool loading) {
+    _isLoading = loading;
+    notifyListeners();
+  }
+  
+  // Set error message
+  void _setError(String? errorMessage) {
+    _error = errorMessage;
+    notifyListeners();
+  }
+  
+  // Clear error message
+  void clearError() {
+    _error = null;
+    notifyListeners();
+  }
+  
+  // Check if user exists
+  Future<bool> checkUserExists(String email) async {
+    try {
+      final methods = await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
+      return methods.isNotEmpty;
+    } catch (e) {
+      debugPrint('Error checking if user exists: $e');
+      return false;
     }
+  }
+  
+  // Update onboarding status
+  Future<bool> completeOnboarding() async {
+    if (_user == null) return false;
     
-    // Calculate BMR using Harris-Benedict equation
-    double bmr;
-    if (gender.toLowerCase() == 'male') {
-      bmr = 88.362 + (13.397 * weight) + (4.799 * height) - (5.677 * age);
-    } else {
-      bmr = 447.593 + (9.247 * weight) + (3.098 * height) - (4.330 * age);
+    try {
+      await _firestore.collection('users').doc(_user!.uid).update({
+        'isOnboardingComplete': true,
+        'lastUpdated': FieldValue.serverTimestamp(),
+      });
+      
+      // Refresh user profile
+      await fetchUserProfile();
+      
+      return true;
+    } catch (e) {
+      debugPrint('Error updating onboarding status: $e');
+      return false;
     }
-    
-    // Apply activity multiplier
-    return (bmr * activityMultiplier).round();
   }
 }
