@@ -77,6 +77,9 @@ document.addEventListener('DOMContentLoaded', function() {
   // Initialize the health snapshot features
   initializeHealthSnapshot();
   
+  // Initialize the enhanced workout form
+  initializeWorkoutForm();
+  
   // Sync data from all health connections if any exist
   if (healthConnectionManager.getConnections().length > 0) {
     syncAllHealthConnections();
