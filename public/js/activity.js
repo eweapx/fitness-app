@@ -342,4 +342,203 @@ class FitnessTracker {
     this.steps = 0;
     this.saveToLocalStorage();
   }
+  
+  /**
+   * Get activities for a specific date range
+   * @param {Date} startDate - Start date of the range
+   * @param {Date} endDate - End date of the range
+   * @returns {Array} List of activities in the date range
+   */
+  getActivitiesByDateRange(startDate, endDate) {
+    return this.activities.filter(activity => {
+      return activity.date >= startDate && activity.date <= endDate;
+    });
+  }
+  
+  /**
+   * Get activities for the current week
+   * @returns {Array} List of activities for this week
+   */
+  getActivitiesThisWeek() {
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay()); // Sunday of this week
+    startOfWeek.setHours(0, 0, 0, 0);
+    
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6); // Saturday of this week
+    endOfWeek.setHours(23, 59, 59, 999);
+    
+    return this.getActivitiesByDateRange(startOfWeek, endOfWeek);
+  }
+  
+  /**
+   * Get activities for the current month
+   * @returns {Array} List of activities for this month
+   */
+  getActivitiesThisMonth() {
+    const today = new Date();
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+    
+    return this.getActivitiesByDateRange(startOfMonth, endOfMonth);
+  }
+  
+  /**
+   * Get total calories burned for a specific date range
+   * @param {Date} startDate - Start date of the range
+   * @param {Date} endDate - End date of the range
+   * @returns {number} Total calories burned in the date range
+   */
+  getCaloriesByDateRange(startDate, endDate) {
+    const activitiesInRange = this.getActivitiesByDateRange(startDate, endDate);
+    return activitiesInRange.reduce((total, activity) => {
+      return total + Number(activity.calories);
+    }, 0);
+  }
+  
+  /**
+   * Get total duration for a specific date range
+   * @param {Date} startDate - Start date of the range
+   * @param {Date} endDate - End date of the range
+   * @returns {number} Total duration in minutes for the date range
+   */
+  getDurationByDateRange(startDate, endDate) {
+    const activitiesInRange = this.getActivitiesByDateRange(startDate, endDate);
+    return activitiesInRange.reduce((total, activity) => {
+      return total + Number(activity.duration);
+    }, 0);
+  }
+  
+  /**
+   * Get average duration per activity
+   * @returns {number} Average duration in minutes per activity
+   */
+  getAverageDuration() {
+    if (this.activities.length === 0) return 0;
+    
+    const totalDuration = this.activities.reduce((total, activity) => {
+      return total + Number(activity.duration);
+    }, 0);
+    
+    return Math.round(totalDuration / this.activities.length);
+  }
+  
+  /**
+   * Get calories burned this week
+   * @returns {number} Total calories burned this week
+   */
+  getWeeklyCalories() {
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay()); // Sunday of this week
+    startOfWeek.setHours(0, 0, 0, 0);
+    
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6); // Saturday of this week
+    endOfWeek.setHours(23, 59, 59, 999);
+    
+    return this.getCaloriesByDateRange(startOfWeek, endOfWeek);
+  }
+  
+  /**
+   * Get total duration this week
+   * @returns {number} Total duration in minutes this week
+   */
+  getWeeklyDuration() {
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay()); // Sunday of this week
+    startOfWeek.setHours(0, 0, 0, 0);
+    
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6); // Saturday of this week
+    endOfWeek.setHours(23, 59, 59, 999);
+    
+    return this.getDurationByDateRange(startOfWeek, endOfWeek);
+  }
+  
+  /**
+   * Get activities by type
+   * @param {string} type - The type of activity to filter by
+   * @returns {Array} List of activities of the specified type
+   */
+  getActivitiesByType(type) {
+    return this.activities.filter(activity => activity.type === type);
+  }
+  
+  /**
+   * Get activities sorted by the specified criteria
+   * @param {string} sortBy - Sort criteria (date-desc, date-asc, duration-desc, calories-desc)
+   * @returns {Array} Sorted list of activities
+   */
+  getSortedActivities(sortBy = 'date-desc') {
+    const sortedActivities = [...this.activities];
+    
+    switch(sortBy) {
+      case 'date-asc':
+        sortedActivities.sort((a, b) => a.date - b.date);
+        break;
+      case 'duration-desc':
+        sortedActivities.sort((a, b) => Number(b.duration) - Number(a.duration));
+        break;
+      case 'calories-desc':
+        sortedActivities.sort((a, b) => Number(b.calories) - Number(a.calories));
+        break;
+      case 'date-desc':
+      default:
+        sortedActivities.sort((a, b) => b.date - a.date);
+        break;
+    }
+    
+    return sortedActivities;
+  }
+  
+  /**
+   * Filter activities by search text (name or type)
+   * @param {string} searchText - Text to search for
+   * @returns {Array} Filtered list of activities
+   */
+  searchActivities(searchText) {
+    if (!searchText || searchText.trim() === '') return this.activities;
+    
+    const searchLower = searchText.toLowerCase().trim();
+    return this.activities.filter(activity => {
+      return activity.name.toLowerCase().includes(searchLower) || 
+             activity.type.toLowerCase().includes(searchLower);
+    });
+  }
+  
+  /**
+   * Get activity data for calendar display
+   * @returns {Object} Activity data organized by date
+   */
+  getCalendarActivityData() {
+    const activityByDate = {};
+    
+    this.activities.forEach(activity => {
+      const dateKey = formatDateYYYYMMDD(activity.date);
+      
+      if (!activityByDate[dateKey]) {
+        activityByDate[dateKey] = {
+          count: 0,
+          calories: 0,
+          duration: 0,
+          types: new Set()
+        };
+      }
+      
+      activityByDate[dateKey].count++;
+      activityByDate[dateKey].calories += Number(activity.calories);
+      activityByDate[dateKey].duration += Number(activity.duration);
+      activityByDate[dateKey].types.add(activity.type);
+    });
+    
+    // Convert Sets to Arrays for easier handling
+    Object.keys(activityByDate).forEach(date => {
+      activityByDate[date].types = Array.from(activityByDate[date].types);
+    });
+    
+    return activityByDate;
+  }
 }

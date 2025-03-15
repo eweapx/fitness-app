@@ -649,6 +649,8 @@ function updateDashboard() {
   updateActivityChart();
   updateConnectionsView();
   updateHealthSnapshotWidget();
+  updateActivityStatistics();
+  updateActivityCalendar();
   
   // Set up global click handler to reset any partially swiped cards
   setupGlobalClickHandlers();
@@ -702,6 +704,284 @@ function updateFitnessStats() {
   if (stepsCount) stepsCount.textContent = fitnessTracker.getTotalSteps().toLocaleString();
   if (caloriesCount) caloriesCount.textContent = fitnessTracker.getTotalCalories().toLocaleString();
   if (activitiesCount) activitiesCount.textContent = fitnessTracker.getActivitiesCount().toString();
+}
+
+/**
+ * Update activity statistics in the Activities section
+ */
+function updateActivityStatistics() {
+  const weeklyCaloriesStat = document.getElementById('weekly-calories-stat');
+  const weeklyDurationStat = document.getElementById('weekly-duration-stat');
+  const monthlyActivitiesStat = document.getElementById('monthly-activities-stat');
+  const avgDurationStat = document.getElementById('avg-duration-stat');
+  
+  if (weeklyCaloriesStat) {
+    weeklyCaloriesStat.textContent = fitnessTracker.getWeeklyCalories().toLocaleString();
+  }
+  
+  if (weeklyDurationStat) {
+    weeklyDurationStat.textContent = fitnessTracker.getWeeklyDuration().toLocaleString();
+  }
+  
+  if (monthlyActivitiesStat) {
+    monthlyActivitiesStat.textContent = fitnessTracker.getActivitiesThisMonth().length.toString();
+  }
+  
+  if (avgDurationStat) {
+    avgDurationStat.textContent = fitnessTracker.getAverageDuration().toString();
+  }
+}
+
+/**
+ * Update the activity calendar
+ */
+function updateActivityCalendar() {
+  const calendarContainer = document.getElementById('activity-calendar');
+  if (!calendarContainer) return;
+  
+  // Clear the container
+  calendarContainer.innerHTML = '';
+  
+  // Get current date to determine current month/week
+  const today = new Date();
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
+  
+  // Check which view is active
+  const monthViewActive = document.getElementById('month-view-btn')?.classList.contains('active');
+  const weekViewActive = document.getElementById('week-view-btn')?.classList.contains('active');
+  
+  // Get activity data organized by date
+  const activityData = fitnessTracker.getCalendarActivityData();
+  
+  if (monthViewActive || (!monthViewActive && !weekViewActive)) {
+    // Month view (default)
+    renderMonthCalendar(calendarContainer, currentYear, currentMonth, activityData);
+  } else if (weekViewActive) {
+    // Week view
+    renderWeekCalendar(calendarContainer, today, activityData);
+  }
+  
+  // Add event listeners to the view buttons if they exist
+  const monthViewBtn = document.getElementById('month-view-btn');
+  const weekViewBtn = document.getElementById('week-view-btn');
+  
+  if (monthViewBtn && weekViewBtn) {
+    // Remove any existing listeners
+    const newMonthBtn = monthViewBtn.cloneNode(true);
+    const newWeekBtn = weekViewBtn.cloneNode(true);
+    
+    monthViewBtn.parentNode.replaceChild(newMonthBtn, monthViewBtn);
+    weekViewBtn.parentNode.replaceChild(newWeekBtn, weekViewBtn);
+    
+    // Add new listeners
+    newMonthBtn.addEventListener('click', () => {
+      newMonthBtn.classList.add('active');
+      newWeekBtn.classList.remove('active');
+      updateActivityCalendar();
+    });
+    
+    newWeekBtn.addEventListener('click', () => {
+      newWeekBtn.classList.add('active');
+      newMonthBtn.classList.remove('active');
+      updateActivityCalendar();
+    });
+  }
+}
+
+/**
+ * Render a month calendar view
+ * @param {HTMLElement} container - The container for the calendar
+ * @param {number} year - The year to display
+ * @param {number} month - The month to display (0-11)
+ * @param {Object} activityData - Activity data organized by date
+ */
+function renderMonthCalendar(container, year, month, activityData) {
+  // Get the first day of the month
+  const firstDay = new Date(year, month, 1);
+  const startingDayOfWeek = firstDay.getDay(); // 0 (Sunday) to 6 (Saturday)
+  
+  // Get the number of days in the month
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  
+  // Create month header
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  
+  const monthHeader = document.createElement('div');
+  monthHeader.className = 'w-100 mb-3 text-center';
+  monthHeader.innerHTML = `<h5>${monthNames[month]} ${year}</h5>`;
+  container.appendChild(monthHeader);
+  
+  // Create the day headers (Sun - Sat)
+  const dayHeaders = document.createElement('div');
+  dayHeaders.className = 'w-100 d-flex mb-2';
+  
+  const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  daysOfWeek.forEach(day => {
+    const dayHeader = document.createElement('div');
+    dayHeader.className = 'flex-1 text-center fw-bold';
+    dayHeader.style.width = 'calc(100% / 7)';
+    dayHeader.textContent = day;
+    dayHeaders.appendChild(dayHeader);
+  });
+  
+  container.appendChild(dayHeaders);
+  
+  // Create the calendar grid
+  const calendarGrid = document.createElement('div');
+  calendarGrid.className = 'd-flex flex-wrap w-100';
+  
+  // Create empty cells for days before the first day of the month
+  for (let i = 0; i < startingDayOfWeek; i++) {
+    const emptyDay = document.createElement('div');
+    emptyDay.className = 'calendar-day empty';
+    emptyDay.style.width = 'calc(100% / 7)';
+    emptyDay.style.height = '100px';
+    emptyDay.style.padding = '5px';
+    calendarGrid.appendChild(emptyDay);
+  }
+  
+  // Create cells for each day of the month
+  for (let day = 1; day <= daysInMonth; day++) {
+    const date = new Date(year, month, day);
+    const dateKey = formatDateYYYYMMDD(date);
+    const isToday = date.toDateString() === new Date().toDateString();
+    
+    const dayCell = document.createElement('div');
+    dayCell.className = `calendar-day ${isToday ? 'border border-primary' : ''}`;
+    dayCell.style.width = 'calc(100% / 7)';
+    dayCell.style.height = '100px';
+    dayCell.style.padding = '5px';
+    dayCell.style.overflow = 'hidden';
+    
+    // Add day number
+    const dayNumber = document.createElement('div');
+    dayNumber.className = `calendar-day-number ${isToday ? 'text-primary fw-bold' : ''}`;
+    dayNumber.textContent = day;
+    dayCell.appendChild(dayNumber);
+    
+    // Add activity indicators if there are activities on this day
+    if (activityData[dateKey]) {
+      const activities = activityData[dateKey];
+      
+      const activityIndicator = document.createElement('div');
+      activityIndicator.className = 'activity-indicator mt-1 small';
+      
+      // Show a badge with the number of activities
+      activityIndicator.innerHTML = `
+        <span class="badge bg-primary rounded-pill">
+          ${activities.count} ${activities.count === 1 ? 'activity' : 'activities'}
+        </span>
+        <div class="text-muted small">${activities.calories} cal</div>
+      `;
+      
+      // Show activity types as small colored dots
+      if (activities.types && activities.types.length > 0) {
+        const typeColors = {
+          running: 'success',
+          cycling: 'info',
+          swimming: 'primary',
+          weights: 'warning',
+          other: 'secondary'
+        };
+        
+        const typesList = document.createElement('div');
+        typesList.className = 'd-flex gap-1 mt-1 flex-wrap';
+        
+        activities.types.forEach(type => {
+          const typeColor = typeColors[type] || 'secondary';
+          const typeDot = document.createElement('span');
+          typeDot.className = `badge bg-${typeColor} rounded-circle p-1`;
+          typeDot.setAttribute('title', type);
+          typesList.appendChild(typeDot);
+        });
+        
+        activityIndicator.appendChild(typesList);
+      }
+      
+      dayCell.appendChild(activityIndicator);
+    }
+    
+    calendarGrid.appendChild(dayCell);
+  }
+  
+  container.appendChild(calendarGrid);
+}
+
+/**
+ * Render a week calendar view
+ * @param {HTMLElement} container - The container for the calendar
+ * @param {Date} date - The date within the week to display
+ * @param {Object} activityData - Activity data organized by date
+ */
+function renderWeekCalendar(container, date, activityData) {
+  // Calculate the first day of the week (Sunday)
+  const firstDayOfWeek = new Date(date);
+  firstDayOfWeek.setDate(date.getDate() - date.getDay());
+  
+  // Create week header
+  const weekStart = firstDayOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const weekEnd = new Date(firstDayOfWeek);
+  weekEnd.setDate(firstDayOfWeek.getDate() + 6);
+  const weekEndStr = weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  
+  const weekHeader = document.createElement('div');
+  weekHeader.className = 'w-100 mb-3 text-center';
+  weekHeader.innerHTML = `<h5>${weekStart} - ${weekEndStr}</h5>`;
+  container.appendChild(weekHeader);
+  
+  // Create the week container
+  const weekContainer = document.createElement('div');
+  weekContainer.className = 'w-100';
+  
+  // Create each day of the week
+  for (let i = 0; i < 7; i++) {
+    const currentDate = new Date(firstDayOfWeek);
+    currentDate.setDate(firstDayOfWeek.getDate() + i);
+    const dateKey = formatDateYYYYMMDD(currentDate);
+    const isToday = currentDate.toDateString() === new Date().toDateString();
+    
+    const dayRow = document.createElement('div');
+    dayRow.className = `d-flex p-2 mb-2 align-items-center ${isToday ? 'bg-light rounded' : ''}`;
+    
+    // Day name and date
+    const dayName = currentDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    const dayLabel = document.createElement('div');
+    dayLabel.className = 'col-md-3';
+    dayLabel.innerHTML = `<strong class="${isToday ? 'text-primary' : ''}">${dayName}</strong>`;
+    
+    // Activity summary
+    const activitySummary = document.createElement('div');
+    activitySummary.className = 'col-md-9';
+    
+    if (activityData[dateKey]) {
+      const activities = activityData[dateKey];
+      
+      activitySummary.innerHTML = `
+        <div class="d-flex align-items-center">
+          <span class="badge bg-primary rounded-pill me-2">${activities.count} activities</span>
+          <span class="text-muted me-3">${activities.calories} calories</span>
+          <span class="text-muted">${activities.duration} minutes</span>
+        </div>
+        <div class="small mt-1">
+          ${activities.types.join(', ')}
+        </div>
+      `;
+    } else {
+      activitySummary.innerHTML = `
+        <div class="text-muted">No activities recorded</div>
+      `;
+    }
+    
+    dayRow.appendChild(dayLabel);
+    dayRow.appendChild(activitySummary);
+    weekContainer.appendChild(dayRow);
+  }
+  
+  container.appendChild(weekContainer);
 }
 
 /**
@@ -786,24 +1066,16 @@ function updateActivitiesList() {
   }
   
   // Update the all activities list (for the Activity tab)
-  if (allActivitiesList && noAllActivities) {
+  if (activitiesList && noActivities) {
     if (activities.length === 0) {
-      allActivitiesList.style.display = 'none';
-      noAllActivities.style.display = 'block';
+      activitiesList.style.display = 'none';
+      noActivities.style.display = 'block';
     } else {
-      allActivitiesList.style.display = 'block';
-      noAllActivities.style.display = 'none';
+      // Set up activity filters and sorting
+      setupActivityFiltersAndSort();
       
-      // Clear the list
-      allActivitiesList.innerHTML = '';
-      
-      // Sort activities by date (newest first)
-      const sortedActivities = [...activities].sort((a, b) => b.date - a.date);
-      
-      sortedActivities.forEach(activity => {
-        const activityElement = createActivityCard(activity);
-        allActivitiesList.appendChild(activityElement);
-      });
+      // Apply current filters and sorting
+      applyActivityFiltersAndSort();
     }
   }
 }
@@ -1149,6 +1421,143 @@ function updateNutritionChart() {
           }
         }
       }
+    });
+  }
+}
+
+/**
+ * Set up activity filters and sorting
+ */
+function setupActivityFiltersAndSort() {
+  const filterButtons = document.querySelectorAll('#activity-filter-buttons button');
+  const sortDropdown = document.getElementById('activity-sort');
+  const searchInput = document.getElementById('activity-search');
+  
+  // Add event listeners to filter buttons if they don't already have them
+  filterButtons.forEach(button => {
+    // Clone and replace to remove any existing listeners
+    const newButton = button.cloneNode(true);
+    button.parentNode.replaceChild(newButton, button);
+    
+    newButton.addEventListener('click', () => {
+      // Remove active class from all buttons
+      filterButtons.forEach(btn => btn.classList.remove('active'));
+      
+      // Add active class to clicked button
+      newButton.classList.add('active');
+      
+      // Apply filters
+      applyActivityFiltersAndSort();
+    });
+  });
+  
+  // Add event listener to sort dropdown if it doesn't already have one
+  if (sortDropdown) {
+    // Clone and replace to remove any existing listeners
+    const newDropdown = sortDropdown.cloneNode(true);
+    sortDropdown.parentNode.replaceChild(newDropdown, sortDropdown);
+    
+    newDropdown.addEventListener('change', () => {
+      applyActivityFiltersAndSort();
+    });
+  }
+  
+  // Add event listener to search input if it doesn't already have one
+  if (searchInput) {
+    // Clone and replace to remove any existing listeners
+    const newInput = searchInput.cloneNode(true);
+    searchInput.parentNode.replaceChild(newInput, searchInput);
+    
+    // Use input event for real-time filtering as user types
+    newInput.addEventListener('input', debounce(() => {
+      applyActivityFiltersAndSort();
+    }, 300)); // Debounce to avoid excessive filtering while typing
+  }
+}
+
+/**
+ * Apply activity filters and sorting
+ */
+function applyActivityFiltersAndSort() {
+  const activitiesList = document.getElementById('activities-list');
+  const noActivities = document.getElementById('no-activities');
+  
+  if (!activitiesList || !noActivities) return;
+  
+  // Get current filter settings
+  const activeFilterBtn = document.querySelector('#activity-filter-buttons button.active');
+  const filterType = activeFilterBtn ? activeFilterBtn.dataset.filter : 'all';
+  
+  const sortDropdown = document.getElementById('activity-sort');
+  const sortBy = sortDropdown ? sortDropdown.value : 'date-desc';
+  
+  const searchInput = document.getElementById('activity-search');
+  const searchText = searchInput ? searchInput.value.trim() : '';
+  
+  // Get and filter activities
+  let filteredActivities = fitnessTracker.getActivities();
+  
+  // Apply type filter
+  if (filterType && filterType !== 'all') {
+    filteredActivities = filteredActivities.filter(activity => activity.type === filterType);
+  }
+  
+  // Apply search filter
+  if (searchText) {
+    filteredActivities = fitnessTracker.searchActivities(searchText);
+    
+    // Also apply type filter to search results if needed
+    if (filterType && filterType !== 'all') {
+      filteredActivities = filteredActivities.filter(activity => activity.type === filterType);
+    }
+  }
+  
+  // Apply sorting
+  filteredActivities = fitnessTracker.getSortedActivities(sortBy);
+  
+  // First apply search if provided
+  if (searchText) {
+    filteredActivities = fitnessTracker.searchActivities(searchText);
+  }
+  
+  // Then apply type filter if not 'all'
+  if (filterType && filterType !== 'all') {
+    filteredActivities = filteredActivities.filter(activity => activity.type === filterType);
+  }
+  
+  // Finally apply sorting
+  switch(sortBy) {
+    case 'date-asc':
+      filteredActivities.sort((a, b) => a.date - b.date);
+      break;
+    case 'duration-desc':
+      filteredActivities.sort((a, b) => Number(b.duration) - Number(a.duration));
+      break;
+    case 'calories-desc':
+      filteredActivities.sort((a, b) => Number(b.calories) - Number(a.calories));
+      break;
+    case 'date-desc':
+    default:
+      filteredActivities.sort((a, b) => b.date - a.date);
+      break;
+  }
+  
+  // Display filtered and sorted activities
+  if (filteredActivities.length === 0) {
+    activitiesList.innerHTML = '';
+    activitiesList.style.display = 'none';
+    noActivities.style.display = 'block';
+  } else {
+    activitiesList.style.display = 'block';
+    noActivities.style.display = 'none';
+    
+    // Clear the list
+    activitiesList.innerHTML = '';
+    
+    // Create and add activity cards
+    filteredActivities.forEach(activity => {
+      const activityElement = createActivityCard(activity);
+      activitiesList.appendChild(activityElement);
     });
   }
 }

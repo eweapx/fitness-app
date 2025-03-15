@@ -152,7 +152,7 @@ function initializeWorkoutUI() {
           }
         } catch (error) {
           console.error("Error showing exercise modal:", error);
-          showMessage("There was an error with the exercise form. Please try again.", "danger");
+          showToast("There was an error with the exercise form. Please try again.", "danger");
         }
       });
     }
@@ -174,7 +174,7 @@ function initializeWorkoutUI() {
     console.log("Workout UI initialization complete");
   } catch (error) {
     console.error("Error initializing workout UI:", error);
-    showMessage("Error initializing workout interface. Please refresh the page.", "danger");
+    showToast("Error initializing workout interface. Please refresh the page.", "danger");
   }
 }
 
@@ -307,7 +307,7 @@ function handleCreateWorkout() {
   loadWorkoutRoutines();
   
   // Show success message
-  showMessage(`Workout plan "${name}" created successfully!`, 'success');
+  showToast(`Workout plan "${name}" created successfully!`, 'success');
 }
 
 /**
@@ -818,7 +818,7 @@ function deleteWorkout(routineId) {
   if (confirm('Are you sure you want to delete this workout plan?')) {
     workoutManager.deleteRoutine(routineId);
     loadWorkoutRoutines();
-    showMessage('Workout plan deleted successfully', 'success');
+    showToast('Workout plan deleted successfully', 'success');
   }
 }
 
@@ -840,7 +840,7 @@ function handleCompleteWorkout() {
   modal.hide();
   
   // Show success message
-  showMessage('Workout completed and saved to your activity log!', 'success');
+  showToast('Workout completed and saved to your activity log!', 'success');
   
   // Reset current workout
   currentWorkoutId = null;
@@ -869,7 +869,7 @@ function handleDiscardWorkout() {
     currentWorkoutId = null;
     
     // Show message
-    showMessage('Workout discarded', 'info');
+    showToast('Workout discarded', 'info');
   }
 }
 
@@ -932,7 +932,7 @@ function startWorkoutTimer() {
           workoutTimerInterval = setInterval(updateWorkoutTimer, 1000);
         } catch (retryError) {
           console.error("Retry failed:", retryError);
-          showMessage("Could not start workout timer. The duration may not track correctly.", "warning");
+          showToast("Could not start workout timer. The duration may not track correctly.", "warning");
         }
       }, 500);
     } catch (recoveryError) {

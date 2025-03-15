@@ -255,6 +255,68 @@
         <!-- Add more sections for activities, nutrition, sleep, habits, etc. -->
         <section id="activities-section" class="section-content d-none">
             <h2 class="mb-4">Activity Tracking</h2>
+            
+            <!-- Activity Statistics Row -->
+            <div class="row mb-4">
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="card stat-card">
+                        <div class="card-body text-center">
+                            <h5 class="card-title mb-3">This Week</h5>
+                            <div class="stat-value text-primary mb-2" id="weekly-calories-stat">0</div>
+                            <p class="card-text text-muted">calories</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="card stat-card">
+                        <div class="card-body text-center">
+                            <h5 class="card-title mb-3">Active Minutes</h5>
+                            <div class="stat-value text-success mb-2" id="weekly-duration-stat">0</div>
+                            <p class="card-text text-muted">minutes</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="card stat-card">
+                        <div class="card-body text-center">
+                            <h5 class="card-title mb-3">Activities</h5>
+                            <div class="stat-value text-info mb-2" id="monthly-activities-stat">0</div>
+                            <p class="card-text text-muted">this month</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="card stat-card">
+                        <div class="card-body text-center">
+                            <h5 class="card-title mb-3">Average Duration</h5>
+                            <div class="stat-value text-warning mb-2" id="avg-duration-stat">0</div>
+                            <p class="card-text text-muted">minutes/activity</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Activities Calendar Row -->
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Activity Calendar</h5>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-primary active" id="month-view-btn">Month</button>
+                                <button class="btn btn-outline-primary" id="week-view-btn">Week</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="activity-calendar" class="d-flex flex-wrap">
+                                <!-- Calendar will be dynamically generated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Activities List with Filters Row -->
             <div class="row">
                 <div class="col-md-12 mb-3">
                     <div class="card">
@@ -269,9 +331,47 @@
                                 </button>
                             </div>
                         </div>
+                        
+                        <!-- Filter and Sort Options -->
+                        <div class="card-body border-bottom pb-2">
+                            <div class="row align-items-center">
+                                <div class="col-md-8">
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <div class="btn-group btn-group-sm" role="group" id="activity-filter-buttons">
+                                            <button type="button" class="btn btn-outline-primary active" data-filter="all">All</button>
+                                            <button type="button" class="btn btn-outline-primary" data-filter="running">Running</button>
+                                            <button type="button" class="btn btn-outline-primary" data-filter="cycling">Cycling</button>
+                                            <button type="button" class="btn btn-outline-primary" data-filter="swimming">Swimming</button>
+                                            <button type="button" class="btn btn-outline-primary" data-filter="weights">Weights</button>
+                                        </div>
+                                        <input type="text" class="form-control form-control-sm" id="activity-search" placeholder="Search activities..." style="max-width: 200px;">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="d-flex justify-content-md-end mt-2 mt-md-0">
+                                        <select class="form-select form-select-sm" id="activity-sort">
+                                            <option value="date-desc">Newest First</option>
+                                            <option value="date-asc">Oldest First</option>
+                                            <option value="duration-desc">Longest Duration</option>
+                                            <option value="calories-desc">Most Calories</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Activities List -->
                         <div class="card-body">
                             <div id="activities-list" class="row g-3">
                                 <!-- Activities will be dynamically added here -->
+                            </div>
+                            <div id="no-activities" class="text-center py-5 d-none">
+                                <i class="bi bi-activity text-muted" style="font-size: 3rem;"></i>
+                                <h5 class="mt-3">No activities found</h5>
+                                <p class="text-muted mb-3">Start tracking your fitness activities to see them here.</p>
+                                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addActivityModal">
+                                    <i class="bi bi-plus-lg"></i> Add Your First Activity
+                                </button>
                             </div>
                         </div>
                     </div>
