@@ -50,12 +50,12 @@ app.get('*', (req, res) => {
   // First check if this is a test file request
   const reqPath = req.path.startsWith('/') ? req.path.substring(1) : req.path;
   const filePath = path.join(__dirname, reqPath);
-  
+
   // Check if the file exists (for test purposes)
   if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
     return res.sendFile(filePath);
   }
-  
+
   // If file doesn't exist and it's not an API route, check for SPA files
   const indexPath = path.join(publicDir, 'index.html');
   const flutterIndexPath = path.join(flutterBuildDir, 'index.html');
@@ -81,17 +81,15 @@ if (require.main === module) {
     console.log(`Server running at http://0.0.0.0:${PORT}`);
     // Signal that the server is ready to accept connections
     console.log(`Server ready - listening on port ${PORT}`);
-  });
-
-  // Handle server errors
-  server.on('error', (error) => {
-    console.error(`Server error: ${error.message}`);
+  }).on('error', (error) => {
     if (error.code === 'EADDRINUSE') {
-      console.error(`Port ${PORT} is already in use. Try a different port.`);
+      console.error(`Port ${PORT} is already in use. Try stopping other servers first.`);
+    } else {
+      console.error(`Server error: ${error.message}`);
     }
     process.exit(1);
   });
-  
+
   // Handle graceful shutdown
   process.on('SIGINT', () => {
     console.log('Shutting down server gracefully...');
