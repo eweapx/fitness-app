@@ -7,6 +7,59 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
     <link rel="stylesheet" href="public/css/styles.css">
+    <style>
+        /* Custom styles for the test page */
+        body {
+            background-color: #f8f9fa;
+        }
+        .card {
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .exercise-set {
+            transition: background-color 0.15s ease;
+            border-radius: 0.25rem;
+            padding: 0.35rem 0.25rem;
+        }
+        .exercise-set:hover {
+            background-color: #f8f9fa;
+        }
+        .exercise-set-header {
+            color: #6c757d;
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #212529;
+                color: #f8f9fa;
+            }
+            .card {
+                background-color: #343a40;
+                border-color: #495057;
+            }
+            .card-header {
+                background-color: #212529;
+                border-color: #495057;
+            }
+            .text-muted {
+                color: #adb5bd !important;
+            }
+            .exercise-set:hover {
+                background-color: #2b3035;
+            }
+            .form-control {
+                background-color: #495057;
+                border-color: #6c757d;
+                color: #f8f9fa;
+            }
+            .form-control:focus {
+                background-color: #495057;
+                color: #f8f9fa;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="container py-4">
@@ -19,37 +72,135 @@
                         <h5 class="mb-0">Test Card</h5>
                     </div>
                     <div class="card-body">
-                        <p>This is a test to verify the server is working correctly.</p>
-                        <div class="d-flex align-items-center exercise-set">
-                            <div class="set-number" style="width: 40px">1</div>
-                            <div class="flex-grow-1 row g-0">
-                                <div class="col-4 pe-1">
-                                    <input type="number" class="form-control form-control-sm set-weight" value="135" inputmode="numeric">
-                                    <div class="last-weight text-muted" style="font-size: 0.75rem; line-height: 1.2;">Last: 135 lbs</div>
+                        <p>This is a test page to verify the workout UI improvements.</p>
+                        
+                        <div class="card mb-3">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">Bench Press</h5>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-outline-primary" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" title="Remove">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
                                 </div>
-                                <div class="col-4 px-1">
-                                    <input type="number" class="form-control form-control-sm set-reps" value="10" inputmode="numeric">
-                                </div>
-                                <div class="col-4 ps-1">
-                                    <div class="form-check d-flex justify-content-center">
-                                        <input class="form-check-input set-complete" type="checkbox">
+                            </div>
+                            <div class="card-body">
+                                <div class="exercise-sets">
+                                    <div class="d-flex exercise-set-header">
+                                        <div style="width: 40px">Set</div>
+                                        <div class="flex-grow-1 row g-0">
+                                            <div class="col-4">Weight</div>
+                                            <div class="col-4">Reps</div>
+                                            <div class="col-4">Done</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="d-flex align-items-center exercise-set">
+                                        <div class="set-number" style="width: 40px">1</div>
+                                        <div class="flex-grow-1 row g-0">
+                                            <div class="col-4 pe-1">
+                                                <input type="number" class="form-control form-control-sm set-weight" value="135" inputmode="numeric">
+                                                <div class="last-weight text-muted" style="font-size: 0.75rem; line-height: 1.2;">Last: 135 lbs</div>
+                                            </div>
+                                            <div class="col-4 px-1">
+                                                <input type="number" class="form-control form-control-sm set-reps" value="10" inputmode="numeric">
+                                            </div>
+                                            <div class="col-4 ps-1">
+                                                <div class="form-check d-flex justify-content-center">
+                                                    <input class="form-check-input set-complete" type="checkbox">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="d-flex align-items-center exercise-set mt-2">
+                                        <div class="set-number" style="width: 40px">2</div>
+                                        <div class="flex-grow-1 row g-0">
+                                            <div class="col-4 pe-1">
+                                                <input type="number" class="form-control form-control-sm set-weight" value="145" inputmode="numeric">
+                                                <div class="last-weight text-muted" style="font-size: 0.75rem; line-height: 1.2;">Last: 135 lbs</div>
+                                            </div>
+                                            <div class="col-4 px-1">
+                                                <input type="number" class="form-control form-control-sm set-reps" value="8" inputmode="numeric">
+                                            </div>
+                                            <div class="col-4 ps-1">
+                                                <div class="form-check d-flex justify-content-center">
+                                                    <input class="form-check-input set-complete" type="checkbox">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="d-flex align-items-center exercise-set mt-2">
+                                        <div class="set-number" style="width: 40px">3</div>
+                                        <div class="flex-grow-1 row g-0">
+                                            <div class="col-4 pe-1">
+                                                <input type="number" class="form-control form-control-sm set-weight" value="155" inputmode="numeric">
+                                                <div class="last-weight text-muted" style="font-size: 0.75rem; line-height: 1.2;">Last: 145 lbs</div>
+                                            </div>
+                                            <div class="col-4 px-1">
+                                                <input type="number" class="form-control form-control-sm set-reps" value="6" inputmode="numeric">
+                                            </div>
+                                            <div class="col-4 ps-1">
+                                                <div class="form-check d-flex justify-content-center">
+                                                    <input class="form-check-input set-complete" type="checkbox">
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="d-flex align-items-center exercise-set mt-2">
-                            <div class="set-number" style="width: 40px">2</div>
-                            <div class="flex-grow-1 row g-0">
-                                <div class="col-4 pe-1">
-                                    <input type="number" class="form-control form-control-sm set-weight" value="145" inputmode="numeric">
-                                    <div class="last-weight text-muted" style="font-size: 0.75rem; line-height: 1.2;">Last: 135 lbs</div>
+                        
+                        <h6 class="mt-4">Exercise Form Modal Preview</h6>
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="exercise-name" class="form-label">Exercise Name</label>
+                                    <input type="text" class="form-control" id="exercise-name" value="Barbell Row">
                                 </div>
-                                <div class="col-4 px-1">
-                                    <input type="number" class="form-control form-control-sm set-reps" value="8" inputmode="numeric">
+                                
+                                <div class="mb-3">
+                                    <label class="form-label d-block">Equipment</label>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="equipment-type" id="equipment-barbell" value="barbell" checked>
+                                        <label class="form-check-label" for="equipment-barbell">Barbell</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="equipment-type" id="equipment-dumbbell" value="dumbbell">
+                                        <label class="form-check-label" for="equipment-dumbbell">Dumbbell</label>
+                                    </div>
                                 </div>
-                                <div class="col-4 ps-1">
-                                    <div class="form-check d-flex justify-content-center">
-                                        <input class="form-check-input set-complete" type="checkbox">
+                                
+                                <div id="exercise-sets-preview" class="mb-3">
+                                    <label class="form-label d-flex justify-content-between">
+                                        <span>Sets</span>
+                                        <button type="button" class="btn btn-sm btn-outline-primary">+ Add Set</button>
+                                    </label>
+                                    
+                                    <div class="set-container mb-2" data-set-index="0">
+                                        <div class="d-flex align-items-center">
+                                            <div class="me-2 set-number">1</div>
+                                            <div class="flex-grow-1 row g-0">
+                                                <div class="col-4 pe-1">
+                                                    <input type="number" class="form-control set-weight" placeholder="Weight" inputmode="numeric" min="0" max="999" value="95">
+                                                    <div class="last-weight text-muted" style="font-size: 0.75rem; line-height: 1.2;">Last: 90 lbs</div>
+                                                </div>
+                                                <div class="col-4 px-1">
+                                                    <input type="number" class="form-control set-reps" placeholder="Reps" inputmode="numeric" min="1" max="100" value="12">
+                                                </div>
+                                                <div class="col-4 ps-1 d-flex">
+                                                    <button type="button" class="btn btn-outline-danger btn-sm remove-set-btn" tabindex="-1">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                    <div class="form-check ms-1">
+                                                        <input class="form-check-input set-complete" type="checkbox" title="Completed">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

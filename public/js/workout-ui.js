@@ -534,7 +534,7 @@ function initializeExerciseSets() {
     firstSet.querySelector('.set-complete').checked = false;
     
     // Add 'Last weight' display below the weight input
-    const weightInputCol = firstSet.querySelector('.set-weight').closest('.col-5');
+    const weightInputCol = firstSet.querySelector('.set-weight').closest('.col-4');
     if (weightInputCol && !weightInputCol.querySelector('.last-weight')) {
       const lastWeightLabel = document.createElement('div');
       lastWeightLabel.className = 'last-weight text-muted';
@@ -567,7 +567,7 @@ function addNewSet() {
   setTemplate.querySelector('.set-complete').checked = false;
   
   // Ensure the "Last weight" label is present
-  const weightInputCol = setTemplate.querySelector('.set-weight').closest('.col-5');
+  const weightInputCol = setTemplate.querySelector('.set-weight').closest('.col-4');
   if (weightInputCol && !weightInputCol.querySelector('.last-weight')) {
     const lastWeightLabel = document.createElement('div');
     lastWeightLabel.className = 'last-weight text-muted';
@@ -729,14 +729,14 @@ function editExercise(exerciseId) {
       <div class="d-flex align-items-center">
         <div class="me-2 set-number">NUMBER</div>
         <div class="flex-grow-1 row g-0">
-          <div class="col-5 pe-1">
+          <div class="col-4 pe-1">
             <input type="number" class="form-control set-weight" placeholder="Weight" inputmode="numeric" min="0" max="999" value="WEIGHT">
             <div class="last-weight text-muted" style="font-size: 0.75rem; line-height: 1.2;">Last: 135 lbs</div>
           </div>
           <div class="col-4 px-1">
             <input type="number" class="form-control set-reps" placeholder="Reps" inputmode="numeric" min="1" max="100" value="REPS">
           </div>
-          <div class="col-3 ps-1 d-flex">
+          <div class="col-4 ps-1 d-flex">
             <button type="button" class="btn btn-outline-danger btn-sm remove-set-btn" tabindex="-1">
               <i class="bi bi-trash"></i>
             </button>

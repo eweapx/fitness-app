@@ -80,70 +80,32 @@ build = ["sh", "-c", "flutter build web"]
 
 [[ports]]
 localPort = 5000
-externalPort = 5000
+externalPort = 80
 
 [[ports]]
 localPort = 5002
-externalPort = 80
+externalPort = 3001
 
 [[ports]]
 localPort = 8080
 externalPort = 8080
 
 [[ports]]
-localPort = 33199
-externalPort = 3002
-
-[[ports]]
-localPort = 33641
+localPort = 38129
 externalPort = 3003
 
 [[ports]]
-localPort = 35223
-
-[[ports]]
-localPort = 35363
-externalPort = 6800
-
-[[ports]]
-localPort = 35649
-externalPort = 8081
-
-[[ports]]
-localPort = 37989
-externalPort = 3001
-
-[[ports]]
-localPort = 39191
-externalPort = 5173
-
-[[ports]]
-localPort = 39427
+localPort = 38505
 externalPort = 4200
 
 [[ports]]
-localPort = 43387
-externalPort = 8099
+localPort = 41811
+externalPort = 3002
 
 [[ports]]
 localPort = 43717
-
-[[ports]]
-localPort = 44207
-externalPort = 6000
-
-[[ports]]
-localPort = 44927
-externalPort = 8008
-
-[[ports]]
-localPort = 45017
-externalPort = 8000
-
-[[ports]]
-localPort = 45881
 externalPort = 3000
 
 [[ports]]
-localPort = 46363
-externalPort = 9000
+localPort = 44247
+externalPort = 5000
