@@ -4,7 +4,7 @@ modules = ["flutter", "nodejs-20", "dart", "python-3.11"]
 channel = "stable-24_05"
 
 [workflows]
-runButton = "Project"
+runButton = "Run"
 
 [[workflows.workflow]]
 name = "Project"
@@ -73,6 +73,19 @@ task = "packager.installForAll"
 task = "shell.exec"
 args = "node simple-server.js"
 waitForPort = 5000
+
+[[workflows.workflow]]
+name = "Run"
+author = 40359398
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "flutter build web"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node server.js"
 
 [deployment]
 run = ["sh", "-c", "flutter run -d web-server --web-port=5000 --web-hostname=0.0.0.0"]
