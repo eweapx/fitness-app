@@ -27,6 +27,36 @@
             font-size: 0.9rem;
         }
         
+        /* Voice Command Button styles */
+        #voice-command-toggle {
+            transition: all 0.3s ease;
+        }
+        
+        #voice-command-toggle.listening {
+            animation: pulse 1.5s infinite;
+            background-color: rgba(220, 53, 69, 0.1);
+            border-color: #dc3545;
+            box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
+        }
+        
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(220, 53, 69, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+            }
+        }
+        
+        /* Dark mode voice command */
+        body.dark-mode #voice-command-toggle.listening {
+            background-color: rgba(220, 53, 69, 0.2);
+            box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.4);
+        }
+        
         /* Habit Deload styles */
         .habit-status-container {
             display: flex;
@@ -142,9 +172,22 @@
                     </li>
                 </ul>
                 <div class="d-flex align-items-center">
+                    <!-- Voice Command Button -->
+                    <button id="voice-command-toggle" class="btn btn-outline-light me-2" title="Start voice commands">
+                        <i class="bi bi-mic"></i>
+                    </button>
+                    
+                    <!-- Voice Command Help Button -->
+                    <button class="btn btn-outline-light me-2" data-bs-toggle="modal" data-bs-target="#voiceCommandHelpModal" title="Voice command help">
+                        <i class="bi bi-question-circle"></i>
+                    </button>
+                    
+                    <!-- Dark Mode Toggle -->
                     <button id="dark-mode-toggle" class="btn btn-outline-light me-2">
                         <i class="bi bi-moon-fill"></i>
                     </button>
+                    
+                    <!-- Profile Dropdown -->
                     <div class="dropdown">
                         <button class="btn btn-outline-light dropdown-toggle" type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="bi bi-person-circle me-1"></i> Profile
@@ -1436,6 +1479,96 @@
     <script src="/js/auth.js"></script>
     <script src="/js/app.js"></script>
     <script src="/js/sample-data.js"></script>
+    <script src="/js/speech-recognition.js"></script>
+
+    <!-- Voice Command Instructions Modal -->
+    <div class="modal fade" id="voiceCommandHelpModal" tabindex="-1" aria-labelledby="voiceCommandHelpModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="voiceCommandHelpModalLabel">Voice Command Instructions</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <h6 class="mb-3">How to Use Voice Commands</h6>
+                    <p>Click the microphone icon <i class="bi bi-mic"></i> in the navigation bar to start voice recognition, then speak your command clearly.</p>
+                    
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-header bg-primary text-white">
+                                    <h6 class="mb-0">Activity Commands</h6>
+                                </div>
+                                <div class="card-body">
+                                    <p class="card-text small">Examples:</p>
+                                    <ul class="small">
+                                        <li>"Log an activity called Morning Jog for 30 minutes"</li>
+                                        <li>"Add a running workout for 45 minutes burning 320 calories"</li>
+                                        <li>"Log a cycling workout for 20 minutes with distance 5 miles"</li>
+                                        <li>"Add a weight training activity with 200 calories"</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-header bg-success text-white">
+                                    <h6 class="mb-0">Nutrition Commands</h6>
+                                </div>
+                                <div class="card-body">
+                                    <p class="card-text small">Examples:</p>
+                                    <ul class="small">
+                                        <li>"Log a meal called Breakfast with 450 calories"</li>
+                                        <li>"Add lunch with 25 grams protein, 40 grams carbs, and 15 grams fat"</li>
+                                        <li>"Log dinner containing chicken, rice and vegetables"</li>
+                                        <li>"Add a snack with 200 calories"</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-header bg-info text-white">
+                                    <h6 class="mb-0">Sleep Commands</h6>
+                                </div>
+                                <div class="card-body">
+                                    <p class="card-text small">Examples:</p>
+                                    <ul class="small">
+                                        <li>"Log sleep went to bed at 10:30 PM woke up at, 6:30 AM"</li>
+                                        <li>"Add sleep with quality 4"</li>
+                                        <li>"Log sleep with quality good and notes slept well"</li>
+                                        <li>"Add sleep from 11 PM to 7 AM with quality 5"</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-header bg-warning text-dark">
+                                    <h6 class="mb-0">Habit & Steps Commands</h6>
+                                </div>
+                                <div class="card-body">
+                                    <p class="card-text small">Examples:</p>
+                                    <ul class="small">
+                                        <li>"Log a habit called smoking 5 times per day"</li>
+                                        <li>"Add a habit category drinking triggered by stress"</li>
+                                        <li>"Log steps 8500"</li>
+                                        <li>"Add 10000 steps"</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
 </body>
 </html>
