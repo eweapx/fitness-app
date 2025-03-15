@@ -759,40 +759,87 @@ function toggleRestTimer() {
     timerBtn.classList.remove('btn-danger');
     timerBtn.classList.add('btn-outline-primary');
   } else {
-    // Start 60 second timer
-    let seconds = 60;
-    timerDisplay.textContent = '01:00';
-    timerBtn.textContent = 'Cancel';
-    timerBtn.classList.remove('btn-outline-primary');
-    timerBtn.classList.add('btn-danger');
+    // Show the rest timer modal
+    const restModal = new bootstrap.Modal(document.getElementById('restTimerModal'));
     
-    // Play start sound
-    // playSound('timer-start');
+    // Initialize slider value display
+    const restTimeRange = document.getElementById('restTimeRange');
+    const restTimeValue = document.getElementById('restTimeValue');
     
-    restTimerInterval = setInterval(() => {
-      seconds--;
-      if (seconds <= 0) {
-        stopRestTimer();
-        timerDisplay.textContent = 'Done!';
-        timerBtn.textContent = 'Start Rest';
-        timerBtn.classList.remove('btn-danger');
-        timerBtn.classList.add('btn-outline-primary');
-        // Play end sound
-        // playSound('timer-end');
-        
-        // Reset to 00:00 after 3 seconds
-        setTimeout(() => {
-          if (!restTimerInterval) {
-            timerDisplay.textContent = '00:00';
-          }
-        }, 3000);
-      } else {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        timerDisplay.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-      }
-    }, 1000);
+    // Update display when slider changes
+    restTimeRange.addEventListener('input', function() {
+      restTimeValue.textContent = this.value;
+    });
+    
+    // Set up the start timer button
+    const startRestTimerBtn = document.getElementById('startRestTimerBtn');
+    startRestTimerBtn.addEventListener('click', function() {
+      // Get selected minutes
+      const minutes = parseInt(restTimeRange.value);
+      
+      // Convert to seconds
+      const seconds = minutes * 60;
+      startActualTimer(seconds);
+      
+      // Hide the modal
+      restModal.hide();
+    });
+    
+    // Show the modal
+    restModal.show();
   }
+}
+
+/**
+ * Start the actual rest timer with given seconds
+ * @param {number} seconds - Seconds to count down
+ */
+function startActualTimer(seconds) {
+  const timerBtn = document.querySelector('.rest-timer-btn');
+  const timerDisplay = document.querySelector('.rest-timer-display');
+  
+  // Update initial display
+  const displayMins = Math.floor(seconds / 60);
+  const displaySecs = seconds % 60;
+  timerDisplay.textContent = `${displayMins.toString().padStart(2, '0')}:${displaySecs.toString().padStart(2, '0')}`;
+  
+  // Update button
+  timerBtn.textContent = 'Cancel';
+  timerBtn.classList.remove('btn-outline-primary');
+  timerBtn.classList.add('btn-danger');
+  
+  // Play start sound
+  // playSound('timer-start');
+  
+  // Start the countdown
+  let remainingSeconds = seconds;
+  restTimerInterval = setInterval(() => {
+    remainingSeconds--;
+    if (remainingSeconds <= 0) {
+      stopRestTimer();
+      timerDisplay.textContent = 'Done!';
+      timerBtn.textContent = 'Start Rest';
+      timerBtn.classList.remove('btn-danger');
+      timerBtn.classList.add('btn-outline-primary');
+      
+      // Show notification
+      showMessage('Rest time complete! Continue your workout.', 'success');
+      
+      // Play end sound
+      // playSound('timer-end');
+      
+      // Reset to 00:00 after 3 seconds
+      setTimeout(() => {
+        if (!restTimerInterval) {
+          timerDisplay.textContent = '00:00';
+        }
+      }, 3000);
+    } else {
+      const mins = Math.floor(remainingSeconds / 60);
+      const secs = remainingSeconds % 60;
+      timerDisplay.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+  }, 1000);
 }
 
 /**
