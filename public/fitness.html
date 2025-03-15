@@ -474,12 +474,221 @@
         <!-- Other sections (Nutrition, Sleep, Habits, etc.) -->
         <section id="nutrition-section" class="section-content d-none">
             <h2 class="mb-4">Nutrition Tracking</h2>
-            <!-- Nutrition content here -->
+            
+            <div class="row g-4 mb-4">
+                <!-- Calories Card -->
+                <div class="col-md-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <h6 class="card-title text-muted mb-2">Daily Calories</h6>
+                            <div class="d-flex align-items-center justify-content-center">
+                                <div id="calories-progress" class="position-relative d-inline-block">
+                                    <div class="stat-value" id="calories-consumed">0</div>
+                                    <div class="text-muted small" id="calories-goal">of 2000 cal</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Protein Card -->
+                <div class="col-md-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <h6 class="card-title text-muted mb-2">Protein</h6>
+                            <div class="stat-value" id="protein-consumed">0g</div>
+                            <div class="progress mt-2" style="height: 5px;">
+                                <div class="progress-bar bg-success" id="protein-progress" role="progressbar" style="width: 0%;"></div>
+                            </div>
+                            <div class="text-muted small mt-1" id="protein-goal">of 120g</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Carbs Card -->
+                <div class="col-md-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <h6 class="card-title text-muted mb-2">Carbohydrates</h6>
+                            <div class="stat-value" id="carbs-consumed">0g</div>
+                            <div class="progress mt-2" style="height: 5px;">
+                                <div class="progress-bar bg-primary" id="carbs-progress" role="progressbar" style="width: 0%;"></div>
+                            </div>
+                            <div class="text-muted small mt-1" id="carbs-goal">of 225g</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Fat Card -->
+                <div class="col-md-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <h6 class="card-title text-muted mb-2">Fat</h6>
+                            <div class="stat-value" id="fat-consumed">0g</div>
+                            <div class="progress mt-2" style="height: 5px;">
+                                <div class="progress-bar bg-warning" id="fat-progress" role="progressbar" style="width: 0%;"></div>
+                            </div>
+                            <div class="text-muted small mt-1" id="fat-goal">of 65g</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row g-4 mb-4">
+                <div class="col-md-7">
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">Nutrition Overview</h5>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button type="button" class="btn btn-outline-secondary active" data-chart-period="day">Day</button>
+                                <button type="button" class="btn btn-outline-secondary" data-chart-period="week">Week</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="nutrition-chart" height="220"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-5">
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">Macronutrient Breakdown</h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="macros-chart" height="220"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">Today's Meals</h5>
+                            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addMealModal">
+                                <i class="bi bi-plus-lg"></i> Add Meal
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div id="meals-list">
+                                <!-- Meals will be dynamically loaded here -->
+                                <div class="text-center py-4">
+                                    <p class="text-muted">No meals logged yet today.</p>
+                                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addMealModal">
+                                        Log Your First Meal
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </section>
 
         <section id="sleep-section" class="section-content d-none">
             <h2 class="mb-4">Sleep Tracking</h2>
-            <!-- Sleep content here -->
+            
+            <div class="row g-4 mb-4">
+                <!-- Sleep Stats Cards -->
+                <div class="col-md-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <h6 class="card-title text-muted mb-2">Average Sleep</h6>
+                            <div class="stat-value" id="average-sleep-time">0h 0m</div>
+                            <div class="text-muted small mt-1" id="sleep-goal">Goal: 8h 0m</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <h6 class="card-title text-muted mb-2">Sleep Quality</h6>
+                            <div class="stat-value" id="average-sleep-quality">0/5</div>
+                            <div class="progress mt-2" style="height: 5px;">
+                                <div class="progress-bar bg-success" id="sleep-quality-progress" role="progressbar" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <h6 class="card-title text-muted mb-2">Sleep Consistency</h6>
+                            <div class="stat-value" id="sleep-consistency">0%</div>
+                            <div class="progress mt-2" style="height: 5px;">
+                                <div class="progress-bar bg-primary" id="sleep-consistency-progress" role="progressbar" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <h6 class="card-title text-muted mb-2">Weekly Logs</h6>
+                            <div class="stat-value" id="sleep-log-count">0</div>
+                            <div class="text-muted small mt-1">Last 7 days</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row g-4 mb-4">
+                <div class="col-md-8">
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">Sleep Patterns</h5>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button type="button" class="btn btn-outline-secondary active" data-sleep-chart-period="week">Week</button>
+                                <button type="button" class="btn btn-outline-secondary" data-sleep-chart-period="month">Month</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="sleep-chart" height="250"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">Sleep Quality Factors</h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="sleep-quality-chart" height="250"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">Sleep Records</h5>
+                            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addSleepModal">
+                                <i class="bi bi-plus-lg"></i> Add Sleep Record
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div id="sleep-records-list">
+                                <!-- Sleep records will be dynamically loaded here -->
+                                <div class="text-center py-4">
+                                    <p class="text-muted">No sleep records found.</p>
+                                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSleepModal">
+                                        Log Your Sleep
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
         </section>
 
         <section id="habits-section" class="section-content d-none">
@@ -859,6 +1068,66 @@
         </div>
 
         <!-- Other modals would go here -->
+        
+        <!-- Add Meal Modal -->
+        <div class="modal fade" id="addMealModal" tabindex="-1" aria-labelledby="addMealModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addMealModalLabel">Add New Meal</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="add-meal-form">
+                            <div class="mb-3">
+                                <label for="meal-name" class="form-label">Meal Name</label>
+                                <input type="text" class="form-control" id="meal-name" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="meal-category" class="form-label">Category</label>
+                                <select class="form-select" id="meal-category" required>
+                                    <option value="" selected disabled>Select category</option>
+                                    <option value="breakfast">Breakfast</option>
+                                    <option value="lunch">Lunch</option>
+                                    <option value="dinner">Dinner</option>
+                                    <option value="snack">Snack</option>
+                                    <option value="dessert">Dessert</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="meal-description" class="form-label">Description</label>
+                                <textarea class="form-control" id="meal-description" rows="2"></textarea>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="meal-calories" class="form-label">Calories</label>
+                                    <input type="number" class="form-control" id="meal-calories" min="0" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="meal-time" class="form-label">Time</label>
+                                    <input type="time" class="form-control" id="meal-time">
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label for="meal-protein" class="form-label">Protein (g)</label>
+                                    <input type="number" class="form-control" id="meal-protein" min="0">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="meal-carbs" class="form-label">Carbs (g)</label>
+                                    <input type="number" class="form-control" id="meal-carbs" min="0">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="meal-fat" class="form-label">Fat (g)</label>
+                                    <input type="number" class="form-control" id="meal-fat" min="0">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Save Meal</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
 
     </div>
 
