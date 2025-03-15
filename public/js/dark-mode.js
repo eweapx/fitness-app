@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 /**
- * Set up event listeners to ensure modals get dark mode styling
+ * Set up event listeners to ensure modals get dark mode styling.
  * @returns {void}
  */
 function setupModalDarkMode() {
@@ -77,8 +77,8 @@ function setupModalDarkMode() {
 }
 
 /**
- * Apply dark mode styling to all modals
- * @param {boolean} isDark - Whether to apply dark mode
+ * Apply dark mode styling to all modals.
+ * @param {boolean} isDark - Whether to apply dark mode.
  * @returns {void}
  */
 function applyDarkModeToModals(isDark) {
@@ -89,9 +89,9 @@ function applyDarkModeToModals(isDark) {
 }
 
 /**
- * Apply dark mode styling to a specific modal
- * @param {HTMLElement} modal - The modal element
- * @param {boolean} isDark - Whether to apply dark mode
+ * Apply dark mode styling to a specific modal.
+ * @param {HTMLElement} modal - The modal element.
+ * @param {boolean} isDark - Whether to apply dark mode.
  * @returns {void}
  */
 function applyDarkModeToModal(modal, isDark) {
