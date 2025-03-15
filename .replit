@@ -17,7 +17,7 @@ args = "Run Tests"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Basic Server"
+args = "Fitness App Server"
 
 [[workflows.workflow]]
 name = "Run Tests"
@@ -47,21 +47,6 @@ task = "shell.exec"
 args = "flutter run -d web-server --web-port=5000 --web-hostname=0.0.0.0"
 
 [[workflows.workflow]]
-name = "Basic Server"
-author = "agent"
-
-[workflows.workflow.metadata]
-agentRequireRestartOnSave = false
-
-[[workflows.workflow.tasks]]
-task = "packager.installForAll"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "node basic-server.js"
-waitForPort = 5002
-
-[[workflows.workflow]]
 name = "Flutter Web Server"
 author = 40359398
 mode = "sequential"
@@ -73,6 +58,21 @@ args = "flutter build web"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "node server.js"
+
+[[workflows.workflow]]
+name = "Fitness App Server"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node basic-server.js"
+waitForPort = 5000
 
 [deployment]
 run = ["sh", "-c", "flutter run -d web-server --web-port=5000 --web-hostname=0.0.0.0"]

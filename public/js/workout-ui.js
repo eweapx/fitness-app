@@ -22,69 +22,162 @@ let workoutStartTime = null;
  * Initialize workout UI
  */
 function initializeWorkoutUI() {
-  // Connect main UI buttons for workout management
-  const createEmptyWorkoutBtn = document.getElementById('create-empty-workout');
-  if (createEmptyWorkoutBtn) {
-    createEmptyWorkoutBtn.addEventListener('click', () => {
-      // Start an empty workout without a template
-      startWorkout(null);
-    });
+  try {
+    console.log("Initializing workout UI...");
+    
+    // Safe function to add event listeners
+    const safeAddEventListener = (selector, event, handler) => {
+      const element = typeof selector === 'string' ? document.querySelector(selector) : selector;
+      if (element) {
+        // Remove any existing listeners first to prevent duplicates
+        element.removeEventListener(event, handler);
+        element.addEventListener(event, handler);
+        return true;
+      }
+      return false;
+    };
+    
+    // Connect main UI buttons for workout management
+    const createEmptyWorkoutBtn = document.getElementById('create-empty-workout');
+    if (createEmptyWorkoutBtn) {
+      safeAddEventListener(createEmptyWorkoutBtn, 'click', () => {
+        // Start an empty workout without a template
+        startWorkout(null);
+      });
+    }
+    
+    // Set up event listeners for workout creation safely
+    const createWorkoutBtn = document.getElementById('create-workout-btn');
+    if (createWorkoutBtn) {
+      safeAddEventListener(createWorkoutBtn, 'click', handleCreateWorkout);
+    }
+    
+    // Set up event listeners for exercise management
+    const addExerciseBtn = document.getElementById('add-exercise-btn');
+    if (addExerciseBtn) {
+      safeAddEventListener(addExerciseBtn, 'click', handleAddExercise);
+    }
+    
+    const addSetBtn = document.getElementById('add-set-btn');
+    if (addSetBtn) {
+      safeAddEventListener(addSetBtn, 'click', addNewSet);
+    }
+    
+    const addWorkoutExerciseBtn = document.getElementById('add-workout-exercise-btn');
+    if (addWorkoutExerciseBtn) {
+      safeAddEventListener(addWorkoutExerciseBtn, 'click', () => {
+        try {
+          // Clear exercise form
+          const exerciseForm = document.getElementById('exercise-form');
+          if (exerciseForm) {
+            exerciseForm.reset();
+          }
+          
+          // Reset sets
+          initializeExerciseSets();
+          
+          // Show exercise modal
+          if (exerciseModal) {
+            const exerciseModalObj = new bootstrap.Modal(exerciseModal);
+            exerciseModalObj.show();
+          }
+        } catch (error) {
+          console.error("Error showing exercise modal:", error);
+          showMessage("There was an error with the exercise form. Please try again.", "danger");
+        }
+      });
+    }
+    
+    // Set up event listeners for workout completion
+    const completeWorkoutBtn = document.getElementById('complete-workout-btn');
+    if (completeWorkoutBtn) {
+      safeAddEventListener(completeWorkoutBtn, 'click', handleCompleteWorkout);
+    }
+    
+    const discardWorkoutBtn = document.getElementById('discard-workout-btn');
+    if (discardWorkoutBtn) {
+      safeAddEventListener(discardWorkoutBtn, 'click', handleDiscardWorkout);
+    }
+    
+    // Initialize rest timer functionality
+    initializeRestTimer();
+    
+    console.log("Workout UI initialization complete");
+  } catch (error) {
+    console.error("Error initializing workout UI:", error);
+    showMessage("Error initializing workout interface. Please refresh the page.", "danger");
   }
-  
-  // Set up event listeners for workout creation
-  document.getElementById('create-workout-btn').addEventListener('click', handleCreateWorkout);
-  
-  // Set up event listeners for exercise management
-  document.getElementById('add-exercise-btn').addEventListener('click', handleAddExercise);
-  document.getElementById('add-set-btn').addEventListener('click', addNewSet);
-  document.getElementById('add-workout-exercise-btn').addEventListener('click', () => {
-    // Clear exercise form
-    document.getElementById('exercise-form').reset();
-    // Reset sets
-    initializeExerciseSets();
-    // Show exercise modal
-    const exerciseModalObj = new bootstrap.Modal(exerciseModal);
-    exerciseModalObj.show();
-  });
-  
-  // Set up event listeners for workout completion
-  document.getElementById('complete-workout-btn').addEventListener('click', handleCompleteWorkout);
-  document.getElementById('discard-workout-btn').addEventListener('click', handleDiscardWorkout);
-  
-  // Set up rest timer
-  const restTimerBtn = document.querySelector('.rest-timer-btn');
-  if (restTimerBtn) {
-    restTimerBtn.addEventListener('click', toggleRestTimer);
-  }
-  
-  // Set up rest timer modal
-  const restTimeRange = document.getElementById('restTimeRange');
-  const restTimeValue = document.getElementById('restTimeValue');
-  const startRestTimerBtn = document.getElementById('startRestTimerBtn');
-  
-  if (restTimeRange) {
-    restTimeRange.addEventListener('input', function() {
-      if (restTimeValue) {
+}
+
+/**
+ * Initialize the rest timer functionality
+ */
+function initializeRestTimer() {
+  try {
+    // Set up rest timer button
+    const restTimerBtn = document.querySelector('.rest-timer-btn');
+    if (restTimerBtn) {
+      // Remove any existing listener to prevent duplicates
+      restTimerBtn.removeEventListener('click', toggleRestTimer);
+      restTimerBtn.addEventListener('click', toggleRestTimer);
+      console.log("Rest timer button initialized");
+    } else {
+      console.warn("Rest timer button not found");
+    }
+    
+    // Set up rest timer modal elements
+    const restTimeRange = document.getElementById('restTimeRange');
+    const restTimeValue = document.getElementById('restTimeValue');
+    const startRestTimerBtn = document.getElementById('startRestTimerBtn');
+    
+    // Initialize range slider
+    if (restTimeRange && restTimeValue) {
+      // Set initial value
+      restTimeValue.textContent = restTimeRange.value || "1";
+      
+      // Remove any existing listener to prevent duplicates
+      const updateRangeDisplay = function() {
         restTimeValue.textContent = this.value;
-      }
-    });
-  }
-  
-  if (startRestTimerBtn) {
-    startRestTimerBtn.addEventListener('click', function() {
-      // Get selected minutes
-      const minutes = parseInt(restTimeRange.value || 1);
+      };
       
-      // Convert to seconds
-      const seconds = minutes * 60;
-      startActualTimer(seconds);
+      restTimeRange.removeEventListener('input', updateRangeDisplay);
+      restTimeRange.addEventListener('input', updateRangeDisplay);
+      console.log("Rest timer range slider initialized");
+    } else {
+      console.warn("Rest timer range or value display not found");
+    }
+    
+    // Initialize start button
+    if (startRestTimerBtn) {
+      const startTimerHandler = function() {
+        try {
+          // Get selected minutes with fallback
+          const minutes = parseInt(restTimeRange?.value || 1);
+          
+          // Convert to seconds
+          const seconds = minutes * 60;
+          startActualTimer(seconds);
+          
+          // Hide the modal
+          const restModal = bootstrap.Modal.getInstance(document.getElementById('restTimerModal'));
+          if (restModal) {
+            restModal.hide();
+          }
+        } catch (error) {
+          console.error("Error starting rest timer:", error);
+          showMessage("Could not start rest timer. Please try again.", "warning");
+        }
+      };
       
-      // Hide the modal
-      const restModal = bootstrap.Modal.getInstance(document.getElementById('restTimerModal'));
-      if (restModal) {
-        restModal.hide();
-      }
-    });
+      // Remove any existing listener to prevent duplicates
+      startRestTimerBtn.removeEventListener('click', startTimerHandler);
+      startRestTimerBtn.addEventListener('click', startTimerHandler);
+      console.log("Start rest timer button initialized");
+    } else {
+      console.warn("Start rest timer button not found");
+    }
+  } catch (error) {
+    console.error("Error initializing rest timer:", error);
   }
   
   // Set up library selection
@@ -782,28 +875,52 @@ function stopWorkoutTimer() {
  * Toggle the rest timer
  */
 function toggleRestTimer() {
-  const timerBtn = document.querySelector('.rest-timer-btn');
-  const timerDisplay = document.querySelector('.rest-timer-display');
-  
-  if (restTimerInterval) {
-    // Stop timer
-    stopRestTimer();
-    timerBtn.textContent = 'Start Rest';
-    timerBtn.classList.remove('btn-danger');
-    timerBtn.classList.add('btn-outline-primary');
-  } else {
-    // Reset slider to default value of 1
-    const restTimeRange = document.getElementById('restTimeRange');
-    const restTimeValue = document.getElementById('restTimeValue');
+  try {
+    console.log("Rest timer toggled");
+    const timerBtn = document.querySelector('.rest-timer-btn');
+    const timerDisplay = document.querySelector('.rest-timer-display');
     
-    if (restTimeRange && restTimeValue) {
-      restTimeRange.value = 1;
-      restTimeValue.textContent = '1';
+    if (!timerBtn || !timerDisplay) {
+      console.error("Timer button or display not found");
+      return;
     }
     
-    // Show the rest timer modal
-    const restModal = new bootstrap.Modal(document.getElementById('restTimerModal'));
-    restModal.show();
+    if (restTimerInterval) {
+      // Stop timer
+      stopRestTimer();
+      timerBtn.textContent = 'Start Rest';
+      timerBtn.classList.remove('btn-danger');
+      timerBtn.classList.add('btn-outline-primary');
+      console.log("Rest timer stopped");
+    } else {
+      // Reset slider to default value of 1
+      const restTimeRange = document.getElementById('restTimeRange');
+      const restTimeValue = document.getElementById('restTimeValue');
+      
+      if (restTimeRange && restTimeValue) {
+        restTimeRange.value = 1;
+        restTimeValue.textContent = '1';
+      }
+      
+      try {
+        // Show the rest timer modal
+        const restTimerModal = document.getElementById('restTimerModal');
+        if (restTimerModal) {
+          const restModal = new bootstrap.Modal(restTimerModal);
+          restModal.show();
+          console.log("Rest timer modal displayed");
+        } else {
+          console.error("Rest timer modal not found");
+          showMessage("Could not display rest timer. Please try again.", "warning");
+        }
+      } catch (modalError) {
+        console.error("Error showing rest timer modal:", modalError);
+        showMessage("Could not display rest timer. Please refresh the page and try again.", "warning");
+      }
+    }
+  } catch (error) {
+    console.error("Error in toggleRestTimer:", error);
+    showMessage("An error occurred with the rest timer. Please try again.", "danger");
   }
 }
 
@@ -812,60 +929,109 @@ function toggleRestTimer() {
  * @param {number} seconds - Seconds to count down
  */
 function startActualTimer(seconds) {
-  const timerBtn = document.querySelector('.rest-timer-btn');
-  const timerDisplay = document.querySelector('.rest-timer-display');
-  
-  // Update initial display
-  const displayMins = Math.floor(seconds / 60);
-  const displaySecs = seconds % 60;
-  timerDisplay.textContent = `${displayMins.toString().padStart(2, '0')}:${displaySecs.toString().padStart(2, '0')}`;
-  
-  // Update button
-  timerBtn.textContent = 'Cancel';
-  timerBtn.classList.remove('btn-outline-primary');
-  timerBtn.classList.add('btn-danger');
-  
-  // Play start sound
-  // playSound('timer-start');
-  
-  // Start the countdown
-  let remainingSeconds = seconds;
-  restTimerInterval = setInterval(() => {
-    remainingSeconds--;
-    if (remainingSeconds <= 0) {
-      stopRestTimer();
-      timerDisplay.textContent = 'Done!';
-      timerBtn.textContent = 'Start Rest';
-      timerBtn.classList.remove('btn-danger');
-      timerBtn.classList.add('btn-outline-primary');
-      
-      // Show notification
-      showMessage('Rest time complete! Continue your workout.', 'success');
-      
-      // Play end sound
-      // playSound('timer-end');
-      
-      // Reset to 00:00 after 3 seconds
-      setTimeout(() => {
-        if (!restTimerInterval) {
-          timerDisplay.textContent = '00:00';
-        }
-      }, 3000);
-    } else {
-      const mins = Math.floor(remainingSeconds / 60);
-      const secs = remainingSeconds % 60;
-      timerDisplay.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  try {
+    console.log(`Starting rest timer with ${seconds} seconds`);
+    
+    // Make sure any existing timer is stopped first
+    stopRestTimer();
+    
+    const timerBtn = document.querySelector('.rest-timer-btn');
+    const timerDisplay = document.querySelector('.rest-timer-display');
+    
+    if (!timerBtn || !timerDisplay) {
+      console.error("Timer button or display not found");
+      showMessage("Could not start rest timer. Please try again.", "warning");
+      return;
     }
-  }, 1000);
+    
+    // Ensure seconds is a valid number
+    const validSeconds = Math.max(1, Math.min(seconds || 60, 600)); // 1 second to 10 minutes
+    
+    // Update initial display
+    const displayMins = Math.floor(validSeconds / 60);
+    const displaySecs = validSeconds % 60;
+    timerDisplay.textContent = `${displayMins.toString().padStart(2, '0')}:${displaySecs.toString().padStart(2, '0')}`;
+    
+    // Update button
+    timerBtn.textContent = 'Cancel';
+    timerBtn.classList.remove('btn-outline-primary');
+    timerBtn.classList.add('btn-danger');
+    
+    // Start the countdown
+    let remainingSeconds = validSeconds;
+    
+    // Use a stable interval reference
+    restTimerInterval = setInterval(() => {
+      try {
+        remainingSeconds--;
+        if (remainingSeconds <= 0) {
+          // Timer completed
+          stopRestTimer();
+          
+          if (timerDisplay && timerBtn) {
+            timerDisplay.textContent = 'Done!';
+            timerBtn.textContent = 'Start Rest';
+            timerBtn.classList.remove('btn-danger');
+            timerBtn.classList.add('btn-outline-primary');
+            
+            // Show notification
+            showMessage('Rest time complete! Continue your workout.', 'success');
+            
+            // Reset to 00:00 after 3 seconds
+            setTimeout(() => {
+              if (!restTimerInterval && timerDisplay) {
+                timerDisplay.textContent = '00:00';
+              }
+            }, 3000);
+          }
+        } else {
+          // Update timer display
+          if (timerDisplay) {
+            const mins = Math.floor(remainingSeconds / 60);
+            const secs = remainingSeconds % 60;
+            timerDisplay.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+          }
+        }
+      } catch (timerError) {
+        console.error("Error in timer interval:", timerError);
+        // Safely stop the timer if there was an error
+        stopRestTimer();
+      }
+    }, 1000);
+    
+    console.log("Rest timer started successfully");
+  } catch (error) {
+    console.error("Error starting rest timer:", error);
+    showMessage("There was a problem starting the rest timer.", "danger");
+    // Make sure we don't leave a dangling interval
+    stopRestTimer();
+  }
 }
 
 /**
  * Stop the rest timer
  */
 function stopRestTimer() {
-  if (restTimerInterval) {
-    clearInterval(restTimerInterval);
-    restTimerInterval = null;
+  try {
+    if (restTimerInterval) {
+      console.log("Stopping rest timer");
+      clearInterval(restTimerInterval);
+      restTimerInterval = null;
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error("Error stopping rest timer:", error);
+    // Even if there's an error, try to reset the interval
+    try {
+      if (restTimerInterval) {
+        clearInterval(restTimerInterval);
+        restTimerInterval = null;
+      }
+    } catch (e) {
+      console.error("Fatal error clearing interval:", e);
+    }
+    return false;
   }
 }
 
