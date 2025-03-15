@@ -52,10 +52,10 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Fitness Tracker Server"
+args = "Simple Fitness Server"
 
 [[workflows.workflow]]
-name = "Fitness Tracker Server"
+name = "Simple Fitness Server"
 author = "agent"
 
 [workflows.workflow.metadata]
@@ -66,7 +66,7 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node server.js"
+args = "node simple-server.js"
 waitForPort = 5000
 
 [deployment]

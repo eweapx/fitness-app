@@ -5,53 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Health & Fitness Tracker</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
         body {
-            padding-top: 20px;
-            padding-bottom: 40px;
+            padding: 20px;
             background-color: #f8f9fa;
-        }
-        .container {
-            max-width: 960px;
-        }
-        .card {
-            margin-bottom: 20px;
-            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-        }
-        .card-header {
-            background-color: #6c757d;
-            color: white;
         }
         .jumbotron {
             padding: 2rem;
             background-color: #e9ecef;
             border-radius: 0.3rem;
             margin-bottom: 2rem;
-        }
-        .stat-box {
-            text-align: center;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 15px;
-            color: white;
-        }
-        .activities-box {
-            background-color: #4e73df;
-        }
-        .calories-box {
-            background-color: #1cc88a;
-        }
-        .steps-box {
-            background-color: #36b9cc;
-        }
-        .stat-value {
-            font-size: 1.5rem;
-            font-weight: bold;
-        }
-        .activity-list {
-            max-height: 300px;
-            overflow-y: auto;
         }
     </style>
 </head>
@@ -61,420 +24,45 @@
             <h1 class="display-4">Health & Fitness Tracker</h1>
             <p class="lead">Welcome to your personal health and fitness dashboard.</p>
             <hr class="my-4">
-            <p>Track activities, monitor nutrition, improve sleep patterns, and break bad habits.</p>
+            <p>This is a simple version of the application to verify connectivity.</p>
+            <a href="/fitness" class="btn btn-primary">Go to Fitness Tracker</a>
         </div>
-
-        <!-- Statistics Row -->
-        <div class="row mb-4">
-            <div class="col-md-4">
-                <div class="stat-box activities-box">
-                    <div><i class="bi bi-activity fs-3"></i></div>
-                    <div>Activities</div>
-                    <div id="activitiesCount" class="stat-value">0</div>
-                </div>
+        
+        <div class="card">
+            <div class="card-header">
+                Server Status
             </div>
-            <div class="col-md-4">
-                <div class="stat-box calories-box">
-                    <div><i class="bi bi-fire fs-3"></i></div>
-                    <div>Calories Burned</div>
-                    <div id="totalCalories" class="stat-value">0</div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="stat-box steps-box">
-                    <div><i class="bi bi-lightning fs-3"></i></div>
-                    <div>Steps</div>
-                    <div id="totalSteps" class="stat-value">0</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Main Content Row -->
-        <div class="row">
-            <!-- Activities Column -->
-            <div class="col-md-8">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Recent Activities</h5>
-                        <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#addActivityModal">
-                            <i class="bi bi-plus-circle"></i> Add
-                        </button>
-                    </div>
-                    <div class="card-body">
-                        <div id="activitiesList" class="activity-list">
-                            <div class="text-center py-4 text-muted">
-                                <i class="bi bi-activity fs-1"></i>
-                                <p>No activities recorded yet</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Quick Actions Column -->
-            <div class="col-md-4">
-                <!-- Steps Tracking -->
-                <div class="card">
-                    <div class="card-header">
-                        <h5>Quick Step Entry</h5>
-                    </div>
-                    <div class="card-body">
-                        <form id="stepsForm">
-                            <div class="mb-3">
-                                <label for="stepsInput" class="form-label">Steps Taken</label>
-                                <div class="input-group">
-                                    <input type="number" class="form-control" id="stepsInput" min="1" required>
-                                    <button type="submit" class="btn btn-primary">Add</button>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- API Testing Card -->
-                <div class="card mt-3">
-                    <div class="card-header">
-                        <h5>Server Status</h5>
-                    </div>
-                    <div class="card-body">
-                        <button id="checkHealth" class="btn btn-info mb-2 w-100">Check Health</button>
-                        <button id="resetData" class="btn btn-warning w-100">Reset All Data</button>
-                        <div id="healthStatus" class="mt-3"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Features Row -->
-        <div class="row mt-4">
-            <div class="col-md-4">
-                <div class="card">
-                    <div class="card-header">
-                        <h5>Nutrition Tracking</h5>
-                    </div>
-                    <div class="card-body">
-                        <p>Monitor your calories, macronutrients, and meal planning.</p>
-                        <button class="btn btn-primary w-100" disabled>Coming Soon</button>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card">
-                    <div class="card-header">
-                        <h5>Sleep Tracking</h5>
-                    </div>
-                    <div class="card-body">
-                        <p>Record your sleep patterns and quality metrics.</p>
-                        <button class="btn btn-primary w-100" disabled>Coming Soon</button>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card">
-                    <div class="card-header">
-                        <h5>Habit Breaking</h5>
-                    </div>
-                    <div class="card-body">
-                        <p>Break bad habits with our "Deload" system.</p>
-                        <button class="btn btn-primary w-100" disabled>Coming Soon</button>
-                    </div>
-                </div>
+            <div class="card-body">
+                <p class="card-text">Click the button below to check if the server is running properly.</p>
+                <button id="checkHealth" class="btn btn-info">Check Server Health</button>
+                <div id="serverStatus" class="mt-3"></div>
             </div>
         </div>
     </div>
 
-    <!-- Add Activity Modal -->
-    <div class="modal fade" id="addActivityModal" tabindex="-1" aria-labelledby="addActivityModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="addActivityModalLabel">Add New Activity</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="activityForm">
-                        <div class="mb-3">
-                            <label for="activityName" class="form-label">Activity Name</label>
-                            <input type="text" class="form-control" id="activityName" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="activityType" class="form-label">Type</label>
-                            <select class="form-select" id="activityType" required>
-                                <option value="" disabled selected>Select activity type</option>
-                                <option value="running">Running</option>
-                                <option value="cycling">Cycling</option>
-                                <option value="swimming">Swimming</option>
-                                <option value="weights">Weight Training</option>
-                            </select>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="activityDuration" class="form-label">Duration (min)</label>
-                                    <input type="number" class="form-control" id="activityDuration" min="1" required>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="activityCalories" class="form-label">Calories Burned</label>
-                                    <input type="number" class="form-control" id="activityCalories" min="1" required>
-                                </div>
-                            </div>
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100">Save Activity</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // When document is ready
-        document.addEventListener('DOMContentLoaded', function() {
-            // Load initial data
-            loadStats();
-            loadActivities();
-
-            // Add event listeners
-            document.getElementById('checkHealth').addEventListener('click', checkServerHealth);
-            document.getElementById('resetData').addEventListener('click', resetAllData);
-            document.getElementById('activityForm').addEventListener('submit', addActivity);
-            document.getElementById('stepsForm').addEventListener('submit', addSteps);
-        });
-
-        // Check server health
-        async function checkServerHealth() {
+        document.getElementById('checkHealth').addEventListener('click', async () => {
             try {
                 const response = await fetch('/api/health');
                 const data = await response.json();
-                document.getElementById('healthStatus').innerHTML = 
-                    `<div class="alert alert-success">
-                        <strong>Status:</strong> ${data.status}<br>
-                        <strong>Message:</strong> ${data.message}<br>
-                        <strong>Time:</strong> ${data.timestamp}
-                    </div>`;
-            } catch (error) {
-                document.getElementById('healthStatus').innerHTML = 
-                    `<div class="alert alert-danger">
-                        <strong>Error:</strong> Could not connect to server: ${error.message}
-                    </div>`;
-            }
-        }
-
-        // Load statistics
-        async function loadStats() {
-            try {
-                const response = await fetch('/api/stats');
-                const data = await response.json();
                 
-                if (data.success) {
-                    document.getElementById('activitiesCount').textContent = data.data.activitiesCount;
-                    document.getElementById('totalCalories').textContent = data.data.totalCalories;
-                    document.getElementById('totalSteps').textContent = data.data.totalSteps;
-                }
-            } catch (error) {
-                console.error('Error loading stats:', error);
-            }
-        }
-
-        // Load activities
-        async function loadActivities() {
-            try {
-                const response = await fetch('/api/activities');
-                const data = await response.json();
-                
-                const activitiesList = document.getElementById('activitiesList');
-                activitiesList.innerHTML = '';
-                
-                if (data.success && data.data.length > 0) {
-                    data.data.forEach(activity => {
-                        const activityElement = createActivityElement(activity);
-                        activitiesList.appendChild(activityElement);
-                    });
-                } else {
-                    activitiesList.innerHTML = `
-                        <div class="text-center py-4 text-muted">
-                            <i class="bi bi-activity fs-1"></i>
-                            <p>No activities recorded yet</p>
-                        </div>
-                    `;
-                }
-            } catch (error) {
-                console.error('Error loading activities:', error);
-            }
-        }
-
-        // Create activity element
-        function createActivityElement(activity) {
-            const card = document.createElement('div');
-            card.className = 'card mb-2';
-            
-            const typeIcons = {
-                running: 'bi-lightning',
-                cycling: 'bi-bicycle',
-                swimming: 'bi-water',
-                weights: 'bi-trophy'
-            };
-            
-            const icon = typeIcons[activity.type] || 'bi-activity';
-            
-            card.innerHTML = `
-                <div class="card-body p-3">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h6 class="mb-1">${activity.name}</h6>
-                            <div class="small text-muted">${activity.getFormattedDate ? activity.getFormattedDate() : new Date(activity.date).toLocaleDateString()}</div>
-                        </div>
-                        <div class="d-flex">
-                            <div class="text-end me-3">
-                                <div class="small">${activity.duration} min</div>
-                                <div class="small">${activity.calories} cal</div>
-                            </div>
-                            <div class="d-flex align-items-center">
-                                <i class="bi ${icon} fs-4"></i>
-                            </div>
-                        </div>
+                document.getElementById('serverStatus').innerHTML = `
+                    <div class="alert alert-success">
+                        <h5>Server is running!</h5>
+                        <p><strong>Status:</strong> ${data.status}</p>
+                        <p><strong>Message:</strong> ${data.message || 'Server operational'}</p>
+                        <p><strong>Time:</strong> ${data.timestamp}</p>
                     </div>
-                </div>
-            `;
-            
-            return card;
-        }
-
-        // Add a new activity
-        async function addActivity(event) {
-            event.preventDefault();
-            
-            const name = document.getElementById('activityName').value;
-            const type = document.getElementById('activityType').value;
-            const duration = document.getElementById('activityDuration').value;
-            const calories = document.getElementById('activityCalories').value;
-            
-            try {
-                const response = await fetch('/api/activities', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        name,
-                        type,
-                        duration,
-                        calories
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    // Clear form
-                    document.getElementById('activityForm').reset();
-                    
-                    // Close modal
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('addActivityModal'));
-                    modal.hide();
-                    
-                    // Reload data
-                    loadStats();
-                    loadActivities();
-                    
-                    // Show success message
-                    showAlert('Activity added successfully!', 'success');
-                } else {
-                    showAlert('Error adding activity: ' + data.message, 'danger');
-                }
+                `;
             } catch (error) {
-                console.error('Error adding activity:', error);
-                showAlert('Error adding activity: ' + error.message, 'danger');
+                document.getElementById('serverStatus').innerHTML = `
+                    <div class="alert alert-danger">
+                        <h5>Error connecting to server</h5>
+                        <p>${error.message}</p>
+                    </div>
+                `;
             }
-        }
-
-        // Add steps
-        async function addSteps(event) {
-            event.preventDefault();
-            
-            const steps = document.getElementById('stepsInput').value;
-            
-            try {
-                const response = await fetch('/api/steps', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        steps
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    // Clear form
-                    document.getElementById('stepsForm').reset();
-                    
-                    // Update stats
-                    loadStats();
-                    
-                    // Show success message
-                    showAlert('Steps added successfully!', 'success');
-                } else {
-                    showAlert('Error adding steps: ' + data.message, 'danger');
-                }
-            } catch (error) {
-                console.error('Error adding steps:', error);
-                showAlert('Error adding steps: ' + error.message, 'danger');
-            }
-        }
-
-        // Reset all data
-        async function resetAllData() {
-            if (!confirm('Are you sure you want to reset all tracking data? This cannot be undone.')) {
-                return;
-            }
-            
-            try {
-                const response = await fetch('/api/reset', {
-                    method: 'POST'
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    // Reload data
-                    loadStats();
-                    loadActivities();
-                    
-                    // Show success message
-                    showAlert('All data has been reset!', 'success');
-                } else {
-                    showAlert('Error resetting data: ' + data.message, 'danger');
-                }
-            } catch (error) {
-                console.error('Error resetting data:', error);
-                showAlert('Error resetting data: ' + error.message, 'danger');
-            }
-        }
-
-        // Show alert
-        function showAlert(message, type = 'info') {
-            const alertElement = document.createElement('div');
-            alertElement.className = `alert alert-${type} alert-dismissible fade show fixed-top m-3`;
-            alertElement.setAttribute('role', 'alert');
-            alertElement.innerHTML = `
-                ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            `;
-            
-            document.body.appendChild(alertElement);
-            
-            // Auto dismiss after 5 seconds
-            setTimeout(() => {
-                if (alertElement.parentNode) {
-                    alertElement.parentNode.removeChild(alertElement);
-                }
-            }, 5000);
-        }
+        });
     </script>
 </body>
 </html>
