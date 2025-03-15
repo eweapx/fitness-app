@@ -15,7 +15,7 @@ class Activity {
    * @param {Object} workoutDetails - Additional workout details (for weights or specific exercises)
    */
   constructor(name, calories, duration, type, date = new Date(), id = null, sourceConnection = null, sourceId = null, workoutDetails = null) {
-    this.id = id || Date.now().toString();
+    this.id = id || generateUUID();
     this.name = name;
     this.calories = calories;
     this.duration = duration;

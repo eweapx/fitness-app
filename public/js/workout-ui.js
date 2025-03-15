@@ -3,16 +3,6 @@
  * Handles the UI interaction for workout tracking functionality
  */
 
-// Helper function to generate UUID for compatibility with older browsers
-function generateUUID() {
-  // Simple UUID generation that works in all browsers
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
-}
-
 // Initialize the workout manager
 let workoutManager = new WorkoutManager();
 
@@ -48,7 +38,7 @@ function initializeWorkoutUI() {
         }
         
         // Generate a unique key for this handler
-        const handlerKey = `${event}_${Math.random().toString(36).substr(2, 9)}`;
+        const handlerKey = `${event}_${generateUUID()}`;
         
         // Store reference to original handler for cleanup
         registeredHandlers.set(handlerKey, { element, event, handler });
@@ -644,7 +634,10 @@ function handleExerciseLibrarySelection(event) {
   }
   
   if (equipment) {
-    document.querySelector(`#equipment-${equipment}`).checked = true;
+    const equipmentRadio = document.querySelector(`#equipment-${equipment}`);
+    if (equipmentRadio) {
+      equipmentRadio.checked = true;
+    }
   }
 }
 
@@ -661,7 +654,8 @@ function handleAddExercise() {
   }
   
   // Get equipment type
-  const equipmentType = document.querySelector('input[name="equipment-type"]:checked').value;
+  const checkedEquipment = document.querySelector('input[name="equipment-type"]:checked');
+  const equipmentType = checkedEquipment ? checkedEquipment.value : 'bodyweight'; // Default to bodyweight if none selected
   
   // Get sets data
   const setElements = document.querySelectorAll('.set-container');
@@ -1037,7 +1031,7 @@ function showMessage(message, type = 'info') {
   }
   
   // Create toast
-  const toastId = `toast-${Date.now()}`;
+  const toastId = `toast-${generateUUID()}`;
   const toast = document.createElement('div');
   toast.className = `toast align-items-center text-white bg-${type}`;
   toast.setAttribute('role', 'alert');

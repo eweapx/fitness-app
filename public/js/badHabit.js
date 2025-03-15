@@ -15,7 +15,7 @@ class BadHabit {
    * @param {Date} startDate - When tracking of this habit began
    */
   constructor(id, name, description, frequency, category, trigger, alternative, reminderTime, startDate = new Date()) {
-    this.id = id || Date.now().toString();
+    this.id = id || generateUUID();
     this.name = name;
     this.description = description;
     this.frequency = frequency;

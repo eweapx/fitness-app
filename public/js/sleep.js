@@ -11,7 +11,7 @@ class SleepRecord {
    * @param {Array} disturbances - Array of sleep disturbances (optional)
    */
   constructor(startTime, endTime, quality, notes = '', disturbances = []) {
-    this.id = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
+    this.id = generateUUID();
     this.startTime = startTime;
     this.endTime = endTime;
     this.quality = quality;
