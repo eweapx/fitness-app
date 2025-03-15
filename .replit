@@ -4,34 +4,7 @@ modules = ["flutter", "nodejs-20", "dart", "python-3.11"]
 channel = "stable-24_05"
 
 [workflows]
-runButton = "Run"
-
-[[workflows.workflow]]
-name = "Project"
-mode = "parallel"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Run Tests"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Simple Fitness Server"
-
-[[workflows.workflow]]
-name = "Run Tests"
-author = "agent"
-
-[workflows.workflow.metadata]
-agentRequireRestartOnSave = false
-
-[[workflows.workflow.tasks]]
-task = "packager.installForAll"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npx jest"
+runButton = "Project"
 
 [[workflows.workflow]]
 name = "Flutter Web"
@@ -60,21 +33,6 @@ task = "shell.exec"
 args = "node server.js"
 
 [[workflows.workflow]]
-name = "Simple Fitness Server"
-author = "agent"
-
-[workflows.workflow.metadata]
-agentRequireRestartOnSave = false
-
-[[workflows.workflow.tasks]]
-task = "packager.installForAll"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "node simple-server.js"
-waitForPort = 5000
-
-[[workflows.workflow]]
 name = "Run"
 author = 40359398
 mode = "sequential"
@@ -86,6 +44,30 @@ args = "flutter build web"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "node server.js"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Fitness Tracker Server"
+
+[[workflows.workflow]]
+name = "Fitness Tracker Server"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node server.js"
+waitForPort = 5000
 
 [deployment]
 run = ["sh", "-c", "flutter run -d web-server --web-port=5000 --web-hostname=0.0.0.0"]
