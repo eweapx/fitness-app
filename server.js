@@ -4,7 +4,7 @@ const fs = require('fs');
 
 // Create Express app
 const app = express();
-const PORT = process.env.PORT || 5001; // Changed to 5001 to avoid conflict
+const PORT = process.env.PORT || 8080; // Using port 8080 as default
 
 // Define paths to static content
 const publicDir = path.join(__dirname, 'public');
@@ -50,8 +50,28 @@ app.get('*', (req, res) => {
 
 // Only start the server if this file is run directly
 if (require.main === module) {
-  app.listen(PORT, '0.0.0.0', () => {
+  const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running at http://0.0.0.0:${PORT}`);
+    // Signal that the server is ready to accept connections
+    console.log(`Server ready - listening on port ${PORT}`);
+  });
+
+  // Handle server errors
+  server.on('error', (error) => {
+    console.error(`Server error: ${error.message}`);
+    if (error.code === 'EADDRINUSE') {
+      console.error(`Port ${PORT} is already in use. Try a different port.`);
+    }
+    process.exit(1);
+  });
+  
+  // Handle graceful shutdown
+  process.on('SIGINT', () => {
+    console.log('Shutting down server gracefully...');
+    server.close(() => {
+      console.log('Server has been gracefully shutdown');
+      process.exit(0);
+    });
   });
 }
 

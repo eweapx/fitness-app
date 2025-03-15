@@ -421,6 +421,7 @@ function renderWorkoutExercises(workout) {
         <div class="flex-grow-1 row g-0">
           <div class="col-4 pe-1">
             <input type="number" class="form-control form-control-sm set-weight" value="${set.weight}" inputmode="numeric">
+            <div class="last-weight text-muted" style="font-size: 0.75rem; line-height: 1.2;">Last: 135 lbs</div>
           </div>
           <div class="col-4 px-1">
             <input type="number" class="form-control form-control-sm set-reps" value="${set.reps}" inputmode="numeric">
@@ -531,6 +532,17 @@ function initializeExerciseSets() {
     firstSet.querySelector('.set-weight').value = '';
     firstSet.querySelector('.set-reps').value = '';
     firstSet.querySelector('.set-complete').checked = false;
+    
+    // Add 'Last weight' display below the weight input
+    const weightInputCol = firstSet.querySelector('.set-weight').closest('.col-5');
+    if (weightInputCol && !weightInputCol.querySelector('.last-weight')) {
+      const lastWeightLabel = document.createElement('div');
+      lastWeightLabel.className = 'last-weight text-muted';
+      lastWeightLabel.textContent = 'Last: 0 lbs';
+      lastWeightLabel.style.fontSize = '0.75rem';
+      lastWeightLabel.style.lineHeight = '1.2';
+      weightInputCol.appendChild(lastWeightLabel);
+    }
   }
   
   // Add event listener to remove buttons
@@ -553,6 +565,17 @@ function addNewSet() {
   setTemplate.querySelector('.set-weight').value = '';
   setTemplate.querySelector('.set-reps').value = '';
   setTemplate.querySelector('.set-complete').checked = false;
+  
+  // Ensure the "Last weight" label is present
+  const weightInputCol = setTemplate.querySelector('.set-weight').closest('.col-5');
+  if (weightInputCol && !weightInputCol.querySelector('.last-weight')) {
+    const lastWeightLabel = document.createElement('div');
+    lastWeightLabel.className = 'last-weight text-muted';
+    lastWeightLabel.textContent = 'Last: 0 lbs';
+    lastWeightLabel.style.fontSize = '0.75rem';
+    lastWeightLabel.style.lineHeight = '1.2';
+    weightInputCol.appendChild(lastWeightLabel);
+  }
   
   // Add event listener to remove button
   setTemplate.querySelector('.remove-set-btn').addEventListener('click', removeSet);
@@ -708,6 +731,7 @@ function editExercise(exerciseId) {
         <div class="flex-grow-1 row g-0">
           <div class="col-5 pe-1">
             <input type="number" class="form-control set-weight" placeholder="Weight" inputmode="numeric" min="0" max="999" value="WEIGHT">
+            <div class="last-weight text-muted" style="font-size: 0.75rem; line-height: 1.2;">Last: 135 lbs</div>
           </div>
           <div class="col-4 px-1">
             <input type="number" class="form-control set-reps" placeholder="Reps" inputmode="numeric" min="1" max="100" value="REPS">
