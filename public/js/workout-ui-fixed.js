@@ -465,22 +465,17 @@ function handleExerciseLibrarySelection(event) {
     // Fill exercise form
     const nameInput = document.getElementById('exercise-name');
     const typeSelect = document.getElementById('exercise-type');
+    
     if (nameInput) nameInput.value = exerciseName;
-    if (typeSelect) {
-      Array.from(typeSelect.options).forEach(option => {
-        if (option.value === exerciseType) option.selected = true;
-      });
-    }
+    if (typeSelect) typeSelect.value = exerciseType;
     
+    // Add additional info if needed
     const equipmentInput = document.getElementById('exercise-equipment');
-    if (equipmentInput) equipmentInput.value = exerciseEquipment || '';
-    
-    // Close the dropdown if open
-    const dropdown = exerciseItem.closest('.dropdown-menu');
-    if (dropdown) {
-      const bsDropdown = bootstrap.Dropdown.getInstance(dropdown);
-      if (bsDropdown) bsDropdown.hide();
+    if (equipmentInput && exerciseEquipment) {
+      equipmentInput.value = exerciseEquipment;
     }
+    
+    // Close the library dropdown or modal if needed
   } catch (error) {
     console.error("Error selecting exercise from library:", error);
   }
@@ -498,83 +493,64 @@ function handleAddExercise() {
     const nameInput = document.getElementById('exercise-name');
     const typeSelect = document.getElementById('exercise-type');
     
-    const name = nameInput ? nameInput.value.trim() : '';
-    const type = typeSelect ? typeSelect.value : '';
+    const name = nameInput.value.trim();
+    const type = typeSelect.value;
     
-    // Validate required fields
-    if (!name || !type) {
-      if (!name) nameInput.classList.add('is-invalid');
-      if (!type) typeSelect.classList.add('is-invalid');
+    // Validate
+    if (!name) {
+      nameInput.classList.add('is-invalid');
       return;
     }
     
-    // Get all sets data
+    // Get sets data
     const sets = [];
     const setElements = document.querySelectorAll('.exercise-set');
-    let valid = true;
-    
     setElements.forEach(setElement => {
       const weightInput = setElement.querySelector('.set-weight');
       const repsInput = setElement.querySelector('.set-reps');
       
-      const weight = weightInput ? parseFloat(weightInput.value) : 0;
-      const reps = repsInput ? parseInt(repsInput.value, 10) : 0;
+      const weight = parseFloat(weightInput.value) || 0;
+      const reps = parseInt(repsInput.value) || 0;
       
-      // Validate set data
-      if (isNaN(weight) || weight <= 0) {
-        weightInput.classList.add('is-invalid');
-        valid = false;
-      }
-      
-      if (isNaN(reps) || reps <= 0) {
-        repsInput.classList.add('is-invalid');
-        valid = false;
-      }
-      
-      if (valid) {
-        sets.push({ weight, reps });
-      }
+      sets.push({
+        weight,
+        reps,
+        completed: false
+      });
     });
-    
-    if (!valid) return;
-    
-    // Get the workout
-    const workout = workoutManager.getWorkoutById(currentWorkoutId);
-    if (!workout) {
-      showToast("Workout not found", "danger");
-      return;
-    }
     
     // Create exercise object
     const exercise = {
-      id: currentExerciseId || generateUUID(),
+      id: generateUUID(),
       name,
       type,
       sets
     };
     
-    // Add or update exercise
+    // If editing an existing exercise
     if (currentExerciseId) {
-      workout.updateExercise(currentExerciseId, exercise);
-      showToast(`Exercise "${name}" updated`, "success");
+      // Update the exercise in the workout
+      workoutManager.updateExerciseInWorkout(currentWorkoutId, currentExerciseId, exercise);
+      currentExerciseId = null; // Reset currentExerciseId
     } else {
-      workout.addExercise(exercise);
-      showToast(`Exercise "${name}" added to workout`, "success");
+      // Add new exercise to workout
+      workoutManager.addExerciseToWorkout(currentWorkoutId, exercise);
     }
     
-    // Reset form
-    form.reset();
-    currentExerciseId = null;
-    
-    // Close modal
-    const modal = bootstrap.Modal.getInstance(exerciseModal);
-    if (modal) modal.hide();
-    
-    // Update exercises display
+    // Update UI
+    const workout = workoutManager.getWorkoutById(currentWorkoutId);
     renderWorkoutExercises(workout);
+    
+    // Hide modal and reset form
+    const modal = bootstrap.Modal.getInstance(exerciseModal);
+    modal.hide();
+    form.reset();
+    
+    // Show success message
+    showToast(`Exercise "${name}" added to workout!`, 'success');
   } catch (error) {
     console.error("Error adding exercise:", error);
-    showToast("Error adding exercise", "danger");
+    showToast("Error adding exercise. Please try again.", "danger");
   }
 }
 
@@ -584,76 +560,65 @@ function handleAddExercise() {
  */
 function editExercise(exerciseId) {
   try {
-    // Get the workout
     const workout = workoutManager.getWorkoutById(currentWorkoutId);
     if (!workout) return;
     
-    // Find the exercise
     const exercise = workout.exercises.find(ex => ex.id === exerciseId);
     if (!exercise) return;
     
-    // Set current exercise ID
+    // Set current exercise ID for editing
     currentExerciseId = exerciseId;
     
-    // Fill form with exercise data
+    // Fill exercise form
     const nameInput = document.getElementById('exercise-name');
     const typeSelect = document.getElementById('exercise-type');
     
-    if (nameInput) nameInput.value = exercise.name;
-    if (typeSelect) {
-      Array.from(typeSelect.options).forEach(option => {
-        if (option.value === exercise.type) option.selected = true;
-      });
-    }
+    nameInput.value = exercise.name;
+    typeSelect.value = exercise.type;
     
-    // Clear and populate sets
+    // Initialize sets container
     const setsContainer = document.getElementById('exercise-sets-container');
-    if (setsContainer) {
-      setsContainer.innerHTML = '';
+    setsContainer.innerHTML = '';
+    
+    // Add sets from exercise
+    exercise.sets.forEach((set, index) => {
+      // Create set row
+      const setRow = document.createElement('div');
+      setRow.className = 'd-flex align-items-center exercise-set mb-2';
+      setRow.dataset.setIndex = index.toString();
       
-      exercise.sets.forEach((set, index) => {
-        const setRow = document.createElement('div');
-        setRow.className = 'd-flex align-items-center exercise-set mb-2';
-        setRow.dataset.setIndex = index.toString();
-        
-        setRow.innerHTML = `
-          <div class="set-number me-2" style="width: 30px">${index + 1}</div>
-          <div class="flex-grow-1 row g-0">
-            <div class="col-4 pe-1">
-              <input type="number" class="form-control form-control-sm set-weight" placeholder="lbs" inputmode="numeric" value="${set.weight}">
-            </div>
-            <div class="col-4 px-1">
-              <input type="number" class="form-control form-control-sm set-reps" placeholder="reps" inputmode="numeric" value="${set.reps}">
-            </div>
-            <div class="col-4 ps-1 d-flex align-items-center">
-              <button class="btn btn-sm btn-outline-danger remove-set-btn">
-                <i class="bi bi-dash-circle"></i>
-              </button>
-            </div>
+      setRow.innerHTML = `
+        <div class="set-number me-2" style="width: 30px">${index + 1}</div>
+        <div class="flex-grow-1 row g-0">
+          <div class="col-4 pe-1">
+            <input type="number" class="form-control form-control-sm set-weight" value="${set.weight}" placeholder="lbs" inputmode="numeric">
           </div>
-        `;
-        
-        // Add event listener to remove button
-        const removeButton = setRow.querySelector('.remove-set-btn');
-        removeButton.addEventListener('click', (event) => {
-          removeSet(event.currentTarget);
-        });
-        
-        setsContainer.appendChild(setRow);
+          <div class="col-4 px-1">
+            <input type="number" class="form-control form-control-sm set-reps" value="${set.reps}" placeholder="reps" inputmode="numeric">
+          </div>
+          <div class="col-4 ps-1 d-flex align-items-center">
+            <button class="btn btn-sm btn-outline-danger remove-set-btn">
+              <i class="bi bi-dash-circle"></i>
+            </button>
+          </div>
+        </div>
+      `;
+      
+      // Add event listener to remove button
+      const removeButton = setRow.querySelector('.remove-set-btn');
+      removeButton.addEventListener('click', (event) => {
+        removeSet(event.currentTarget);
       });
       
-      // If no sets, add one empty set
-      if (exercise.sets.length === 0) {
-        addNewSet();
-      }
-    }
+      setsContainer.appendChild(setRow);
+    });
     
     // Show modal
     const modal = new bootstrap.Modal(exerciseModal);
     modal.show();
   } catch (error) {
     console.error("Error editing exercise:", error);
-    showToast("Error editing exercise", "danger");
+    showToast("Error editing exercise. Please try again.", "danger");
   }
 }
 
@@ -663,23 +628,21 @@ function editExercise(exerciseId) {
  */
 function removeExercise(exerciseId) {
   try {
-    // Get the workout
-    const workout = workoutManager.getWorkoutById(currentWorkoutId);
-    if (!workout) return;
-    
-    // Find the exercise
-    const exercise = workout.exercises.find(ex => ex.id === exerciseId);
-    if (!exercise) return;
-    
     // Confirm removal
-    if (confirm(`Are you sure you want to remove "${exercise.name}" from this workout?`)) {
-      workout.removeExercise(exerciseId);
-      showToast(`Exercise "${exercise.name}" removed`, "success");
-      renderWorkoutExercises(workout);
-    }
+    if (!confirm("Are you sure you want to remove this exercise?")) return;
+    
+    // Remove exercise from workout
+    workoutManager.removeExerciseFromWorkout(currentWorkoutId, exerciseId);
+    
+    // Update UI
+    const workout = workoutManager.getWorkoutById(currentWorkoutId);
+    renderWorkoutExercises(workout);
+    
+    // Show success message
+    showToast("Exercise removed from workout!", 'success');
   } catch (error) {
     console.error("Error removing exercise:", error);
-    showToast("Error removing exercise", "danger");
+    showToast("Error removing exercise. Please try again.", "danger");
   }
 }
 
@@ -689,66 +652,69 @@ function removeExercise(exerciseId) {
  */
 function editWorkout(routineId) {
   try {
-    // Get the routine
     const routine = workoutManager.getRoutineById(routineId);
     if (!routine) return;
     
-    // Fill form with routine data
+    // Fill workout form
     const nameInput = document.getElementById('workout-name');
     const descInput = document.getElementById('workout-description');
     
-    if (nameInput) nameInput.value = routine.name;
-    if (descInput) descInput.value = routine.description || '';
+    nameInput.value = routine.name;
+    descInput.value = routine.description || '';
+    
+    // Set data attribute for form submission
+    const form = document.getElementById('workout-form');
+    form.dataset.editId = routineId;
+    
+    // Update button text
+    const submitButton = document.getElementById('create-workout-btn');
+    submitButton.textContent = 'Update Workout Plan';
     
     // Show modal
     const modal = new bootstrap.Modal(workoutModal);
     modal.show();
     
-    // Update form and button text
-    const form = document.getElementById('workout-form');
-    if (form) {
-      form.dataset.mode = 'edit';
-      form.dataset.routineId = routineId;
-    }
+    // Add one-time event listener for form submission
+    const handleEditSubmit = (event) => {
+      event.preventDefault();
+      
+      const name = nameInput.value.trim();
+      const description = descInput.value.trim();
+      
+      if (!name) {
+        nameInput.classList.add('is-invalid');
+        return;
+      }
+      
+      // Update routine
+      routine.name = name;
+      routine.description = description;
+      workoutManager.updateRoutine(routineId, routine);
+      
+      // Hide modal
+      const modalInstance = bootstrap.Modal.getInstance(workoutModal);
+      modalInstance.hide();
+      
+      // Reset form
+      form.reset();
+      delete form.dataset.editId;
+      submitButton.textContent = 'Create Workout Plan';
+      
+      // Reload routines
+      loadWorkoutRoutines();
+      
+      // Show success message
+      showToast(`Workout plan "${name}" updated successfully!`, 'success');
+      
+      // Remove this event listener
+      form.removeEventListener('submit', handleEditSubmit);
+    };
     
-    const submitButton = document.getElementById('create-workout-btn');
-    if (submitButton) {
-      submitButton.textContent = 'Update Workout Plan';
-      submitButton.removeEventListener('click', handleCreateWorkout);
-      submitButton.addEventListener('click', () => {
-        const name = nameInput.value.trim();
-        const description = descInput.value.trim();
-        
-        if (!name) {
-          nameInput.classList.add('is-invalid');
-          return;
-        }
-        
-        // Update routine
-        routine.name = name;
-        routine.description = description;
-        workoutManager.updateRoutine(routine);
-        
-        // Hide modal
-        const modalInstance = bootstrap.Modal.getInstance(workoutModal);
-        modalInstance.hide();
-        
-        // Reset form
-        form.reset();
-        form.dataset.mode = 'create';
-        delete form.dataset.routineId;
-        submitButton.textContent = 'Create Workout Plan';
-        
-        // Reload routines
-        loadWorkoutRoutines();
-        
-        // Show success message
-        showToast(`Workout plan "${name}" updated successfully!`, 'success');
-      }, { once: true });
-    }
+    // Add the event listener
+    form.addEventListener('submit', handleEditSubmit);
   } catch (error) {
     console.error("Error editing workout:", error);
-    showToast("Error editing workout plan", "danger");
+    showToast("Error editing workout. Please try again.", "danger");
   }
 }
 
@@ -758,19 +724,20 @@ function editWorkout(routineId) {
  */
 function deleteWorkout(routineId) {
   try {
-    // Get the routine
-    const routine = workoutManager.getRoutineById(routineId);
-    if (!routine) return;
-    
     // Confirm deletion
-    if (confirm(`Are you sure you want to delete the "${routine.name}" workout plan?`)) {
-      workoutManager.removeRoutine(routineId);
-      showToast(`Workout plan "${routine.name}" deleted`, "success");
-      loadWorkoutRoutines();
-    }
+    if (!confirm("Are you sure you want to delete this workout plan?")) return;
+    
+    // Delete the routine
+    workoutManager.removeRoutine(routineId);
+    
+    // Reload routines
+    loadWorkoutRoutines();
+    
+    // Show success message
+    showToast("Workout plan deleted successfully!", 'success');
   } catch (error) {
     console.error("Error deleting workout:", error);
-    showToast("Error deleting workout plan", "danger");
+    showToast("Error deleting workout. Please try again.", "danger");
   }
 }
 
@@ -779,78 +746,73 @@ function deleteWorkout(routineId) {
  */
 function handleCompleteWorkout() {
   try {
-    // Get the workout
+    // Get the current workout
     const workout = workoutManager.getWorkoutById(currentWorkoutId);
     if (!workout) return;
     
-    // Check if any exercises were added
-    if (workout.exercises.length === 0) {
-      if (!confirm('You haven\'t added any exercises to this workout. Are you sure you want to complete it?')) {
-        return;
-      }
-    }
+    // Stop the timer
+    stopWorkoutTimer();
     
-    // Complete the workout
-    const completedWorkout = workoutManager.completeWorkout(currentWorkoutId);
-    if (!completedWorkout) {
-      showToast("Error completing workout", "danger");
-      return;
-    }
+    // Calculate workout stats
+    const duration = Math.round((new Date() - workoutStartTime) / 60000); // in minutes
     
-    // Get workout name for display
+    // Count completed sets
+    let completedSets = 0;
+    let totalSets = 0;
+    
+    workout.exercises.forEach(exercise => {
+      exercise.sets.forEach(set => {
+        totalSets++;
+        if (set.completed) completedSets++;
+      });
+    });
+    
+    // Create an activity to record the workout
     const workoutName = document.getElementById('active-workout-name').textContent;
+    const workoutType = 'weights'; // Assuming most workouts are weight training
     
-    // Create activity from workout
+    // Calculate calories (example formula: 8 calories per minute for weightlifting)
+    const caloriesBurned = duration * 8;
+    
+    // Create the activity
     const activity = new Activity(
       workoutName,
-      completedWorkout.caloriesBurned || 0,
-      completedWorkout.duration || 0,
-      'weights',
+      caloriesBurned,
+      duration,
+      workoutType,
       new Date(),
-      completedWorkout.id,
+      generateUUID(),
       null,
       null,
       {
-        category: 'weights',
-        exercises: completedWorkout.exercises.map(ex => ({
-          name: ex.name,
-          type: ex.type,
-          sets: ex.sets
-        }))
+        exercises: workout.exercises,
+        totalSets,
+        completedSets
       }
     );
     
     // Add to fitness tracker
     const fitnessTracker = new FitnessTracker();
-    fitnessTracker.loadFromLocalStorage();
     fitnessTracker.addActivity(activity);
-    fitnessTracker.saveToLocalStorage();
     
-    // Stop timer
-    stopWorkoutTimer();
-    
-    // Hide modal
+    // Close modal
     const modal = bootstrap.Modal.getInstance(activeWorkoutModal);
     modal.hide();
     
-    // Update UI
-    loadWorkoutRoutines();
-    
-    // Reset state
+    // Reset current workout
     currentWorkoutId = null;
-    currentExerciseId = null;
     workoutStartTime = null;
     
-    // Show success message
-    showToast(`Workout "${workoutName}" completed successfully!`, 'success');
+    // Show success message with stats
+    showToast(`Workout completed! Duration: ${duration} minutes, Calories: ${caloriesBurned}`, 'success');
     
-    // Update dashboard if it exists
+    // Update dashboard if needed
     if (typeof updateDashboard === 'function') {
       updateDashboard();
     }
   } catch (error) {
     console.error("Error completing workout:", error);
-    showToast("Error completing workout", "danger");
+    showToast("Error completing workout. The workout data may not be saved.", "danger");
   }
 }
 
@@ -859,108 +821,24 @@ function handleCompleteWorkout() {
  */
 function handleDiscardWorkout() {
   try {
-    // Get the workout
-    const workout = workoutManager.getWorkoutById(currentWorkoutId);
-    if (!workout) return;
-    
     // Confirm discard
-    if (confirm('Are you sure you want to discard this workout? All progress will be lost.')) {
-      // Discard the workout
-      workoutManager.discardWorkout(currentWorkoutId);
-      
-      // Stop timer
-      stopWorkoutTimer();
-      
-      // Hide modal
-      const modal = bootstrap.Modal.getInstance(activeWorkoutModal);
-      modal.hide();
-      
-      // Reset state
-      currentWorkoutId = null;
-      currentExerciseId = null;
-      workoutStartTime = null;
-      
-      // Show message
-      showToast('Workout discarded', 'warning');
-    }
+    if (!confirm("Are you sure you want to discard this workout? All progress will be lost.")) return;
+    
+    // Stop the timer
+    stopWorkoutTimer();
+    
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(activeWorkoutModal);
+    modal.hide();
+    
+    // Reset current workout
+    currentWorkoutId = null;
+    workoutStartTime = null;
+    
+    // Show message
+    showToast("Workout discarded", 'info');
   } catch (error) {
     console.error("Error discarding workout:", error);
-    showToast("Error discarding workout", "danger");
-  }
-}
-
-/**
- * Render the exercises for a workout
- * @param {Object} workout - The workout to render exercises for
- */
-function renderWorkoutExercises(workout) {
-  try {
-    const exercisesContainer = document.getElementById('workout-exercises-container');
-    if (!exercisesContainer || !workout) return;
-    
-    exercisesContainer.innerHTML = '';
-    
-    if (workout.exercises.length === 0) {
-      exercisesContainer.innerHTML = `
-        <div class="text-center py-4">
-          <p class="text-muted">No exercises added yet. Add your first exercise to get started.</p>
-        </div>
-      `;
-      return;
-    }
-    
-    // Create exercise cards
-    workout.exercises.forEach(exercise => {
-      const card = document.createElement('div');
-      card.className = 'card mb-3';
-      
-      let setsHtml = '';
-      
-      if (exercise.sets && exercise.sets.length > 0) {
-        setsHtml = `
-          <div class="mt-2 small">
-            <div class="d-flex fw-bold text-muted mb-1">
-              <div style="width: 60px">Set</div>
-              <div style="width: 60px">Weight</div>
-              <div style="width: 60px">Reps</div>
-            </div>
-            ${exercise.sets.map((set, idx) => `
-              <div class="d-flex mb-1">
-                <div style="width: 60px">${idx + 1}</div>
-                <div style="width: 60px">${set.weight} lbs</div>
-                <div style="width: 60px">${set.reps}</div>
-              </div>
-            `).join('')}
-          </div>
-        `;
-      }
-      
-      card.innerHTML = `
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-start">
-            <h5 class="card-title">${exercise.name}</h5>
-            <div>
-              <button class="btn btn-sm btn-outline-primary edit-exercise-btn me-1" data-id="${exercise.id}">
-                <i class="bi bi-pencil"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-danger remove-exercise-btn" data-id="${exercise.id}">
-                <i class="bi bi-trash"></i>
-              </button>
-            </div>
-          </div>
-          <p class="card-text text-muted mb-1">${exercise.type}</p>
-          ${setsHtml}
-        </div>
-      `;
-      
-      // Add event listeners
-      card.querySelector('.edit-exercise-btn').addEventListener('click', () => editExercise(exercise.id));
-      card.querySelector('.remove-exercise-btn').addEventListener('click', () => removeExercise(exercise.id));
-      
-      exercisesContainer.appendChild(card);
-    });
-  } catch (error) {
-    console.error("Error rendering workout exercises:", error);
   }
 }
 
@@ -969,41 +847,53 @@ function renderWorkoutExercises(workout) {
  */
 function startWorkoutTimer() {
   try {
-    if (workoutTimerInterval) {
-      clearInterval(workoutTimerInterval);
+    // Clear any existing timer
+    stopWorkoutTimer();
+    
+    // Initialize start time if not already set
+    if (!workoutStartTime) {
+      workoutStartTime = new Date();
     }
     
-    workoutStartTime = workoutStartTime || new Date();
-    
+    // Set up timer interval
     workoutTimerInterval = setInterval(() => {
       try {
         const now = new Date();
-        const elapsed = Math.floor((now - workoutStartTime) / 1000);
+        const elapsedSeconds = Math.floor((now - workoutStartTime) / 1000);
         
-        const hours = Math.floor(elapsed / 3600);
-        const minutes = Math.floor((elapsed % 3600) / 60);
-        const seconds = elapsed % 60;
+        // Calculate hours, minutes, seconds
+        const hours = Math.floor(elapsedSeconds / 3600);
+        const minutes = Math.floor((elapsedSeconds % 3600) / 60);
+        const seconds = elapsedSeconds % 60;
         
+        // Format time string
+        const timeString = [
+          hours.toString().padStart(2, '0'),
+          minutes.toString().padStart(2, '0'),
+          seconds.toString().padStart(2, '0')
+        ].join(':');
+        
+        // Update timer display
         const timerElement = document.getElementById('workout-timer');
         if (timerElement) {
-          timerElement.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+          timerElement.textContent = timeString;
         }
-        
-        // Update workout duration in the workout object
-        if (currentWorkoutId) {
-          const workout = workoutManager.getWorkoutById(currentWorkoutId);
-          if (workout) {
-            workout.duration = elapsed;
-          }
-        }
-      } catch (timerError) {
-        console.error("Error updating workout timer:", timerError);
-        // Attempt recovery by continuing interval
+      } catch (error) {
+        console.error("Error updating workout timer:", error);
+        // Continue the timer despite the error
       }
     }, 1000);
+    
+    console.log("Workout timer started");
   } catch (error) {
     console.error("Error starting workout timer:", error);
-    showToast("Error starting workout timer", "warning");
+    // Try to show an error message
+    try {
+      showToast("Error starting workout timer. The timer may not function correctly.", "warning");
+    } catch (e) {
+      // Last resort - if even showing the toast fails
+      console.error("Critical error in timer system:", e);
+    }
   }
 }
 
@@ -1012,6 +902,7 @@ function startWorkoutTimer() {
  */
 function stopWorkoutTimer() {
   try {
+    // Clear the workout timer
     if (workoutTimerInterval) {
       clearInterval(workoutTimerInterval);
       workoutTimerInterval = null;
@@ -1022,5 +913,5 @@ function stopWorkoutTimer() {
   }
 }
 
-// Initialize workout UI when DOM is loaded
+// Initialize workout UI when the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', initializeWorkoutUI);
