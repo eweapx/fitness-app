@@ -153,6 +153,24 @@ function syncAllHealthConnections() {
  * Set up all event listeners for the application
  */
 function setupEventListeners() {
+  // Tab navigation - handle section switching
+  const navLinks = document.querySelectorAll('[data-section]');
+  navLinks.forEach(link => {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      const targetSection = this.getAttribute('data-section');
+      showSection(targetSection);
+      
+      // Update active state in nav
+      document.querySelectorAll('.nav-link').forEach(navLink => {
+        navLink.classList.remove('active');
+      });
+      if (this.classList.contains('nav-link')) {
+        this.classList.add('active');
+      }
+    });
+  });
+  
   // Activity form
   const addActivityForm = document.getElementById('add-activity-form');
   if (addActivityForm) {
@@ -528,6 +546,47 @@ function handleSleepFormSubmit(event) {
  * Handle connection form submission
  * @param {Event} event - Form submission event
  */
+/**
+ * Switch to the specified section
+ * @param {string} sectionName - Name of the section to show
+ */
+function showSection(sectionName) {
+  // Hide all sections
+  document.querySelectorAll('.section-content').forEach(section => {
+    section.classList.add('d-none');
+  });
+  
+  // Show the target section
+  const targetSection = document.getElementById(`${sectionName}-section`);
+  if (targetSection) {
+    targetSection.classList.remove('d-none');
+    
+    // Update section-specific content if needed
+    if (sectionName === 'activities') {
+      updateActivityStatistics();
+      updateActivitiesList();
+      updateActivityCalendar();
+      updateActivityChart();
+    } else if (sectionName === 'nutrition') {
+      updateNutritionStats();
+      updateMealsList();
+      updateNutritionChart();
+    } else if (sectionName === 'sleep') {
+      updateSleepStats();
+      updateSleepRecordsList();
+      updateSleepChart();
+    } else if (sectionName === 'habits') {
+      updateHabitStats();
+      updateHabitsList();
+    } else if (sectionName === 'connections') {
+      updateConnectionsList();
+    }
+  }
+  
+  // Save last section to localStorage
+  localStorage.setItem('lastSection', sectionName);
+}
+
 function handleConnectionFormSubmit(event) {
   event.preventDefault();
   

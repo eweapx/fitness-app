@@ -27,7 +27,13 @@ if (fs.existsSync(flutterBuildDir)) {
 
 // API routes
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+  const uptime = process.uptime();
+  res.json({ 
+    status: 'healthy', 
+    timestamp: new Date().toISOString(),
+    uptime: uptime,
+    version: '1.0.0'
+  });
 });
 
 app.get('/api/version', (req, res) => {

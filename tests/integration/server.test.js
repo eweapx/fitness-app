@@ -1,5 +1,5 @@
 const request = require('supertest');
-const app = require('../../robust-express-server');
+const app = require('../../server');
 const path = require('path');
 const fs = require('fs');
 
