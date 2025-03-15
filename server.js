@@ -191,6 +191,8 @@ if (require.main === module) {
     console.log(`Server running at http://0.0.0.0:${PORT}`);
     // Signal that the server is ready to accept connections
     console.log(`Server ready - listening on port ${PORT}`);
+    // Log additional binding information for debugging
+    console.log(`Server IP bindings: ${JSON.stringify(server.address())}`);
   });
 
   // Handle server errors
