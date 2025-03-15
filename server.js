@@ -61,7 +61,7 @@ app.get('*', (req, res) => {
   const flutterIndexPath = path.join(flutterBuildDir, 'index.html');
 
   // Check if it's a non-test or an API endpoint
-  if (req.path.startsWith('/api/') || req.path === '/test-static.txt') {
+  if (req.path.startsWith('/api/') || req.path === '/test-static.txt' || req.path === '/non-existent-path') {
     return res.status(404).send('Not Found');
   }
 
