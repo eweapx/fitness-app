@@ -1,0 +1,25 @@
+{
+  "users": [
+    {
+      "id": "8a5cc6c2-423d-4a80-bdcf-69f92ac2a174",
+      "name": "Demo User",
+      "email": "demo@example.com",
+      "password": "password123",
+      "preferences": {
+        "darkMode": true
+      },
+      "createdAt": "2025-03-15T20:56:09.294Z",
+      "lastLogin": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "9bd3b271-3db5-4489-a75b-478b453894e5",
+      "name": "James",
+      "email": "eweapx@gmail.com",
+      "password": "lanalana",
+      "preferences": {},
+      "createdAt": "2025-03-15T20:57:08.298Z",
+      "lastLogin": "2025-03-15T20:58:11.504Z"
+    }
+  ],
+  "currentUserId": "9bd3b271-3db5-4489-a75b-478b453894e5"
+}

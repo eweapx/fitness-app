@@ -31,8 +31,14 @@ class UserService {
       return { success: false, message: 'Invalid user data' };
     }
     
-    // Add user
+    // Add user to our array
     this.users.push(user);
+    
+    // Set as current user
+    this.currentUser = user;
+    
+    // Save to persistent storage
+    this.saveToStorage();
     
     // Return success with safe user object
     return { 
@@ -64,6 +70,12 @@ class UserService {
     // Set current user
     this.currentUser = user;
     
+    // Update last login time
+    user.lastLogin = new Date();
+    
+    // Save to persistent storage
+    this.saveToStorage();
+    
     // Return success with safe user object
     return { 
       success: true, 
@@ -82,6 +94,10 @@ class UserService {
     }
     
     this.currentUser = null;
+    
+    // Save updated state to storage
+    this.saveToStorage();
+    
     return { success: true, message: 'Logout successful' };
   }
 
@@ -135,6 +151,9 @@ class UserService {
       this.currentUser = this.users[userIndex];
     }
     
+    // Save to persistent storage
+    this.saveToStorage();
+    
     return { 
       success: true, 
       user: this.users[userIndex].toSafeObject(),
@@ -163,6 +182,9 @@ class UserService {
     
     // Update password
     user.password = newPassword;
+    
+    // Save to persistent storage
+    this.saveToStorage();
     
     return { success: true, message: 'Password changed successfully' };
   }
@@ -193,6 +215,9 @@ class UserService {
       this.currentUser = null;
     }
     
+    // Save to persistent storage
+    this.saveToStorage();
+    
     return { success: true, message: 'Account deleted successfully' };
   }
 
@@ -202,8 +227,48 @@ class UserService {
    */
   saveToStorage() {
     // In a real application, this would save to a database
-    // For our implementation, data is already in memory
-    return true;
+    // For our implementation, we'll use a JSON file for persistence
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      
+      // Create a data directory if it doesn't exist
+      const dataDir = path.join(__dirname, '../../data');
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
+      
+      // Save users to a JSON file
+      const usersData = this.users.map(user => {
+        // Create a serializable version of the user object
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          password: user.password,
+          preferences: user.preferences,
+          createdAt: user.createdAt,
+          lastLogin: user.lastLogin
+        };
+      });
+      
+      // Save current user ID if logged in
+      const userData = {
+        users: usersData,
+        currentUserId: this.currentUser ? this.currentUser.id : null
+      };
+      
+      // Write to file
+      fs.writeFileSync(
+        path.join(dataDir, 'users.json'),
+        JSON.stringify(userData, null, 2)
+      );
+      
+      return true;
+    } catch (error) {
+      console.error('Error saving users to storage:', error);
+      return false;
+    }
   }
 
   /**
@@ -211,20 +276,69 @@ class UserService {
    * This would be a database operation in a real backend
    */
   loadFromStorage() {
-    // In a real application, this would load from a database
-    // For our simple implementation, we'll add a demo user if none exists
-    if (this.users.length === 0) {
-      // Add a demo user for testing
-      this.users.push(new User(
-        null,
-        'Demo User',
-        'demo@example.com',
-        'password123',
-        { darkMode: true }
-      ));
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      
+      const dataPath = path.join(__dirname, '../../data/users.json');
+      
+      // Check if the users file exists
+      if (fs.existsSync(dataPath)) {
+        // Read and parse the users data
+        const userData = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+        
+        // Convert plain objects to User instances
+        this.users = userData.users.map(userObj => {
+          const user = new User(
+            userObj.id,
+            userObj.name,
+            userObj.email,
+            userObj.password,
+            userObj.preferences || {}
+          );
+          
+          // Copy dates
+          user.createdAt = new Date(userObj.createdAt);
+          user.lastLogin = new Date(userObj.lastLogin);
+          
+          return user;
+        });
+        
+        // Restore current user if there was one
+        if (userData.currentUserId) {
+          this.currentUser = this.getUserById(userData.currentUserId);
+        }
+      } else if (this.users.length === 0) {
+        // If no file exists and we have no users, create a demo user
+        this.users.push(new User(
+          null,
+          'Demo User',
+          'demo@example.com',
+          'password123',
+          { darkMode: true }
+        ));
+        
+        // Save to create the initial file
+        this.saveToStorage();
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error loading users from storage:', error);
+      
+      // If there was an error and we have no users, add a demo user
+      if (this.users.length === 0) {
+        this.users.push(new User(
+          null,
+          'Demo User',
+          'demo@example.com',
+          'password123',
+          { darkMode: true }
+        ));
+      }
+      
+      return false;
     }
-    
-    return true;
   }
 }
 

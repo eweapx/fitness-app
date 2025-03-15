@@ -14,6 +14,17 @@ const PORT = process.env.PORT || 5000; // Use port 5000 for Replit compatibility
 const publicDir = path.join(__dirname, 'public');
 const flutterBuildDir = path.join(__dirname, 'build/web');
 
+// Ensure data directory exists
+const dataDir = path.join(__dirname, 'data');
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+  console.log(`Created data directory: ${dataDir}`);
+}
+
+// Load user data from storage
+userService.loadFromStorage();
+console.log('User service initialized with stored data');
+
 // Set up logging middleware
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
@@ -181,9 +192,6 @@ app.get('*', (req, res) => {
     res.status(404).send('No index.html found');
   }
 });
-
-// Initialize the UserService
-userService.loadFromStorage();
 
 // Only start the server if this file is run directly
 if (require.main === module) {
