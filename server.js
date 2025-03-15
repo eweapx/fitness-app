@@ -4,7 +4,7 @@ const fs = require('fs');
 
 // Create Express app
 const app = express();
-const PORT = process.env.PORT || 5001; // Using port 5001 as port 5000 appears to be in use
+const PORT = process.env.PORT || 5002; // Using port 5002 since 5000 and 5001 are occupied
 
 // Define paths to static content
 const publicDir = path.join(__dirname, 'public');
