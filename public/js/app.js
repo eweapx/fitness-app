@@ -598,7 +598,7 @@ function handleSleepFormSubmit(event) {
   
   // Get any selected disturbances
   const disturbances = [];
-  const selectedDisturbance = document.querySelector('input[name="sleep-disturbances"]:checked').value;
+  const selectedDisturbance = document.querySelector('input[name="sleep-disturbances"]:checked')?.value || 'none';
   if (selectedDisturbance !== 'none') {
     disturbances.push(selectedDisturbance);
   }

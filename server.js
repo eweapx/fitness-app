@@ -4,7 +4,7 @@ const fs = require('fs');
 
 // Create Express app
 const app = express();
-const PORT = process.env.PORT || 5002; // Using port 5002 since 5000 and 5001 are occupied
+const PORT = process.env.PORT || 5000; // Using port 5000 for Replit
 
 // Define paths to static content
 const publicDir = path.join(__dirname, 'public');

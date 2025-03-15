@@ -25,7 +25,11 @@ function initWorkoutForm() {
     console.log('Initializing workout form...');
     
     // Set default date to now
-    document.getElementById('workout-date').valueAsDate = new Date();
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    document.getElementById('workout-date').value = `${year}-${month}-${day}`;
     
     // Add event listeners
     document.getElementById('workout-type').addEventListener('change', handleWorkoutTypeChange);

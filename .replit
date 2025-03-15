@@ -17,7 +17,7 @@ args = "Run Tests"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Health Fitness Server"
+args = "Simple Fitness Server"
 
 [[workflows.workflow]]
 name = "Run Tests"
@@ -60,7 +60,7 @@ task = "shell.exec"
 args = "node server.js"
 
 [[workflows.workflow]]
-name = "Health Fitness Server"
+name = "Simple Fitness Server"
 author = "agent"
 
 [workflows.workflow.metadata]
@@ -71,8 +71,8 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node server.js"
-waitForPort = 5002
+args = "node simple-server.js"
+waitForPort = 5000
 
 [deployment]
 run = ["sh", "-c", "flutter run -d web-server --web-port=5000 --web-hostname=0.0.0.0"]
@@ -95,5 +95,21 @@ localPort = 8080
 externalPort = 8080
 
 [[ports]]
+localPort = 37463
+externalPort = 3002
+
+[[ports]]
+localPort = 39591
+externalPort = 3001
+
+[[ports]]
+localPort = 42121
+externalPort = 3003
+
+[[ports]]
 localPort = 43717
 externalPort = 3000
+
+[[ports]]
+localPort = 46271
+externalPort = 4200
