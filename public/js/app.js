@@ -646,6 +646,14 @@ function showSection(sectionName) {
     } else if (sectionName === 'habits') {
       updateHabitStats();
       updateHabitsList();
+      
+      // Check if calendar view should be shown
+      const calendarViewActive = document.querySelector('[data-habits-view="calendar"]')?.classList.contains('active');
+      if (calendarViewActive) {
+        toggleHabitsView('calendar');
+      } else {
+        toggleHabitsView('list');
+      }
     } else if (sectionName === 'connections') {
       updateConnectionsList();
     }
@@ -653,6 +661,189 @@ function showSection(sectionName) {
   
   // Save last section to localStorage
   localStorage.setItem('lastSection', sectionName);
+}
+
+/**
+ * Toggle between habit list and calendar views
+ * @param {string} view - View to show ('list' or 'calendar')
+ */
+function toggleHabitsView(view) {
+  const listView = document.getElementById('habits-list-view');
+  const calendarView = document.getElementById('habits-calendar-view');
+  
+  if (!listView || !calendarView) return;
+  
+  if (view === 'list') {
+    listView.classList.remove('d-none');
+    calendarView.classList.add('d-none');
+    updateHabitsList();
+  } else if (view === 'calendar') {
+    listView.classList.add('d-none');
+    calendarView.classList.remove('d-none');
+    updateHabitsCalendar();
+  }
+}
+
+/**
+ * Update the habits calendar view
+ */
+function updateHabitsCalendar() {
+  const calendarContainer = document.getElementById('habits-calendar');
+  if (!calendarContainer) return;
+  
+  // Clear the container
+  calendarContainer.innerHTML = '';
+  
+  // Get current date
+  const today = new Date();
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
+  
+  // Get all habits
+  const habits = habitTracker.getHabits();
+  
+  // Create a header with month and year
+  const header = document.createElement('div');
+  header.className = 'd-flex justify-content-between align-items-center mb-3';
+  header.innerHTML = `
+    <h5 class="mb-0">${new Date(currentYear, currentMonth).toLocaleString('default', { month: 'long' })} ${currentYear}</h5>
+    <div>
+      <button class="btn btn-sm btn-outline-secondary" id="prev-month-btn">
+        <i class="bi bi-chevron-left"></i>
+      </button>
+      <button class="btn btn-sm btn-outline-secondary ms-1" id="next-month-btn">
+        <i class="bi bi-chevron-right"></i>
+      </button>
+    </div>
+  `;
+  calendarContainer.appendChild(header);
+  
+  // Create a table for the calendar
+  const table = document.createElement('table');
+  table.className = 'table table-bordered calendar-table';
+  
+  // Create the header row with day names
+  const headerRow = document.createElement('tr');
+  ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(day => {
+    const th = document.createElement('th');
+    th.textContent = day;
+    headerRow.appendChild(th);
+  });
+  
+  const thead = document.createElement('thead');
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+  
+  // Create the body with date cells
+  const tbody = document.createElement('tbody');
+  
+  // Get the first day of the month
+  const firstDay = new Date(currentYear, currentMonth, 1);
+  const startingDay = firstDay.getDay(); // 0 = Sunday, 1 = Monday, etc.
+  
+  // Get the number of days in the month
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  
+  // Create the rows for the calendar
+  let date = 1;
+  for (let i = 0; i < 6; i++) {
+    // Break if we've gone beyond the days in the month
+    if (date > daysInMonth) break;
+    
+    const row = document.createElement('tr');
+    
+    // Create cells for each day of the week
+    for (let j = 0; j < 7; j++) {
+      const cell = document.createElement('td');
+      
+      if (i === 0 && j < startingDay) {
+        // Empty cells before the first day of the month
+        cell.innerHTML = '';
+      } else if (date > daysInMonth) {
+        // Empty cells after the last day of the month
+        cell.innerHTML = '';
+      } else {
+        // Cells with dates
+        cell.innerHTML = `<div class="calendar-date">${date}</div>`;
+        
+        // Add check-ins for this date if any
+        const checkDate = new Date(currentYear, currentMonth, date);
+        const formattedDate = formatDateYYYYMMDD(checkDate);
+        
+        // Create a container for the habit statuses
+        const statusContainer = document.createElement('div');
+        statusContainer.className = 'habit-status-container';
+        
+        // Add a status indicator for each habit
+        habits.forEach(habit => {
+          if (habit.checkIns && habit.checkIns[formattedDate]) {
+            const checkIn = habit.checkIns[formattedDate];
+            const status = document.createElement('div');
+            status.className = `habit-status ${checkIn.success ? 'success' : 'failure'}`;
+            status.setAttribute('data-bs-toggle', 'tooltip');
+            status.setAttribute('title', `${habit.name}: ${checkIn.success ? 'Success' : 'Missed'}`);
+            statusContainer.appendChild(status);
+          }
+        });
+        
+        cell.appendChild(statusContainer);
+        
+        // Highlight today's date
+        if (date === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear()) {
+          cell.classList.add('today');
+        }
+        
+        date++;
+      }
+      
+      row.appendChild(cell);
+    }
+    
+    tbody.appendChild(row);
+  }
+  
+  table.appendChild(tbody);
+  calendarContainer.appendChild(table);
+  
+  // Add event listeners to prev/next month buttons
+  const prevMonthBtn = document.getElementById('prev-month-btn');
+  const nextMonthBtn = document.getElementById('next-month-btn');
+  
+  if (prevMonthBtn) {
+    prevMonthBtn.addEventListener('click', () => {
+      // Update the current month/year
+      window.currentHabitsCalendarMonth = (window.currentHabitsCalendarMonth || currentMonth) - 1;
+      window.currentHabitsCalendarYear = window.currentHabitsCalendarYear || currentYear;
+      
+      if (window.currentHabitsCalendarMonth < 0) {
+        window.currentHabitsCalendarMonth = 11;
+        window.currentHabitsCalendarYear--;
+      }
+      
+      updateHabitsCalendar();
+    });
+  }
+  
+  if (nextMonthBtn) {
+    nextMonthBtn.addEventListener('click', () => {
+      // Update the current month/year
+      window.currentHabitsCalendarMonth = (window.currentHabitsCalendarMonth || currentMonth) + 1;
+      window.currentHabitsCalendarYear = window.currentHabitsCalendarYear || currentYear;
+      
+      if (window.currentHabitsCalendarMonth > 11) {
+        window.currentHabitsCalendarMonth = 0;
+        window.currentHabitsCalendarYear++;
+      }
+      
+      updateHabitsCalendar();
+    });
+  }
+  
+  // Initialize tooltips
+  const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl);
+  });
 }
 
 function handleConnectionFormSubmit(event) {
@@ -1235,12 +1426,118 @@ function updateHabitStats() {
   const habitsCount = document.getElementById('habits-count');
   const currentStreakCount = document.getElementById('current-streak-count');
   const successRateCount = document.getElementById('success-rate-count');
+  const deloadProgressStat = document.getElementById('deload-progress-stat');
   
   const stats = habitTracker.getOverallProgress() || { currentStreak: 0, bestStreak: 0, successRate: 0 };
+  const habits = habitTracker.getHabits();
   
-  if (habitsCount) habitsCount.textContent = habitTracker.getHabits().length.toString();
+  if (habitsCount) habitsCount.textContent = habits.length.toString();
   if (currentStreakCount) currentStreakCount.textContent = (stats.currentStreak || 0).toString();
   if (successRateCount) successRateCount.textContent = `${Math.round(stats.successRate || 0)}%`;
+  
+  // Calculate deload progress across all habits
+  if (deloadProgressStat) {
+    if (habits.length === 0) {
+      deloadProgressStat.textContent = '0%';
+    } else {
+      let totalProgress = 0;
+      habits.forEach(habit => {
+        totalProgress += habit.getProgressPercentage();
+      });
+      const avgProgress = Math.round(totalProgress / habits.length);
+      deloadProgressStat.textContent = `${avgProgress}%`;
+      
+      // Also update the progress bar if it exists
+      const progressBar = document.getElementById('overall-deload-progress');
+      if (progressBar) {
+        progressBar.style.width = `${avgProgress}%`;
+        progressBar.setAttribute('aria-valuenow', avgProgress.toString());
+      }
+    }
+  }
+  
+  // Update category statistics
+  updateHabitCategoryStats(habits);
+}
+
+/**
+ * Update the habit category statistics
+ * @param {Array} habits - Array of habits to analyze
+ */
+function updateHabitCategoryStats(habits) {
+  const categoryCountsElement = document.getElementById('habit-category-counts');
+  if (!categoryCountsElement) return;
+  
+  // Create a map of category counts
+  const categoryCounts = {};
+  habits.forEach(habit => {
+    const category = habit.category;
+    if (!categoryCounts[category]) {
+      categoryCounts[category] = 0;
+    }
+    categoryCounts[category]++;
+  });
+  
+  // Clear the element
+  categoryCountsElement.innerHTML = '';
+  
+  // Add a bar for each category
+  Object.keys(categoryCounts).forEach(category => {
+    const count = categoryCounts[category];
+    const percentage = Math.round((count / habits.length) * 100);
+    
+    const categoryBar = document.createElement('div');
+    categoryBar.className = 'mb-3';
+    categoryBar.innerHTML = `
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <small>${getCategoryFriendlyName(category)}</small>
+        <small class="text-muted">${count}</small>
+      </div>
+      <div class="progress" style="height: 8px;">
+        <div class="progress-bar bg-${getCategoryColor(category)}" role="progressbar" 
+             style="width: ${percentage}%" aria-valuenow="${percentage}" 
+             aria-valuemin="0" aria-valuemax="100"></div>
+      </div>
+    `;
+    
+    categoryCountsElement.appendChild(categoryBar);
+  });
+}
+
+/**
+ * Get a friendly name for a habit category
+ * @param {string} category - Habit category code
+ * @returns {string} User-friendly category name
+ */
+function getCategoryFriendlyName(category) {
+  const names = {
+    'smoking': 'Smoking',
+    'drinking': 'Drinking',
+    'social-media': 'Social Media',
+    'junk-food': 'Junk Food',
+    'procrastination': 'Procrastination',
+    'other': 'Other'
+  };
+  
+  return names[category] || category.charAt(0).toUpperCase() + category.slice(1);
+}
+
+/**
+ * Get a color for a habit category
+ * @param {string} category - Habit category
+ * @returns {string} Bootstrap color class
+ */
+function getCategoryColor(category) {
+  const colors = {
+    'smoking': 'danger',
+    'drinking': 'warning',
+    'social-media': 'info',
+    'junk-food': 'success',
+    'procrastination': 'primary',
+    'other': 'secondary'
+  };
+  
+  return colors[category] || 'primary';
 }
 
 /**
@@ -1312,6 +1609,20 @@ function createHabitElement(habit, showDetails = false) {
   const streakInfo = habit.updateStreaks();
   const weeklyProgress = habit.getWeeklyProgress();
   
+  // Progress percentage for the deload
+  const progressPercentage = habit.getProgressPercentage();
+  
+  // Current deload target
+  const currentTarget = habit.getCurrentTarget();
+  
+  // Days remaining in deload
+  const startDate = new Date(habit.startDate);
+  const targetDate = new Date(startDate);
+  targetDate.setDate(startDate.getDate() + habit.deloadDuration);
+  const today = new Date();
+  const daysRemaining = Math.max(0, Math.ceil((targetDate - today) / (1000 * 60 * 60 * 24)));
+  
+  // Progress chart for week
   let progressHtml = '';
   for (let i = 6; i >= 0; i--) {
     const day = new Date();
@@ -1335,27 +1646,59 @@ function createHabitElement(habit, showDetails = false) {
     `;
   }
   
+  // Status description
+  const statusDescription = habit.getStatusDescription();
+  
   let detailsHtml = '';
   if (showDetails) {
     detailsHtml = `
       <div class="mt-3">
         <div class="d-flex justify-content-between small text-muted mb-2">
-          <div>Category: ${habit.category}</div>
-          <div>Frequency: ${habit.frequency}</div>
+          <div>Category: ${getCategoryFriendlyName(habit.category)}</div>
+          <div>Starting Frequency: ${habit.frequency} times ${habit.frequencyUnit}</div>
         </div>
-        <div class="small text-muted mb-2">Tracking for: ${habit.getDaysSinceStart()} days</div>
-        <p class="small mb-0">${habit.description}</p>
+        <div class="d-flex justify-content-between small text-muted mb-2">
+          <div>Started: ${habit.getFormattedStartDate()}</div>
+          <div>Target End: ${habit.getFormattedTargetDate()}</div>
+        </div>
+        <p class="small mb-2">${habit.description}</p>
         
         ${habit.trigger ? `<p class="small mb-0"><strong>Trigger:</strong> ${habit.trigger}</p>` : ''}
         ${habit.alternative ? `<p class="small mb-0"><strong>Alternative:</strong> ${habit.alternative}</p>` : ''}
+        
+        <div class="mt-3">
+          <h6 class="small">Habit Difficulty Over Time</h6>
+          <div id="difficulty-chart-${habit.id}" class="difficulty-chart" style="height: 100px;"></div>
+          <div class="small text-muted text-center">Past 7 Check-ins</div>
+        </div>
       </div>
     `;
+    
+    // Render difficulty chart after the element is added to the DOM
+    setTimeout(() => {
+      renderDifficultyChart(habit);
+    }, 0);
+  }
+  
+  // Create status badge based on progress
+  let statusBadge = '';
+  if (progressPercentage >= 90) {
+    statusBadge = '<span class="badge bg-success">Almost Done!</span>';
+  } else if (progressPercentage >= 50) {
+    statusBadge = '<span class="badge bg-info">Halfway There</span>';
+  } else if (progressPercentage >= 25) {
+    statusBadge = '<span class="badge bg-primary">Making Progress</span>';
+  } else {
+    statusBadge = '<span class="badge bg-secondary">Just Started</span>';
   }
   
   element.innerHTML = `
     <div class="card-body">
       <div class="d-flex justify-content-between align-items-center">
-        <h6 class="mb-0">${habit.name}</h6>
+        <div>
+          <h6 class="mb-0">${habit.name} ${statusBadge}</h6>
+          <div class="small text-muted">${statusDescription}</div>
+        </div>
         <div>
           <button class="btn btn-sm btn-outline-primary me-1" onclick="openCheckInModal('${habit.id}', '${habit.name}')">
             Check-in
@@ -1369,9 +1712,27 @@ function createHabitElement(habit, showDetails = false) {
         </div>
       </div>
       
-      <div class="mt-2 d-flex justify-content-between align-items-center">
-        <div class="small text-muted">Current streak: ${streakInfo.currentStreak} days</div>
-        <div class="small text-muted">Best: ${streakInfo.bestStreak} days</div>
+      <div class="mt-3">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <small>Deload Progress</small>
+          <small>${progressPercentage}%</small>
+        </div>
+        <div class="progress" style="height: 8px;">
+          <div class="progress-bar bg-${getCategoryColor(habit.category)}" role="progressbar" 
+               style="width: ${progressPercentage}%" aria-valuenow="${progressPercentage}" 
+               aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+        <div class="d-flex justify-content-between mt-1">
+          <small class="text-muted">Current target: ${currentTarget} times ${habit.frequencyUnit}</small>
+          <small class="text-muted">${daysRemaining} days remaining</small>
+        </div>
+      </div>
+      
+      <div class="mt-3">
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="small text-muted">Current streak: ${streakInfo.currentStreak} days</div>
+          <div class="small text-muted">Best: ${streakInfo.bestStreak} days</div>
+        </div>
       </div>
       
       <div class="mt-2">
@@ -1385,6 +1746,70 @@ function createHabitElement(habit, showDetails = false) {
   `;
   
   return element;
+}
+
+/**
+ * Render a difficulty chart for a habit
+ * @param {BadHabit} habit - The habit to render a chart for
+ */
+function renderDifficultyChart(habit) {
+  const chartContainer = document.getElementById(`difficulty-chart-${habit.id}`);
+  if (!chartContainer) return;
+  
+  // Get difficulty data from last 7 check-ins
+  const difficultyData = [];
+  const difficultyLabels = [];
+  
+  const checkIns = Object.entries(habit.checkIns)
+    .sort((a, b) => new Date(a[0]) - new Date(b[0]))
+    .slice(-7);
+  
+  checkIns.forEach(([dateKey, checkIn]) => {
+    if (checkIn.difficulty) {
+      difficultyData.push(checkIn.difficulty);
+      const date = new Date(dateKey);
+      difficultyLabels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+    }
+  });
+  
+  // Create chart
+  if (difficultyData.length > 0) {
+    const ctx = document.createElement('canvas');
+    chartContainer.appendChild(ctx);
+    
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: difficultyLabels,
+        datasets: [{
+          label: 'Difficulty Level',
+          data: difficultyData,
+          borderColor: '#6c757d',
+          backgroundColor: 'rgba(108, 117, 125, 0.2)',
+          tension: 0.2,
+          fill: true
+        }]
+      },
+      options: {
+        scales: {
+          y: {
+            beginAtZero: true,
+            max: 5,
+            stepSize: 1
+          }
+        },
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        responsive: true,
+        maintainAspectRatio: false
+      }
+    });
+  } else {
+    chartContainer.innerHTML = '<div class="text-center text-muted small py-3">No difficulty data yet</div>';
+  }
 }
 
 /**
