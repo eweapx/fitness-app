@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">61.22% </span>
+                <span class="strong">60% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>30/49</span>
+                <span class='fraction'>30/50</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">61.22% </span>
+                <span class="strong">60% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>30/49</span>
+                <span class='fraction'>30/50</span>
             </div>
         
             
@@ -166,7 +166,9 @@
 <a name='L101'></a><a href='#L101'>101</a>
 <a name='L102'></a><a href='#L102'>102</a>
 <a name='L103'></a><a href='#L103'>103</a>
-<a name='L104'></a><a href='#L104'>104</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L104'></a><a href='#L104'>104</a>
+<a name='L105'></a><a href='#L105'>105</a>
+<a name='L106'></a><a href='#L106'>106</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -250,9 +252,11 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -275,7 +279,7 @@ const fs = require('fs');
 &nbsp;
 // Create Express app
 const app = express();
-const PORT = process.env.PORT || 5000; // Using port 5000 for Replit
+const PORT = process.env.PORT || 5002; // Using port 5002 since 5000 and 5001 are occupied
 &nbsp;
 // Define paths to static content
 const publicDir = path.join(__dirname, 'public');
@@ -321,12 +325,12 @@ app.get('*', (req, res) =&gt; {
   // First check if this is a test file request
   const reqPath = req.path.startsWith('/') ? req.path.substring(1) : <span class="branch-1 cbranch-no" title="branch not covered" >req.path;</span>
   const filePath = path.join(__dirname, reqPath);
-&nbsp;
+  
   // Check if the file exists (for test purposes)
   if (fs.existsSync(filePath) &amp;&amp; fs.statSync(filePath).isFile()) {
     return res.sendFile(filePath);
   }
-&nbsp;
+  
   // If file doesn't exist and it's not an API route, check for SPA files
   const indexPath = path.join(publicDir, 'index.html');
   const flutterIndexPath = path.join(flutterBuildDir, 'index.html');
@@ -352,15 +356,17 @@ app.get('*', (req, res) =&gt; {
 <span class="cstat-no" title="statement not covered" >    console.log(`Server running at http://0.0.0.0:${PORT}`);</span>
     // Signal that the server is ready to accept connections
 <span class="cstat-no" title="statement not covered" >    console.log(`Server ready - listening on port ${PORT}`);</span>
-  }).on('error', <span class="fstat-no" title="function not covered" >(e</span>rror) =&gt; {
+  });
+&nbsp;
+  // Handle server errors
+<span class="cstat-no" title="statement not covered" >  server.on('error', <span class="fstat-no" title="function not covered" >(e</span>rror) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    console.error(`Server error: ${error.message}`);</span>
 <span class="cstat-no" title="statement not covered" >    if (error.code === 'EADDRINUSE') {</span>
-<span class="cstat-no" title="statement not covered" >      console.error(`Port ${PORT} is already in use. Try stopping other servers first.`);</span>
-    } else {
-<span class="cstat-no" title="statement not covered" >      console.error(`Server error: ${error.message}`);</span>
+<span class="cstat-no" title="statement not covered" >      console.error(`Port ${PORT} is already in use. Try a different port.`);</span>
     }
 <span class="cstat-no" title="statement not covered" >    process.exit(1);</span>
   });
-&nbsp;
+  
   // Handle graceful shutdown
 <span class="cstat-no" title="statement not covered" >  process.on('SIGINT', <span class="fstat-no" title="function not covered" >()</span> =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >    console.log('Shutting down server gracefully...');</span>
@@ -379,7 +385,7 @@ module.exports = app;</pre></td></tr></table></pre>
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-03-15T17:54:38.683Z
+                at 2025-03-15T17:31:04.641Z
             </div>
         <script src="../prettify.js"></script>
         <script>

@@ -1,68 +1,317 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Health & Fitness Tracker</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {
-            padding: 20px;
-            background-color: #f8f9fa;
-        }
-        .jumbotron {
-            padding: 2rem;
-            background-color: #e9ecef;
-            border-radius: 0.3rem;
-            margin-bottom: 2rem;
-        }
-    </style>
+  <base href="/">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A fitness tracking application.">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Fuel">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>Fuel Fitness</title>
+  <link rel="manifest" href="manifest.json">
+
+  <script>
+    // The value below is injected by flutter build, do not touch.
+    const serviceWorkerVersion = "2119874487";
+  </script>
+  <!-- This script adds the flutter initialization JS code -->
+  <script src="flutter.js" defer></script>
 </head>
 <body>
-    <div class="container">
-        <div class="jumbotron">
-            <h1 class="display-4">Health & Fitness Tracker</h1>
-            <p class="lead">Welcome to your personal health and fitness dashboard.</p>
-            <hr class="my-4">
-            <p>This is a simple version of the application to verify connectivity.</p>
-            <a href="/fitness" class="btn btn-primary">Go to Fitness Tracker</a>
-        </div>
-        
-        <div class="card">
-            <div class="card-header">
-                Server Status
-            </div>
-            <div class="card-body">
-                <p class="card-text">Click the button below to check if the server is running properly.</p>
-                <button id="checkHealth" class="btn btn-info">Check Server Health</button>
-                <div id="serverStatus" class="mt-3"></div>
-            </div>
-        </div>
-    </div>
+  <a href="/fitness" class="fitness-link">Open Health Tracker</a>
+  <style>
+    body {
+      background-color: #f5f5f5;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      position: fixed;
+      width: 100%;
+      height: 100%;
+    }
+    
+    .fitness-link {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
+      background-color: #007bff;
+      color: white;
+      padding: 10px 15px;
+      border-radius: 5px;
+      text-decoration: none;
+      font-weight: bold;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      transition: all 0.3s ease;
+    }
+    
+    .fitness-link:hover {
+      background-color: #0056b3;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    
+    .loading {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 0;
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      right: 0;
+      text-align: center;
+    }
 
+    .loading-text {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 24px;
+      color: #333;
+    }
+
+    .spinner {
+      margin: 20px auto;
+      width: 50px;
+      height: 50px;
+      border: 3px solid rgba(0,0,0,.3);
+      border-radius: 50%;
+      border-top-color: #1976D2;
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+
+  <div id="loading" class="loading">
+    <div>
+      <div class="spinner"></div>
+      <p class="loading-text">Fuel Fitness Loading...</p>
+    </div>
+  </div>
+  
+  <div id="app-preview" style="display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; max-width: 800px; margin: 0 auto;">
+    <h1 style="color: #1976D2; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin-bottom: 30px;">Fuel Fitness Tracker</h1>
+    
+    <style>
+      .feature-card {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        cursor: pointer;
+      }
+      .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        background-color: #f8f9fa;
+      }
+      .feature-card:active {
+        transform: translateY(0px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      .emoji-icon {
+        font-size: 40px;
+        margin-bottom: 10px;
+      }
+      .card-title {
+        margin: 0 0 10px 0;
+        color: #333;
+      }
+      .card-desc {
+        margin: 0;
+        color: #666;
+      }
+      .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 20px;
+        width: 100%;
+      }
+    </style>
+
+    <div class="feature-grid">
+      <!-- Activity Tracking Card -->
+      <div class="feature-card" onclick="alert('Activity tracking coming soon!')">
+        <div class="emoji-icon">🏃‍♂️</div>
+        <h3 class="card-title">Activity Tracking</h3>
+        <p class="card-desc">Track your runs, walks, and workouts with detailed stats.</p>
+      </div>
+      
+      <!-- Nutrition Card -->
+      <div class="feature-card" onclick="alert('Nutrition tracking coming soon!')">
+        <div class="emoji-icon">🥗</div>
+        <h3 class="card-title">Nutrition Monitoring</h3>
+        <p class="card-desc">Log meals and track your calorie intake and macronutrients.</p>
+      </div>
+      
+      <!-- Sleep Card -->
+      <div class="feature-card" onclick="alert('Sleep tracking coming soon!')">
+        <div class="emoji-icon">😴</div>
+        <h3 class="card-title">Sleep Analysis</h3>
+        <p class="card-desc">Monitor your sleep patterns and quality each night.</p>
+      </div>
+      
+      <!-- Meditation Card -->
+      <div class="feature-card" onclick="alert('Meditation timer coming soon!')">
+        <div class="emoji-icon">🧘‍♀️</div>
+        <h3 class="card-title">Meditation Timer</h3>
+        <p class="card-desc">Guide your meditation practice with our timer and progress tracking.</p>
+      </div>
+      
+      <!-- Goals Card -->
+      <div class="feature-card" onclick="alert('Goal setting coming soon!')">
+        <div class="emoji-icon">🎯</div>
+        <h3 class="card-title">Goal Setting</h3>
+        <p class="card-desc">Set and track your fitness and wellness goals.</p>
+      </div>
+      
+      <!-- Reports Card -->
+      <div class="feature-card" onclick="alert('Progress reports coming soon!')">
+        <div class="emoji-icon">📊</div>
+        <h3 class="card-title">Progress Reports</h3>
+        <p class="card-desc">Visualize your progress with detailed analytics and charts.</p>
+      </div>
+    </div>
+    
+    <style>
+      .nav-bar {
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        display: flex;
+        justify-content: space-around;
+        background: white;
+        padding: 15px 0;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        left: 0;
+      }
+      .nav-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        padding: 5px 15px;
+        border-radius: 10px;
+      }
+      .nav-item:hover {
+        background-color: #f0f0f0;
+        transform: translateY(-3px);
+      }
+      .nav-item:active {
+        background-color: #e0e0e0;
+        transform: translateY(0);
+      }
+      .nav-icon {
+        font-size: 24px;
+      }
+      .nav-label {
+        font-size: 12px;
+        margin-top: 5px;
+        font-weight: 500;
+      }
+      .active-nav {
+        color: #1976D2;
+      }
+    </style>
+    
+    <!-- Navigation Bar -->
+    <div class="nav-bar">
+      <div class="nav-item active-nav" onclick="setActiveNav(this); alert('Home screen')">
+        <div class="nav-icon">🏠</div>
+        <span class="nav-label">Home</span>
+      </div>
+      <div class="nav-item" onclick="setActiveNav(this); alert('Activities coming soon')">
+        <div class="nav-icon">🏃‍♂️</div>
+        <span class="nav-label">Activities</span>
+      </div>
+      <div class="nav-item" onclick="setActiveNav(this); alert('Nutrition tracker coming soon')">
+        <div class="nav-icon">🥗</div>
+        <span class="nav-label">Nutrition</span>
+      </div>
+      <div class="nav-item" onclick="setActiveNav(this); alert('Progress stats coming soon')">
+        <div class="nav-icon">📊</div>
+        <span class="nav-label">Progress</span>
+      </div>
+      <div class="nav-item" onclick="setActiveNav(this); alert('Profile settings coming soon')">
+        <div class="nav-icon">👤</div>
+        <span class="nav-label">Profile</span>
+      </div>
+    </div>
+    
     <script>
-        document.getElementById('checkHealth').addEventListener('click', async () => {
-            try {
-                const response = await fetch('/api/health');
-                const data = await response.json();
-                
-                document.getElementById('serverStatus').innerHTML = `
-                    <div class="alert alert-success">
-                        <h5>Server is running!</h5>
-                        <p><strong>Status:</strong> ${data.status}</p>
-                        <p><strong>Message:</strong> ${data.message || 'Server operational'}</p>
-                        <p><strong>Time:</strong> ${data.timestamp}</p>
-                    </div>
-                `;
-            } catch (error) {
-                document.getElementById('serverStatus').innerHTML = `
-                    <div class="alert alert-danger">
-                        <h5>Error connecting to server</h5>
-                        <p>${error.message}</p>
-                    </div>
-                `;
-            }
+      function setActiveNav(element) {
+        // Remove active class from all nav items
+        document.querySelectorAll('.nav-item').forEach(item => {
+          item.classList.remove('active-nav');
         });
+        
+        // Add active class to clicked item
+        element.classList.add('active-nav');
+      }
     </script>
+  </div>
+
+  <script>
+    window.addEventListener('load', function(ev) {
+      var loading = document.querySelector('#loading');
+      var appPreview = document.querySelector('#app-preview');
+      
+      // Hide loading and show app preview immediately
+      setTimeout(function() {
+        if (loading) {
+          loading.style.display = 'none';
+        }
+        if (appPreview) {
+          appPreview.style.display = 'flex';
+        }
+      }, 1000);
+      
+      // Initialize the Flutter engine when the Flutter app is ready to be loaded
+      _flutter = {};
+      var loadApp = function() {
+        var script = document.createElement('script');
+        script.src = 'main.dart.js';
+        script.type = 'application/javascript';
+        document.body.append(script);
+        
+        // Handle Flutter load events
+        script.onload = function() {
+          if (loading) {
+            loading.remove();
+          }
+          
+          // Hide the preview when Flutter actually loads successfully
+          if (appPreview) {
+            appPreview.style.display = 'none';
+          }
+        };
+        
+        // Handle Flutter load errors - keep showing the preview
+        script.onerror = function() {
+          console.log('Flutter web app failed to load. Showing preview instead.');
+          if (loading) {
+            loading.style.display = 'none';
+          }
+        };
+      };
+      
+      // Try to load Flutter after a delay to ensure preview is shown first
+      setTimeout(loadApp, 2000);
+    });
+  </script>
 </body>
 </html>

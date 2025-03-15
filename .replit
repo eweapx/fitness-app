@@ -7,6 +7,33 @@ channel = "stable-24_05"
 runButton = "Project"
 
 [[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Run Tests"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Health Fitness Server"
+
+[[workflows.workflow]]
+name = "Run Tests"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npx jest"
+
+[[workflows.workflow]]
 name = "Flutter Web"
 author = 40359398
 mode = "sequential"
@@ -33,29 +60,7 @@ task = "shell.exec"
 args = "node server.js"
 
 [[workflows.workflow]]
-name = "Run"
-author = 40359398
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "flutter build web"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "node server.js"
-
-[[workflows.workflow]]
-name = "Project"
-mode = "parallel"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Fitness Tracker Server"
-
-[[workflows.workflow]]
-name = "Fitness Tracker Server"
+name = "Health Fitness Server"
 author = "agent"
 
 [workflows.workflow.metadata]
@@ -67,19 +72,11 @@ task = "packager.installForAll"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "node server.js"
-waitForPort = 5000
+waitForPort = 5002
 
 [deployment]
 run = ["sh", "-c", "flutter run -d web-server --web-port=5000 --web-hostname=0.0.0.0"]
 build = ["sh", "-c", "flutter build web"]
-
-[[ports]]
-localPort = 80
-externalPort = 80
-
-[[ports]]
-localPort = 3000
-externalPort = 3000
 
 [[ports]]
 localPort = 5000
@@ -91,6 +88,7 @@ externalPort = 5173
 
 [[ports]]
 localPort = 5002
+externalPort = 80
 
 [[ports]]
 localPort = 8080
@@ -98,3 +96,4 @@ externalPort = 8080
 
 [[ports]]
 localPort = 43717
+externalPort = 3000
