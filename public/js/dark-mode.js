@@ -17,6 +17,10 @@ document.addEventListener('DOMContentLoaded', function() {
   if (darkModeToggle) {
     // Add our additional dark mode functionality to the existing click handler
     darkModeToggle.addEventListener('click', function() {
+      // Save reference to speech recognition button before toggle
+      const micButton = document.getElementById('voice-command-toggle');
+      const micButtonListening = micButton ? micButton.classList.contains('listening') : false;
+      
       // Toggle dark mode class
       document.body.classList.toggle('dark-mode');
       
@@ -33,6 +37,22 @@ document.addEventListener('DOMContentLoaded', function() {
       
       // Apply dark mode to modals
       applyDarkModeToModals(isDarkMode);
+      
+      // Restore speech recognition button state if needed
+      setTimeout(() => {
+        // Give time for DOM to update
+        if (window.speechRecognizer) {
+          // Re-initialize speech button if it was removed
+          if (!document.getElementById('voice-command-toggle')) {
+            addMicrophoneButton();
+          }
+          
+          // Restore listening state if it was active
+          if (micButtonListening) {
+            window.speechRecognizer.updateMicrophoneButton(true);
+          }
+        }
+      }, 100);
     });
     
     // Check for saved preference
@@ -71,6 +91,10 @@ function createDarkModeToggle() {
         '<i class="bi bi-moon-fill"></i>';
       
       darkModeButton.addEventListener('click', function() {
+        // Save reference to speech recognition button before toggle
+        const micButton = document.getElementById('voice-command-toggle');
+        const micButtonListening = micButton ? micButton.classList.contains('listening') : false;
+        
         document.body.classList.toggle('dark-mode');
         const isDarkMode = document.body.classList.contains('dark-mode');
         darkModeButton.innerHTML = isDarkMode ? 
@@ -78,6 +102,22 @@ function createDarkModeToggle() {
           '<i class="bi bi-moon-fill"></i>';
         localStorage.setItem('darkMode', isDarkMode ? 'true' : 'false');
         applyDarkModeToModals(isDarkMode);
+        
+        // Restore speech recognition button state if needed
+        setTimeout(() => {
+          // Give time for DOM to update
+          if (window.speechRecognizer) {
+            // Re-initialize speech button if it was removed
+            if (!document.getElementById('voice-command-toggle')) {
+              addMicrophoneButton();
+            }
+            
+            // Restore listening state if it was active
+            if (micButtonListening) {
+              window.speechRecognizer.updateMicrophoneButton(true);
+            }
+          }
+        }, 100);
       });
       
       darkModeItem.appendChild(darkModeButton);

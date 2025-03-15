@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speech Recognition Test</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 2rem;
+        }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 1rem;
+            margin-top: 1rem;
+            height: 300px;
+            overflow-y: auto;
+        }
+        .log-item {
+            margin-bottom: 0.5rem;
+            padding: 0.5rem;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Speech Recognition Test</h1>
+        <p>This page tests our enhanced speech recognition error handling and state tracking.</p>
+        
+        <div class="row mb-4">
+            <div class="col">
+                <button id="start-button" class="btn btn-primary">
+                    <i class="bi bi-mic"></i> Start Listening
+                </button>
+                <button id="stop-button" class="btn btn-danger mx-2">
+                    <i class="bi bi-mic-mute"></i> Stop Listening
+                </button>
+                <button id="toggle-button" class="btn btn-success">
+                    <i class="bi bi-mic"></i> Toggle Listening
+                </button>
+                <button id="force-error-button" class="btn btn-warning mx-2">
+                    <i class="bi bi-exclamation-triangle"></i> Force Error
+                </button>
+                <button id="clear-log-button" class="btn btn-secondary">
+                    <i class="bi bi-trash"></i> Clear Log
+                </button>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col">
+                <h3>Test Log</h3>
+                <div id="log" class="log"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/utils.js"></script>
+    <script>
+        // Create a toast container if it doesn't exist
+        if (!document.querySelector('.toast-container')) {
+            const toastContainer = document.createElement('div');
+            toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+            document.body.appendChild(toastContainer);
+        }
+    </script>
+    <script src="js/speech-recognition.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const logElement = document.getElementById('log');
+            const startButton = document.getElementById('start-button');
+            const stopButton = document.getElementById('stop-button');
+            const toggleButton = document.getElementById('toggle-button');
+            const forceErrorButton = document.getElementById('force-error-button');
+            const clearLogButton = document.getElementById('clear-log-button');
+            
+            // Override console methods for logging
+            const originalLog = console.log;
+            const originalError = console.error;
+            const originalWarn = console.warn;
+            
+            console.log = function() {
+                originalLog.apply(console, arguments);
+                addLogItem('log', arguments[0], 'info');
+            };
+            
+            console.error = function() {
+                originalError.apply(console, arguments);
+                addLogItem('error', arguments[0], 'error');
+            };
+            
+            console.warn = function() {
+                originalWarn.apply(console, arguments);
+                addLogItem('warn', arguments[0], 'warning');
+            };
+            
+            function addLogItem(type, message, className) {
+                const item = document.createElement('div');
+                item.className = `log-item ${className}`;
+                item.textContent = `[${type.toUpperCase()}] ${message}`;
+                logElement.appendChild(item);
+                logElement.scrollTop = logElement.scrollHeight;
+            }
+            
+            // Initialize speech recognizer
+            const recognizer = new SpeechRecognizer();
+            
+            // Mock command handlers for testing
+            recognizer.commandHandlers = {
+                'activity': function(cmd) { console.log('Activity command received: ' + cmd); },
+                'meal': function(cmd) { console.log('Meal command received: ' + cmd); },
+                'sleep': function(cmd) { console.log('Sleep command received: ' + cmd); },
+                'habit': function(cmd) { console.log('Habit command received: ' + cmd); }
+            };
+            
+            // Set up button handlers
+            startButton.addEventListener('click', function() {
+                addLogItem('test', 'Start button clicked', 'success');
+                try {
+                    recognizer.startListening();
+                } catch (e) {
+                    addLogItem('test', 'Error starting: ' + e.message, 'error');
+                }
+            });
+            
+            stopButton.addEventListener('click', function() {
+                addLogItem('test', 'Stop button clicked', 'success');
+                try {
+                    recognizer.stopListening();
+                } catch (e) {
+                    addLogItem('test', 'Error stopping: ' + e.message, 'error');
+                }
+            });
+            
+            toggleButton.addEventListener('click', function() {
+                addLogItem('test', 'Toggle button clicked', 'success');
+                try {
+                    recognizer.toggleListening();
+                } catch (e) {
+                    addLogItem('test', 'Error toggling: ' + e.message, 'error');
+                }
+            });
+            
+            forceErrorButton.addEventListener('click', function() {
+                addLogItem('test', 'Forcing InvalidStateError scenario', 'warning');
+                
+                // Create a conflict scenario that would trigger InvalidStateError
+                if (recognizer.recognition) {
+                    try {
+                        // First start it
+                        recognizer.recognition.start();
+                        
+                        // Then try to start again without stopping, which should trigger InvalidStateError
+                        setTimeout(() => {
+                            try {
+                                recognizer.recognition.start();
+                                addLogItem('test', 'Second start - should have failed but did not!', 'error');
+                            } catch (innerError) {
+                                addLogItem('test', 'Expected error: ' + innerError.message, 'success');
+                                // Test our recovery mechanism
+                                setTimeout(() => {
+                                    addLogItem('test', 'Testing recovery from error state...', 'info');
+                                    recognizer.resetRecognitionState();
+                                    recognizer.startListening();
+                                }, 500);
+                            }
+                        }, 300);
+                    } catch (e) {
+                        addLogItem('test', 'Error during force error test: ' + e.message, 'error');
+                    }
+                } else {
+                    addLogItem('test', 'Recognition not initialized', 'error');
+                }
+            });
+            
+            clearLogButton.addEventListener('click', function() {
+                logElement.innerHTML = '';
+                addLogItem('test', 'Log cleared', 'info');
+            });
+            
+            // Initialize
+            addLogItem('test', 'Speech recognition test initialized', 'success');
+        });
+    </script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

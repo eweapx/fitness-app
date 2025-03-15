@@ -95,49 +95,49 @@ localPort = 8080
 externalPort = 8080
 
 [[ports]]
-localPort = 32935
-externalPort = 6000
-
-[[ports]]
-localPort = 35641
-externalPort = 3001
-
-[[ports]]
-localPort = 36023
-externalPort = 9000
-
-[[ports]]
-localPort = 36051
-externalPort = 3002
-
-[[ports]]
-localPort = 37333
+localPort = 33209
 externalPort = 8000
 
 [[ports]]
-localPort = 37995
-externalPort = 8099
+localPort = 33987
+externalPort = 6000
 
 [[ports]]
-localPort = 38849
+localPort = 34059
 externalPort = 4200
 
 [[ports]]
-localPort = 39167
+localPort = 35355
 externalPort = 8008
 
 [[ports]]
-localPort = 42449
-externalPort = 8081
+localPort = 37243
+externalPort = 6800
 
 [[ports]]
-localPort = 42927
-externalPort = 3003
+localPort = 37657
+externalPort = 8099
+
+[[ports]]
+localPort = 38357
+externalPort = 3002
+
+[[ports]]
+localPort = 38779
+externalPort = 9000
 
 [[ports]]
 localPort = 43717
 externalPort = 3000
 
 [[ports]]
-localPort = 44083
-externalPort = 6800
+localPort = 44469
+externalPort = 3003
+
+[[ports]]
+localPort = 45421
+externalPort = 8081
+
+[[ports]]
+localPort = 45767
+externalPort = 3001

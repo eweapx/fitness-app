@@ -80,6 +80,9 @@ document.addEventListener('DOMContentLoaded', function() {
   // Initialize the enhanced workout form
   initializeWorkoutForm();
   
+  // Initialize speech recognition for voice commands
+  initializeSpeechRecognition();
+  
   // Sync data from all health connections if any exist
   if (healthConnectionManager.getConnections().length > 0) {
     syncAllHealthConnections();
@@ -3981,6 +3984,32 @@ function updateWaterIntakeValue() {
     slider.addEventListener('input', function() {
       valueDisplay.textContent = this.value;
     });
+  }
+}
+
+/**
+ * Initialize speech recognition for voice commands
+ */
+function initializeSpeechRecognition() {
+  // Create the speech recognizer instance
+  window.speechRecognizer = new SpeechRecognizer();
+  
+  // Set up click handler for the voice command toggle button
+  const voiceCommandBtn = document.getElementById('voice-command-toggle');
+  if (voiceCommandBtn) {
+    voiceCommandBtn.addEventListener('click', function() {
+      if (window.speechRecognizer) {
+        window.speechRecognizer.toggleListening();
+        console.log('Voice command button clicked, toggling speech recognition');
+      } else {
+        console.error('Speech recognizer not initialized');
+        showToast('Speech recognition not available', 'error');
+      }
+    });
+    
+    console.log('Voice command button event listener set up');
+  } else {
+    console.warn('Voice command button not found in the DOM');
   }
 }
 

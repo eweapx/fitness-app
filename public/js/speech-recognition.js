@@ -13,6 +13,10 @@ class SpeechRecognizer {
     this.confidence = 0;
     this.voiceCommandsEnabled = false;
     
+    // Tracking for results state
+    this.expectingResults = false;
+    this.resultReceived = false;
+    
     // Command handlers for different types of data
     this.commandHandlers = {
       'activity': this.handleActivityCommand,
@@ -67,10 +71,64 @@ class SpeechRecognizer {
       return;
     }
     
+    // Check if UI and internal state are in sync
+    const micButton = document.getElementById('voice-command-toggle');
+    const uiListening = micButton ? micButton.classList.contains('listening') : false;
+    
+    // If UI and internal state don't match, force reset for consistency
+    if (this.isListening !== uiListening) {
+      console.warn('Speech recognition state mismatch detected. Resetting...');
+      this.resetRecognitionState();
+      this.isListening = false;
+      this.updateMicrophoneButton(false);
+    }
+    
+    // Now toggle state safely
     if (this.isListening) {
       this.stopListening();
     } else {
       this.startListening();
+    }
+  }
+  
+  /**
+   * Reset the recognition state to handle InvalidStateError
+   * This creates a fresh instance of the recognition object
+   */
+  resetRecognitionState() {
+    try {
+      console.log('Resetting speech recognition state');
+      
+      // Only try to stop if we think we're listening
+      if (this.isListening && this.recognition) {
+        try {
+          this.recognition.stop();
+        } catch (e) {
+          console.warn('Could not stop existing recognition:', e);
+        }
+      }
+      
+      // Clean up existing recognition object
+      if (this.recognition) {
+        this.recognition.onstart = null;
+        this.recognition.onresult = null;
+        this.recognition.onerror = null;
+        this.recognition.onend = null;
+        
+        try {
+          this.recognition.abort();
+        } catch (e) {
+          console.warn('Could not abort recognition:', e);
+        }
+      }
+      
+      // Create a fresh recognition instance
+      setTimeout(() => {
+        this.initializeSpeechRecognition();
+      }, 100);
+      
+    } catch (e) {
+      console.error('Error resetting recognition state:', e);
     }
   }
 
@@ -80,16 +138,115 @@ class SpeechRecognizer {
   startListening() {
     if (!this.voiceCommandsEnabled) return;
     
+    // Check if browser supports permissions API
+    if (navigator.permissions && navigator.permissions.query) {
+      navigator.permissions.query({ name: 'microphone' })
+        .then(permissionStatus => {
+          if (permissionStatus.state === 'granted') {
+            this.startRecognition();
+          } else if (permissionStatus.state === 'prompt') {
+            // Will trigger the permission prompt
+            this.startRecognition();
+          } else if (permissionStatus.state === 'denied') {
+            console.error('Microphone permission denied');
+            showToast('Microphone access denied. Please enable it in your browser settings.', 'error');
+            this.updateMicrophoneButton(false);
+          }
+          
+          // Listen for changes to permission state
+          permissionStatus.onchange = () => {
+            if (permissionStatus.state === 'granted') {
+              showToast('Microphone access granted', 'success');
+            }
+          };
+        })
+        .catch(error => {
+          // Fallback if permissions API fails
+          console.warn('Permission API error:', error);
+          this.startRecognition();
+        });
+    } else {
+      // Older browsers without permissions API
+      this.startRecognition();
+    }
+  }
+  
+  /**
+   * Start the actual recognition process
+   * (separated to avoid code duplication)
+   */
+  startRecognition() {
     try {
-      // Only start if not already listening to avoid InvalidStateError
+      // Check if button state and internal state match
+      const micButton = document.getElementById('voice-command-toggle');
+      const uiListening = micButton ? micButton.classList.contains('listening') : false;
+      
+      if (uiListening !== this.isListening) {
+        console.warn('State mismatch before starting recognition. Resetting...');
+        this.resetRecognitionState();
+        this.isListening = false;
+        this.updateMicrophoneButton(false);
+      }
+      
+      // Only start if definitely not already listening
       if (!this.isListening) {
-        this.recognition.start();
-        this.updateMicrophoneButton(true);
+        console.log('Starting speech recognition');
+        
+        // Double check recognition object exists and is in correct state
+        if (!this.recognition) {
+          this.initializeSpeechRecognition();
+        }
+        
+        // Start recognition with a delay to ensure proper initialization
+        setTimeout(() => {
+          try {
+            // Reset result tracking flags before starting
+            this.expectingResults = true;
+            this.resultReceived = false;
+            
+            // Start recognition
+            this.recognition.start();
+            this.updateMicrophoneButton(true);
+            console.log('Speech recognition started successfully');
+          } catch (delayedError) {
+            console.error('Error starting speech recognition after delay:', delayedError);
+            this.handleStartError(delayedError);
+            
+            // Reset flags on error
+            this.expectingResults = false;
+            this.resultReceived = false;
+          }
+        }, 50);
+      } else {
+        console.warn('Already listening, not starting again');
       }
     } catch (error) {
       console.error('Error starting speech recognition:', error);
-      this.updateMicrophoneButton(false);
-      showToast('Could not start speech recognition', 'error');
+      this.handleStartError(error);
+    }
+  }
+  
+  /**
+   * Handle errors when starting speech recognition
+   * @param {Error} error - The error that occurred
+   */
+  handleStartError(error) {
+    this.updateMicrophoneButton(false);
+    
+    // Provide more specific error messages
+    if (error.name === 'NotAllowedError') {
+      showToast('Microphone access denied. Please allow access in your browser settings.', 'error');
+    } else if (error.name === 'InvalidStateError') {
+      console.warn('InvalidStateError detected. Creating new recognition instance.');
+      // Call the more robust reset function
+      this.resetRecognitionState();
+      
+      // Try again after a short delay
+      setTimeout(() => {
+        showToast('Speech recognition restarted. Please try again.', 'info');
+      }, 300);
+    } else {
+      showToast('Could not start speech recognition: ' + (error.message || 'Unknown error'), 'error');
     }
   }
 
@@ -100,13 +257,48 @@ class SpeechRecognizer {
     if (!this.voiceCommandsEnabled) return;
     
     try {
-      // Only stop if currently listening to avoid InvalidStateError
+      // Check for state mismatch before stopping
+      const micButton = document.getElementById('voice-command-toggle');
+      const uiListening = micButton ? micButton.classList.contains('listening') : false;
+      
+      if (uiListening !== this.isListening) {
+        console.warn('State mismatch when stopping recognition. Fixing UI state.');
+        // If UI thinks we're listening but we're not, just update UI
+        if (uiListening && !this.isListening) {
+          this.updateMicrophoneButton(false);
+          return;
+        }
+      }
+      
+      // Only stop if we think we're currently listening
       if (this.isListening) {
-        this.recognition.stop();
-        this.updateMicrophoneButton(false);
+        console.log('Stopping speech recognition');
+        try {
+          this.recognition.stop();
+        } catch (innerError) {
+          console.error('Error during recognition stop:', innerError);
+          
+          // If we got an InvalidStateError, the recognition was already stopped
+          // We just need to ensure our state is consistent
+          if (innerError.name === 'InvalidStateError') {
+            console.warn('Recognition was already stopped. Fixing state.');
+          }
+          
+          // Reset internal state if we hit errors
+          this.resetRecognitionState();
+        } finally {
+          // Always update the UI to stopped state
+          this.isListening = false;
+          this.updateMicrophoneButton(false);
+        }
+      } else {
+        console.warn('Not listening, no need to stop');
       }
     } catch (error) {
-      console.error('Error stopping speech recognition:', error);
+      console.error('Error in stopListening:', error);
+      // Always make sure UI is in non-listening state if we encounter errors
+      this.isListening = false;
+      this.updateMicrophoneButton(false);
     }
   }
 
@@ -130,6 +322,9 @@ class SpeechRecognizer {
     this.transcript = result.transcript;
     this.confidence = result.confidence;
     
+    // Mark that we received results successfully
+    this.resultReceived = true;
+    
     console.log(`Recognized: "${this.transcript}" (Confidence: ${this.confidence.toFixed(2)})`);
     
     // Process the command
@@ -142,46 +337,92 @@ class SpeechRecognizer {
    */
   handleRecognitionError(event) {
     console.error('Speech recognition error:', event.error);
-    this.isListening = false;
-    this.updateMicrophoneButton(false);
     
     let errorMessage = 'Speech recognition error';
+    let needsReset = false;
+    
     switch (event.error) {
       case 'no-speech':
-        errorMessage = 'No speech detected';
+        errorMessage = 'No speech detected. Please try again.';
         break;
       case 'aborted':
-        errorMessage = 'Recognition aborted';
+        errorMessage = 'Recognition aborted.';
+        needsReset = true;
         break;
       case 'audio-capture':
-        errorMessage = 'Could not capture audio';
+        errorMessage = 'Could not capture audio. Please check your microphone.';
+        needsReset = true;
         break;
       case 'network':
-        errorMessage = 'Network error';
+        errorMessage = 'Network error occurred. Please check your connection.';
+        needsReset = true;
         break;
       case 'not-allowed':
-        errorMessage = 'Microphone access denied';
+        errorMessage = 'Microphone access denied. Please check browser permissions.';
+        needsReset = true;
         break;
       case 'service-not-allowed':
-        errorMessage = 'Service not allowed';
+        errorMessage = 'Speech recognition service not allowed.';
+        needsReset = true;
         break;
       case 'bad-grammar':
-        errorMessage = 'Bad grammar configuration';
+        errorMessage = 'Speech recognition grammar issue.';
+        needsReset = true;
         break;
       case 'language-not-supported':
-        errorMessage = 'Language not supported';
+        errorMessage = 'Language not supported for speech recognition.';
+        needsReset = true;
         break;
     }
     
+    // Update internal state and UI
+    this.isListening = false;
+    this.updateMicrophoneButton(false);
+    
+    // Show error message
     showToast(errorMessage, 'error');
+    
+    // If needed, reset the recognition state after error
+    if (needsReset) {
+      setTimeout(() => {
+        this.resetRecognitionState();
+      }, 500);
+    }
   }
 
   /**
    * Handle recognition end event
    */
   handleRecognitionEnd() {
+    console.log('Recognition ended');
+    
+    // Check if we were expecting it to end
+    if (this.isListening) {
+      console.log('Recognition ended but we were still listening - possible abnormal termination');
+    }
+    
+    // Always reset state to not listening
     this.isListening = false;
     this.updateMicrophoneButton(false);
+    
+    // If we received no results but were expecting them, inform the user
+    if (this.expectingResults && !this.resultReceived) {
+      console.log('Recognition ended without results');
+      this.expectingResults = false;
+      
+      // Only show a message if we were in a continuous session
+      // This avoids showing the message when the user just clicked the mic button to stop
+      const micButton = document.getElementById('voice-command-toggle');
+      const wasUIListening = micButton ? micButton.classList.contains('listening') : false;
+      
+      if (wasUIListening) {
+        showToast('No speech detected. Please try again.', 'info');
+      }
+    }
+    
+    // Reset the results expectation flag for next session
+    this.expectingResults = false;
+    this.resultReceived = false;
   }
 
   /**
@@ -626,18 +867,77 @@ class SpeechRecognizer {
       notes: null
     };
     
-    // Extract sleep start time
-    const startMatch = command.match(/(?:went to bed|fell asleep|slept) (?:at|around) (\d{1,2}(?::\d{2})?\s*(?:am|pm))/i);
-    if (startMatch && startMatch[1]) {
-      // Format time for input field (HH:MM)
-      result.startTime = this.formatTimeForInput(startMatch[1]);
+    // Try different patterns for sleep start time
+    const startPatterns = [
+      // Pattern 1: Went to bed/fell asleep/slept at TIME
+      /(?:went to bed|fell asleep|slept)(?:[ ]?at|[ ]?around|[ ]?by)? (\d{1,2}(?::\d{2})?(?:[ ]?[ap]\.?m\.?)?)/i,
+      
+      // Pattern 2: At TIME I went to bed/fell asleep
+      /(?:at|around|by) (\d{1,2}(?::\d{2})?(?:[ ]?[ap]\.?m\.?)?)[ ]?(?:I|we)?[ ]?(?:went to bed|fell asleep|slept)/i,
+      
+      // Pattern 3: Bedtime was/at TIME
+      /(?:bedtime|sleep time)[ ]?(?:was|at|around)? (\d{1,2}(?::\d{2})?(?:[ ]?[ap]\.?m\.?)?)/i,
+      
+      // Pattern 4: Sleep start/begin at TIME
+      /(?:sleep|sleeping)[ ]?(?:start|started|begin|began|from)[ ]?(?:at|around|by)? (\d{1,2}(?::\d{2})?(?:[ ]?[ap]\.?m\.?)?)/i,
+      
+      // Pattern 5: From TIME to TIME (extracting first time)
+      /(?:from|between) (\d{1,2}(?::\d{2})?(?:[ ]?[ap]\.?m\.?)?)[ ]?(?:to|until|and)/i
+    ];
+    
+    // Try each pattern until one matches
+    for (const pattern of startPatterns) {
+      const match = command.match(pattern);
+      if (match && match[1]) {
+        result.startTime = this.formatTimeForInput(match[1]);
+        if (result.startTime) break;
+      }
     }
     
-    // Extract sleep end time
-    const endMatch = command.match(/(?:woke up|got up|awoke) (?:at|around) (\d{1,2}(?::\d{2})?\s*(?:am|pm))/i);
-    if (endMatch && endMatch[1]) {
-      // Format time for input field (HH:MM)
-      result.endTime = this.formatTimeForInput(endMatch[1]);
+    // Handle special keywords for bedtime
+    if (!result.startTime) {
+      if (command.includes('midnight') && !command.includes('woke up at midnight')) {
+        result.startTime = '00:00';
+      } else if (command.includes('late') && !command.includes('woke up late')) {
+        // Late usually means after midnight
+        result.startTime = '00:30';
+      }
+    }
+    
+    // Try different patterns for wake time
+    const endPatterns = [
+      // Pattern 1: Woke up/got up/awoke at TIME
+      /(?:woke up|got up|awoke|waken(?:ed)?)(?:[ ]?at|[ ]?around|[ ]?by)? (\d{1,2}(?::\d{2})?(?:[ ]?[ap]\.?m\.?)?)/i,
+      
+      // Pattern 2: At TIME I woke up/got up
+      /(?:at|around|by) (\d{1,2}(?::\d{2})?(?:[ ]?[ap]\.?m\.?)?)[ ]?(?:I|we)?[ ]?(?:woke up|got up|awoke)/i,
+      
+      // Pattern 3: Wake time was/at TIME
+      /(?:wake time|wake-up time)[ ]?(?:was|at|around)? (\d{1,2}(?::\d{2})?(?:[ ]?[ap]\.?m\.?)?)/i,
+      
+      // Pattern 4: Sleep end/until TIME
+      /(?:sleep|sleeping)[ ]?(?:end|ended|until|to)[ ]?(?:at|around|by)? (\d{1,2}(?::\d{2})?(?:[ ]?[ap]\.?m\.?)?)/i,
+      
+      // Pattern 5: From TIME to TIME (extracting second time)
+      /(?:to|until|and) (\d{1,2}(?::\d{2})?(?:[ ]?[ap]\.?m\.?)?)/i
+    ];
+    
+    // Try each pattern until one matches
+    for (const pattern of endPatterns) {
+      const match = command.match(pattern);
+      if (match && match[1]) {
+        result.endTime = this.formatTimeForInput(match[1]);
+        if (result.endTime) break;
+      }
+    }
+    
+    // Handle special keywords for wake time
+    if (!result.endTime) {
+      if (command.includes('early morning')) {
+        result.endTime = '06:00';
+      } else if (command.includes('morning')) {
+        result.endTime = '07:30';
+      }
     }
     
     // Extract sleep quality
@@ -901,31 +1201,66 @@ class SpeechRecognizer {
    * @returns {string} Formatted time for input field (HH:MM)
    */
   formatTimeForInput(timeStr) {
-    // Remove any spaces
-    let time = timeStr.trim().toLowerCase();
-    
-    // Handle times without minutes like "10 pm"
-    if (!time.includes(':')) {
-      time = time.replace(/(\d+)(\s*[ap]m)/, '$1:00$2');
+    try {
+      // Remove any spaces
+      let time = timeStr.trim().toLowerCase();
+      
+      // Handle times without minutes like "10 pm"
+      if (!time.includes(':')) {
+        time = time.replace(/(\d+)(\s*[ap]m)/, '$1:00$2');
+      }
+      
+      // Handle special cases like "midnight" and "noon"
+      if (time.includes('midnight')) {
+        return '00:00';
+      } else if (time.includes('noon')) {
+        return '12:00';
+      }
+      
+      // Better regex to handle various time formats
+      const match = time.match(/(\d{1,2})(?::(\d{2}))?(?:\s*([ap]\.?m\.?)?)/i);
+      if (!match) {
+        console.warn(`Could not parse time: ${timeStr}`);
+        return null;
+      }
+      
+      let hours = parseInt(match[1], 10);
+      // If hours is invalid, default to a reasonable value
+      if (isNaN(hours) || hours > 12) {
+        console.warn(`Invalid hours in time: ${timeStr}`);
+        hours = 8; // Default to 8 AM or 8 PM based on period
+      }
+      
+      const minutes = match[2] ? parseInt(match[2], 10) : 0;
+      // If minutes is invalid, default to 0
+      if (isNaN(minutes) || minutes >= 60) {
+        console.warn(`Invalid minutes in time: ${timeStr}`);
+        minutes = 0;
+      }
+      
+      // Default period based on common sleep/wake times
+      let period;
+      if (match[3]) {
+        period = match[3].toLowerCase().includes('p') ? 'pm' : 'am';
+      } else {
+        // Default to PM for hours 6-11 (more likely to be bedtime)
+        // Default to AM for hours 1-5, 12 (more likely to be wake time)
+        period = (hours >= 6 && hours <= 11) ? 'pm' : 'am';
+      }
+      
+      // Convert to 24-hour format
+      if (period === 'pm' && hours < 12) {
+        hours += 12;
+      } else if (period === 'am' && hours === 12) {
+        hours = 0;
+      }
+      
+      // Format as HH:MM for the input field
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    } catch (e) {
+      console.error('Error formatting time input:', e);
+      return null;
     }
-    
-    // Parse the time components
-    const match = time.match(/(\d{1,2}):?(\d{2})?\s*([ap]m)?/);
-    if (!match) return null;
-    
-    let hours = parseInt(match[1], 10);
-    const minutes = match[2] ? parseInt(match[2], 10) : 0;
-    const period = match[3] || 'am'; // Default to AM if not specified
-    
-    // Convert to 24-hour format
-    if (period.toLowerCase() === 'pm' && hours < 12) {
-      hours += 12;
-    } else if (period.toLowerCase() === 'am' && hours === 12) {
-      hours = 0;
-    }
-    
-    // Format as HH:MM for the input field
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   }
 
   /**
@@ -962,18 +1297,21 @@ class SpeechRecognizer {
 // Initialize speech recognition on page load
 document.addEventListener('DOMContentLoaded', function() {
   // Create the speech recognizer
-  window.speechRecognizer = new SpeechRecognizer();
-  
-  // Add the microphone button to the navbar if it doesn't exist
-  addMicrophoneButton();
-  
-  console.log('Speech recognition functionality loaded');
+  if (!window.speechRecognizer) {
+    window.speechRecognizer = new SpeechRecognizer();
+    
+    // Add the microphone button to the navbar if it doesn't exist
+    addMicrophoneButton();
+    
+    console.log('Speech recognition functionality loaded');
+  }
 });
 
 /**
  * Add microphone button to the navigation bar
+ * Exposed globally for dark mode and other modules
  */
-function addMicrophoneButton() {
+window.addMicrophoneButton = function() {
   // Check if button already exists
   if (document.getElementById('voice-command-toggle')) return;
   
