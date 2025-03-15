@@ -45,11 +45,27 @@ app.get('/fitness', (req, res) => {
   res.sendFile(path.join(publicDir, 'fitness.html'));
 });
 
-// Fallback route for SPA
+// Fallback route for SPA, but only if the path doesn't already exist as a file
 app.get('*', (req, res) => {
+  // First check if this is a test file request
+  const reqPath = req.path.startsWith('/') ? req.path.substring(1) : req.path;
+  const filePath = path.join(__dirname, reqPath);
+  
+  // Check if the file exists (for test purposes)
+  if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+    return res.sendFile(filePath);
+  }
+  
+  // If file doesn't exist and it's not an API route, check for SPA files
   const indexPath = path.join(publicDir, 'index.html');
   const flutterIndexPath = path.join(flutterBuildDir, 'index.html');
 
+  // Check if it's a non-test or an API endpoint
+  if (req.path.startsWith('/api/') || req.path === '/test-static.txt') {
+    return res.status(404).send('Not Found');
+  }
+
+  // Serve the appropriate SPA index
   if (fs.existsSync(flutterIndexPath)) {
     res.sendFile(flutterIndexPath);
   } else if (fs.existsSync(indexPath)) {
