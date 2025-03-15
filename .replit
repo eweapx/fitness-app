@@ -72,7 +72,7 @@ task = "packager.installForAll"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "node server.js"
-waitForPort = 5002
+waitForPort = 5000
 
 [deployment]
 run = ["sh", "-c", "flutter run -d web-server --web-port=5000 --web-hostname=0.0.0.0"]
@@ -93,6 +93,22 @@ externalPort = 80
 [[ports]]
 localPort = 8080
 externalPort = 8080
+
+[[ports]]
+localPort = 37417
+externalPort = 3001
+
+[[ports]]
+localPort = 37513
+externalPort = 3003
+
+[[ports]]
+localPort = 41959
+externalPort = 4200
+
+[[ports]]
+localPort = 42229
+externalPort = 3002
 
 [[ports]]
 localPort = 43717

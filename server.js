@@ -1,10 +1,14 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const session = require('express-session');
+
+// Import services
+const userService = require('./src/services/userService');
 
 // Create Express app
 const app = express();
-const PORT = process.env.PORT || 5002; // Using port 5002 since 5000 and 5001 are occupied
+const PORT = process.env.PORT || 5000; // Use port 5000 for Replit compatibility
 
 // Define paths to static content
 const publicDir = path.join(__dirname, 'public');
@@ -15,6 +19,17 @@ app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
   next();
 });
+
+// Parse JSON request bodies
+app.use(express.json());
+
+// Session middleware
+app.use(session({
+  secret: 'health-fitness-tracker-secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 } // 1 day
+}));
 
 // Serve static files from public directory
 app.use(express.static(publicDir));
@@ -40,9 +55,101 @@ app.get('/api/version', (req, res) => {
   res.json({ version: '1.0.0', platform: 'web' });
 });
 
+// Authentication API routes
+app.post('/api/auth/register', (req, res) => {
+  const { name, email, password } = req.body;
+  
+  if (!name || !email || !password) {
+    return res.status(400).json({ success: false, message: 'All fields are required' });
+  }
+  
+  const result = userService.register(name, email, password);
+  
+  if (result.success) {
+    // Store user in session
+    req.session.userId = result.user.id;
+    res.status(201).json(result);
+  } else {
+    res.status(400).json(result);
+  }
+});
+
+app.post('/api/auth/login', (req, res) => {
+  const { email, password } = req.body;
+  
+  if (!email || !password) {
+    return res.status(400).json({ success: false, message: 'Email and password are required' });
+  }
+  
+  const result = userService.login(email, password);
+  
+  if (result.success) {
+    // Store user in session
+    req.session.userId = result.user.id;
+    res.json(result);
+  } else {
+    res.status(401).json(result);
+  }
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  const result = userService.logout();
+  
+  // Destroy session
+  req.session.destroy(err => {
+    if (err) {
+      return res.status(500).json({ success: false, message: 'Error logging out' });
+    }
+    res.json(result);
+  });
+});
+
+app.get('/api/auth/current-user', (req, res) => {
+  // Check if user is logged in via session
+  if (req.session.userId) {
+    const user = userService.getUserById(req.session.userId);
+    if (user) {
+      return res.json({ 
+        success: true, 
+        user: user.toSafeObject() 
+      });
+    }
+  }
+  
+  res.status(401).json({ 
+    success: false, 
+    message: 'Not authenticated' 
+  });
+});
+
 // Route for our fitness tracker app
 app.get('/fitness', (req, res) => {
   res.sendFile(path.join(publicDir, 'fitness.html'));
+});
+
+// Login page route
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(publicDir, 'login.html'));
+});
+
+// Login.html route (alternative for direct file access)
+app.get('/login.html', (req, res) => {
+  res.sendFile(path.join(publicDir, 'login.html'));
+});
+
+// Signup page route
+app.get('/signup', (req, res) => {
+  res.sendFile(path.join(publicDir, 'signup.html'));
+});
+
+// Signup.html route (alternative for direct file access)
+app.get('/signup.html', (req, res) => {
+  res.sendFile(path.join(publicDir, 'signup.html'));
+});
+
+// Route for our simple test page
+app.get('/simple', (req, res) => {
+  res.sendFile(path.join(publicDir, 'simple-index.html'));
 });
 
 // Fallback route for SPA, but only if the path doesn't already exist as a file
@@ -74,6 +181,9 @@ app.get('*', (req, res) => {
     res.status(404).send('No index.html found');
   }
 });
+
+// Initialize the UserService
+userService.loadFromStorage();
 
 // Only start the server if this file is run directly
 if (require.main === module) {
