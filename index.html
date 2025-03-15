@@ -276,6 +276,7 @@
       height: 24px;
     }
   </style>
+  <link rel="stylesheet" href="public/css/dark-mode.css">
 </head>
 <body>
   <div class="container">
@@ -2004,6 +2005,7 @@
   <script src="public/js/workout.js"></script>
   <script src="public/js/workout-ui.js"></script>
   <script src="public/js/app.js"></script>
+  <script src="public/js/dark-mode.js"></script>
   
   <!-- Dark Mode Toggle Script -->
   <script>
@@ -2020,7 +2022,7 @@
       }
       
       // Toggle dark/light mode
-      document.getElementById('dark-mode-toggle').addEventListener('click', () => {
+      document.getElementById('dark-mode-toggle').addEventListener('click', function() {
         const currentTheme = document.documentElement.getAttribute('data-theme');
         let targetTheme, buttonText;
         

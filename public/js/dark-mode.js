@@ -1,92 +1,89 @@
 /**
  * Dark Mode functionality for Health & Fitness Tracker
- * Handles theme switching and ensures modals get proper styling
  */
 
-// Initialize dark mode based on user preference or system settings
+// Execute when DOM is fully loaded
 document.addEventListener('DOMContentLoaded', function() {
-  // Check for saved theme preference
-  const savedTheme = localStorage.getItem('theme');
-  if (savedTheme) {
-    document.body.setAttribute('data-theme', savedTheme);
-    updateDarkModeButtonText(savedTheme === 'dark');
-  } else {
-    // Check for system preference
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      document.body.setAttribute('data-theme', 'dark');
-      updateDarkModeButtonText(true);
-    }
-  }
-  
-  // Set up toggle button listener
-  const darkModeToggle = document.getElementById('dark-mode-toggle');
-  if (darkModeToggle) {
-    darkModeToggle.addEventListener('click', toggleDarkMode);
-  }
-  
-  // Apply dark mode to workout modals when they open
+  // Initialize dark mode modal functionality
   setupModalDarkMode();
-});
-
-/**
- * Toggle between light and dark modes
- */
-function toggleDarkMode() {
-  const currentTheme = document.body.getAttribute('data-theme');
-  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
   
-  document.body.setAttribute('data-theme', newTheme);
-  localStorage.setItem('theme', newTheme);
+  // Update dark mode status based on data-theme attribute
+  const currentTheme = document.documentElement.getAttribute('data-theme');
+  if (currentTheme === 'dark') {
+    document.body.classList.add('dark-mode');
+    applyDarkModeToModals(true);
+  }
   
-  updateDarkModeButtonText(newTheme === 'dark');
-  
-  // If any modals are open, update their styling
-  applyDarkModeToModals(newTheme === 'dark');
-}
-
-/**
- * Update the dark mode button text and icon
- * @param {boolean} isDark - Whether dark mode is active
- */
-function updateDarkModeButtonText(isDark) {
+  // Add event listener to the existing dark mode toggle button
   const darkModeToggle = document.getElementById('dark-mode-toggle');
   if (darkModeToggle) {
-    if (isDark) {
-      darkModeToggle.innerHTML = '<i class="bi bi-sun"></i> Light Mode';
-      darkModeToggle.classList.replace('btn-outline-light', 'btn-outline-warning');
-    } else {
-      darkModeToggle.innerHTML = '<i class="bi bi-moon-stars"></i> Dark Mode';
-      darkModeToggle.classList.replace('btn-outline-warning', 'btn-outline-light');
-    }
+    // Add our additional dark mode functionality to the existing click handler
+    darkModeToggle.addEventListener('click', function() {
+      // Check if dark mode is active after the original click handler has run
+      const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
+      
+      // Update body class for our CSS styling
+      if (isDarkMode) {
+        document.body.classList.add('dark-mode');
+      } else {
+        document.body.classList.remove('dark-mode');
+      }
+      
+      // Apply dark mode to modals
+      applyDarkModeToModals(isDarkMode);
+    });
   }
 }
 
 /**
  * Set up event listeners to ensure modals get dark mode styling
+ * @returns {void}
  */
 function setupModalDarkMode() {
-  // List of all modals in the app
-  const modalIds = ['workoutModal', 'exerciseModal', 'activeWorkoutModal'];
+  // Apply dark mode to modals when they open
+  document.addEventListener('shown.bs.modal', function(event) {
+    if (document.body.classList.contains('dark-mode')) {
+      applyDarkModeToModal(event.target, true);
+    }
+  });
   
-  modalIds.forEach(id => {
-    const modalElement = document.getElementById(id);
-    if (modalElement) {
-      // Apply dark mode when modal opens
-      modalElement.addEventListener('show.bs.modal', function() {
-        const isDark = document.body.getAttribute('data-theme') === 'dark';
-        applyDarkModeToModal(this, isDark);
+  // Apply to all existing modals
+  const isDarkMode = document.body.classList.contains('dark-mode');
+  applyDarkModeToModals(isDarkMode);
+  
+  // Handle workout-specific modals and dynamically created elements
+  const observer = new MutationObserver(function(mutations) {
+    if (document.body.classList.contains('dark-mode')) {
+      mutations.forEach(function(mutation) {
+        if (mutation.addedNodes && mutation.addedNodes.length > 0) {
+          mutation.addedNodes.forEach(function(node) {
+            // Check if added node is a modal or contains modals
+            if (node.classList && node.classList.contains('modal')) {
+              applyDarkModeToModal(node, true);
+            } else if (node.querySelectorAll) {
+              const modals = node.querySelectorAll('.modal');
+              modals.forEach(function(modal) {
+                applyDarkModeToModal(modal, true);
+              });
+            }
+          });
+        }
       });
     }
   });
+  
+  // Observe the body for changes
+  observer.observe(document.body, { childList: true, subtree: true });
 }
 
 /**
  * Apply dark mode styling to all modals
  * @param {boolean} isDark - Whether to apply dark mode
+ * @returns {void}
  */
 function applyDarkModeToModals(isDark) {
   const modals = document.querySelectorAll('.modal');
-  modals.forEach(modal => {
+  modals.forEach(function(modal) {
     applyDarkModeToModal(modal, isDark);
   });
 }
@@ -95,85 +92,75 @@ function applyDarkModeToModals(isDark) {
  * Apply dark mode styling to a specific modal
  * @param {HTMLElement} modal - The modal element
  * @param {boolean} isDark - Whether to apply dark mode
+ * @returns {void}
  */
 function applyDarkModeToModal(modal, isDark) {
   if (!modal) return;
   
-  // Modal content
-  const content = modal.querySelector('.modal-content');
-  if (content) {
-    content.style.backgroundColor = isDark ? '#303030' : '';
-    content.style.color = isDark ? '#fff' : '';
-    content.style.borderColor = isDark ? '#444' : '';
-  }
+  // Get modal components
+  const modalContent = modal.querySelector('.modal-content');
+  const modalInputs = modal.querySelectorAll('input, select, textarea');
+  const modalButtons = modal.querySelectorAll('.btn');
   
-  // Modal header
-  const header = modal.querySelector('.modal-header');
-  if (header) {
-    header.style.backgroundColor = isDark ? '#222' : '';
-    header.style.borderColor = isDark ? '#444' : '';
-    header.style.color = isDark ? '#fff' : '';
-  }
-  
-  // Modal body
-  const body = modal.querySelector('.modal-body');
-  if (body) {
-    body.style.backgroundColor = isDark ? '#303030' : '';
-  }
-  
-  // Modal footer
-  const footer = modal.querySelector('.modal-footer');
-  if (footer) {
-    footer.style.backgroundColor = isDark ? '#303030' : '';
-    footer.style.borderColor = isDark ? '#444' : '';
-  }
-  
-  // Form controls
-  const inputs = modal.querySelectorAll('.form-control');
-  inputs.forEach(input => {
-    input.style.backgroundColor = isDark ? '#444' : '';
-    input.style.color = isDark ? '#fff' : '';
-    input.style.borderColor = isDark ? '#555' : '';
-  });
-  
-  // Form labels
-  const labels = modal.querySelectorAll('.form-label, .form-check-label');
-  labels.forEach(label => {
-    label.style.color = isDark ? '#fff' : '';
-  });
-  
-  // Muted text
-  const mutedText = modal.querySelectorAll('.text-muted');
-  mutedText.forEach(text => {
-    text.style.color = isDark ? '#adb5bd' : '';
-  });
-  
-  // Set container and last weight indicator
-  const setContainers = modal.querySelectorAll('.set-container');
-  setContainers.forEach(container => {
-    container.style.backgroundColor = isDark ? '#303030' : '';
-  });
-  
-  const lastWeights = modal.querySelectorAll('.last-weight');
-  lastWeights.forEach(lw => {
-    lw.style.color = isDark ? '#adb5bd' : '';
-  });
-  
-  // Dropdown menu
-  const dropdowns = modal.querySelectorAll('.dropdown-menu');
-  dropdowns.forEach(dropdown => {
-    dropdown.style.backgroundColor = isDark ? '#303030' : '';
-    dropdown.style.borderColor = isDark ? '#444' : '';
-  });
-  
-  const dropdownItems = modal.querySelectorAll('.dropdown-item');
-  dropdownItems.forEach(item => {
-    item.style.color = isDark ? '#fff' : '';
-  });
-  
-  // Close button
-  const closeBtn = modal.querySelector('.btn-close');
-  if (closeBtn) {
-    closeBtn.style.filter = isDark ? 'invert(1) grayscale(100%) brightness(200%)' : '';
+  if (isDark) {
+    // Apply dark mode classes to modal elements
+    if (modalContent) {
+      modalContent.classList.add('bg-dark', 'text-white');
+    }
+    
+    modalInputs.forEach(function(input) {
+      input.classList.add('bg-dark', 'text-white', 'border-secondary');
+    });
+    
+    // Special handling for exercise sets in workout modals
+    const exerciseSets = modal.querySelectorAll('.exercise-set');
+    exerciseSets.forEach(function(set) {
+      set.classList.add('border-secondary');
+      // Handle the "Last weight" label to ensure visibility
+      const lastWeightLabel = set.querySelector('.last-weight');
+      if (lastWeightLabel) {
+        lastWeightLabel.classList.add('text-light');
+      }
+    });
+    
+    // Exercise sets in the form when adding/editing exercises 
+    const setContainers = modal.querySelectorAll('.set-container');
+    setContainers.forEach(function(container) {
+      container.classList.add('border-secondary');
+      // Make sure the last weight label is visible in dark mode
+      const lastWeightLabel = container.querySelector('.last-weight');
+      if (lastWeightLabel) {
+        lastWeightLabel.classList.add('text-light');
+      }
+    });
+  } else {
+    // Remove dark mode classes
+    if (modalContent) {
+      modalContent.classList.remove('bg-dark', 'text-white');
+    }
+    
+    modalInputs.forEach(function(input) {
+      input.classList.remove('bg-dark', 'text-white', 'border-secondary');
+    });
+    
+    // Remove dark mode classes from exercise sets
+    const exerciseSets = modal.querySelectorAll('.exercise-set');
+    exerciseSets.forEach(function(set) {
+      set.classList.remove('border-secondary');
+      const lastWeightLabel = set.querySelector('.last-weight');
+      if (lastWeightLabel) {
+        lastWeightLabel.classList.remove('text-light');
+      }
+    });
+    
+    // Remove dark mode from set containers
+    const setContainers = modal.querySelectorAll('.set-container');
+    setContainers.forEach(function(container) {
+      container.classList.remove('border-secondary');
+      const lastWeightLabel = container.querySelector('.last-weight');
+      if (lastWeightLabel) {
+        lastWeightLabel.classList.remove('text-light');
+      }
+    });
   }
 }
