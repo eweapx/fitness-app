@@ -15,27 +15,94 @@ const activeWorkoutModal = document.getElementById('activeWorkoutModal');
 let currentWorkoutId = null;
 let currentExerciseId = null;
 let workoutTimerInterval = null;
-let restTimerInterval = null;
 let workoutStartTime = null;
+let restTimerInterval = null; // Declaration kept to prevent errors, but functionality removed
 
 /**
- * Initialize workout UI
+ * Initialize workout UI with enhanced error handling and cleanup
  */
 function initializeWorkoutUI() {
   try {
     console.log("Initializing workout UI...");
     
-    // Safe function to add event listeners
+    // Track registered handlers for cleanup
+    const registeredHandlers = new Map();
+    
+    // Enhanced safe function to add event listeners with tracking
     const safeAddEventListener = (selector, event, handler) => {
-      const element = typeof selector === 'string' ? document.querySelector(selector) : selector;
-      if (element) {
+      try {
+        const element = typeof selector === 'string' ? document.querySelector(selector) : selector;
+        if (!element) {
+          console.warn(`Element not found for selector: ${typeof selector === 'string' ? selector : 'DOM Element'}`);
+          return false;
+        }
+        
+        // Generate a unique key for this handler
+        const handlerKey = `${event}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Store reference to original handler for cleanup
+        registeredHandlers.set(handlerKey, { element, event, handler });
+        
         // Remove any existing listeners first to prevent duplicates
-        element.removeEventListener(event, handler);
+        // Note: This only works if the handler is exactly the same function reference
+        try {
+          element.removeEventListener(event, handler);
+        } catch (removeError) {
+          console.warn(`Could not remove previous listener: ${removeError.message}`);
+          // Continue anyway - the old handler might not exist
+        }
+        
+        // Add the event listener
         element.addEventListener(event, handler);
+        console.log(`Added ${event} listener to ${typeof selector === 'string' ? selector : 'DOM Element'}`);
         return true;
+      } catch (error) {
+        console.error(`Error adding event listener to ${typeof selector === 'string' ? selector : 'DOM Element'}:`, error);
+        return false;
       }
-      return false;
     };
+    
+    // Setup global cleanup for page unload to prevent memory leaks
+    const cleanupFunction = () => {
+      try {
+        console.log("Cleaning up workout UI resources...");
+        
+        // Stop any running timers
+        stopWorkoutTimer();
+        
+        // Clean up registered event handlers
+        registeredHandlers.forEach(({ element, event, handler }) => {
+          try {
+            if (element && element.removeEventListener) {
+              element.removeEventListener(event, handler);
+            }
+          } catch (e) {
+            console.warn(`Could not remove event listener during cleanup: ${e.message}`);
+          }
+        });
+        
+        // Clear the handlers map
+        registeredHandlers.clear();
+        
+        console.log("Workout UI cleanup completed");
+      } catch (error) {
+        console.error("Error during workout UI cleanup:", error);
+      }
+    };
+    
+    // Register the cleanup function for page unload
+    window.addEventListener('beforeunload', cleanupFunction);
+    
+    // Extra safety measure: if the workout modal closes, ensure timers are stopped
+    document.querySelectorAll('.modal').forEach(modal => {
+      modal.addEventListener('hidden.bs.modal', () => {
+        // Only stop timers if this is the active workout modal
+        if (modal.id === 'activeWorkoutModal') {
+          console.log("Active workout modal closed - ensuring timers are stopped");
+          stopWorkoutTimer();
+        }
+      });
+    });
     
     // Connect main UI buttons for workout management
     const createEmptyWorkoutBtn = document.getElementById('create-empty-workout');
@@ -45,6 +112,8 @@ function initializeWorkoutUI() {
         startWorkout(null);
       });
     }
+    
+    // Rest timer input initialization removed as per requirements
     
     // Set up event listeners for workout creation safely
     const createWorkoutBtn = document.getElementById('create-workout-btn');
@@ -99,8 +168,8 @@ function initializeWorkoutUI() {
       safeAddEventListener(discardWorkoutBtn, 'click', handleDiscardWorkout);
     }
     
-    // Initialize rest timer functionality
-    initializeRestTimer();
+    // Initialize workout library and routines
+    initializeWorkoutLibrary();
     
     console.log("Workout UI initialization complete");
   } catch (error) {
@@ -110,84 +179,23 @@ function initializeWorkoutUI() {
 }
 
 /**
- * Initialize the rest timer functionality
+ * Initialize workout library and routines
  */
-function initializeRestTimer() {
+function initializeWorkoutLibrary() {
   try {
-    // Set up rest timer button
-    const restTimerBtn = document.querySelector('.rest-timer-btn');
-    if (restTimerBtn) {
-      // Remove any existing listener to prevent duplicates
-      restTimerBtn.removeEventListener('click', toggleRestTimer);
-      restTimerBtn.addEventListener('click', toggleRestTimer);
-      console.log("Rest timer button initialized");
-    } else {
-      console.warn("Rest timer button not found");
-    }
+    // Set up library selection
+    document.querySelector('.exercise-library').addEventListener('click', handleExerciseLibrarySelection);
     
-    // Set up rest timer modal elements
-    const restTimeRange = document.getElementById('restTimeRange');
-    const restTimeValue = document.getElementById('restTimeValue');
-    const startRestTimerBtn = document.getElementById('startRestTimerBtn');
+    // Initialize exercise sets
+    initializeExerciseSets();
     
-    // Initialize range slider
-    if (restTimeRange && restTimeValue) {
-      // Set initial value
-      restTimeValue.textContent = restTimeRange.value || "1";
-      
-      // Remove any existing listener to prevent duplicates
-      const updateRangeDisplay = function() {
-        restTimeValue.textContent = this.value;
-      };
-      
-      restTimeRange.removeEventListener('input', updateRangeDisplay);
-      restTimeRange.addEventListener('input', updateRangeDisplay);
-      console.log("Rest timer range slider initialized");
-    } else {
-      console.warn("Rest timer range or value display not found");
-    }
+    // Load and display routines
+    loadWorkoutRoutines();
     
-    // Initialize start button
-    if (startRestTimerBtn) {
-      const startTimerHandler = function() {
-        try {
-          // Get selected minutes with fallback
-          const minutes = parseInt(restTimeRange?.value || 1);
-          
-          // Convert to seconds
-          const seconds = minutes * 60;
-          startActualTimer(seconds);
-          
-          // Hide the modal
-          const restModal = bootstrap.Modal.getInstance(document.getElementById('restTimerModal'));
-          if (restModal) {
-            restModal.hide();
-          }
-        } catch (error) {
-          console.error("Error starting rest timer:", error);
-          showMessage("Could not start rest timer. Please try again.", "warning");
-        }
-      };
-      
-      // Remove any existing listener to prevent duplicates
-      startRestTimerBtn.removeEventListener('click', startTimerHandler);
-      startRestTimerBtn.addEventListener('click', startTimerHandler);
-      console.log("Start rest timer button initialized");
-    } else {
-      console.warn("Start rest timer button not found");
-    }
+    console.log("Workout library initialized");
   } catch (error) {
-    console.error("Error initializing rest timer:", error);
+    console.error("Error initializing workout library:", error);
   }
-  
-  // Set up library selection
-  document.querySelector('.exercise-library').addEventListener('click', handleExerciseLibrarySelection);
-  
-  // Initialize exercise sets
-  initializeExerciseSets();
-  
-  // Load and display routines
-  loadWorkoutRoutines();
 }
 
 /**
@@ -790,7 +798,7 @@ function handleCompleteWorkout() {
   
   // Stop timers
   stopWorkoutTimer();
-  stopRestTimer();
+  // Rest timer functionality removed
   
   // Hide modal
   const modal = bootstrap.Modal.getInstance(activeWorkoutModal);
@@ -816,7 +824,7 @@ function handleDiscardWorkout() {
     
     // Stop timers
     stopWorkoutTimer();
-    stopRestTimer();
+    // Rest timer functionality removed
     
     // Hide modal
     const modal = bootstrap.Modal.getInstance(activeWorkoutModal);
@@ -831,208 +839,145 @@ function handleDiscardWorkout() {
 }
 
 /**
- * Start the workout timer
+ * Start the workout timer with comprehensive error handling
  */
 function startWorkoutTimer() {
-  // Clear any existing interval
-  stopWorkoutTimer();
-  
-  // Update the display immediately
-  updateWorkoutTimer();
-  
-  // Set up interval to update every second
-  workoutTimerInterval = setInterval(updateWorkoutTimer, 1000);
-}
-
-/**
- * Update the workout timer display
- */
-function updateWorkoutTimer() {
-  if (!workoutStartTime) return;
-  
-  const now = new Date();
-  const elapsedMs = now - workoutStartTime;
-  const elapsedSeconds = Math.floor(elapsedMs / 1000);
-  
-  const minutes = Math.floor(elapsedSeconds / 60);
-  const seconds = elapsedSeconds % 60;
-  
-  document.getElementById('workout-duration').textContent = 
-    `${minutes}:${seconds.toString().padStart(2, '0')}`;
-}
-
-/**
- * Stop the workout timer
- */
-function stopWorkoutTimer() {
-  if (workoutTimerInterval) {
-    clearInterval(workoutTimerInterval);
-    workoutTimerInterval = null;
-  }
-}
-
-/**
- * Toggle the rest timer
- */
-function toggleRestTimer() {
   try {
-    console.log("Rest timer toggled");
-    const timerBtn = document.querySelector('.rest-timer-btn');
-    const timerDisplay = document.querySelector('.rest-timer-display');
+    console.log("Starting workout timer");
     
-    if (!timerBtn || !timerDisplay) {
-      console.error("Timer button or display not found");
-      return;
+    // Clear any existing interval to prevent duplicates
+    stopWorkoutTimer();
+    
+    // Set workout start time if not already set
+    if (!workoutStartTime) {
+      workoutStartTime = new Date();
     }
     
-    if (restTimerInterval) {
-      // Stop timer
-      stopRestTimer();
-      timerBtn.textContent = 'Start Rest';
-      timerBtn.classList.remove('btn-danger');
-      timerBtn.classList.add('btn-outline-primary');
-      console.log("Rest timer stopped");
-    } else {
-      // Reset slider to default value of 1
-      const restTimeRange = document.getElementById('restTimeRange');
-      const restTimeValue = document.getElementById('restTimeValue');
-      
-      if (restTimeRange && restTimeValue) {
-        restTimeRange.value = 1;
-        restTimeValue.textContent = '1';
-      }
-      
+    // Update the display immediately
+    updateWorkoutTimer();
+    
+    // Set up interval to update every second with a reference to a stable function
+    workoutTimerInterval = setInterval(() => {
       try {
-        // Show the rest timer modal
-        const restTimerModal = document.getElementById('restTimerModal');
-        if (restTimerModal) {
-          const restModal = new bootstrap.Modal(restTimerModal);
-          restModal.show();
-          console.log("Rest timer modal displayed");
-        } else {
-          console.error("Rest timer modal not found");
-          showMessage("Could not display rest timer. Please try again.", "warning");
-        }
-      } catch (modalError) {
-        console.error("Error showing rest timer modal:", modalError);
-        showMessage("Could not display rest timer. Please refresh the page and try again.", "warning");
-      }
-    }
-  } catch (error) {
-    console.error("Error in toggleRestTimer:", error);
-    showMessage("An error occurred with the rest timer. Please try again.", "danger");
-  }
-}
-
-/**
- * Start the actual rest timer with given seconds
- * @param {number} seconds - Seconds to count down
- */
-function startActualTimer(seconds) {
-  try {
-    console.log(`Starting rest timer with ${seconds} seconds`);
-    
-    // Make sure any existing timer is stopped first
-    stopRestTimer();
-    
-    const timerBtn = document.querySelector('.rest-timer-btn');
-    const timerDisplay = document.querySelector('.rest-timer-display');
-    
-    if (!timerBtn || !timerDisplay) {
-      console.error("Timer button or display not found");
-      showMessage("Could not start rest timer. Please try again.", "warning");
-      return;
-    }
-    
-    // Ensure seconds is a valid number
-    const validSeconds = Math.max(1, Math.min(seconds || 60, 600)); // 1 second to 10 minutes
-    
-    // Update initial display
-    const displayMins = Math.floor(validSeconds / 60);
-    const displaySecs = validSeconds % 60;
-    timerDisplay.textContent = `${displayMins.toString().padStart(2, '0')}:${displaySecs.toString().padStart(2, '0')}`;
-    
-    // Update button
-    timerBtn.textContent = 'Cancel';
-    timerBtn.classList.remove('btn-outline-primary');
-    timerBtn.classList.add('btn-danger');
-    
-    // Start the countdown
-    let remainingSeconds = validSeconds;
-    
-    // Use a stable interval reference
-    restTimerInterval = setInterval(() => {
-      try {
-        remainingSeconds--;
-        if (remainingSeconds <= 0) {
-          // Timer completed
-          stopRestTimer();
-          
-          if (timerDisplay && timerBtn) {
-            timerDisplay.textContent = 'Done!';
-            timerBtn.textContent = 'Start Rest';
-            timerBtn.classList.remove('btn-danger');
-            timerBtn.classList.add('btn-outline-primary');
-            
-            // Show notification
-            showMessage('Rest time complete! Continue your workout.', 'success');
-            
-            // Reset to 00:00 after 3 seconds
-            setTimeout(() => {
-              if (!restTimerInterval && timerDisplay) {
-                timerDisplay.textContent = '00:00';
-              }
-            }, 3000);
-          }
-        } else {
-          // Update timer display
-          if (timerDisplay) {
-            const mins = Math.floor(remainingSeconds / 60);
-            const secs = remainingSeconds % 60;
-            timerDisplay.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-          }
-        }
-      } catch (timerError) {
-        console.error("Error in timer interval:", timerError);
-        // Safely stop the timer if there was an error
-        stopRestTimer();
+        updateWorkoutTimer();
+      } catch (error) {
+        console.error("Error in workout timer interval:", error);
+        // Don't stop the timer on error, just log it and continue
       }
     }, 1000);
     
-    console.log("Rest timer started successfully");
+    // Add a safety check that will validate the timer is still running every minute
+    // This helps recover from "zombie" intervals
+    setTimeout(() => {
+      try {
+        if (workoutTimerInterval && !document.getElementById('workout-duration')) {
+          console.warn("Workout timer might be a zombie - element not found but timer running");
+          stopWorkoutTimer();
+        }
+      } catch (e) {
+        console.error("Error in workout timer safety check:", e);
+      }
+    }, 60000);
+    
+    console.log("Workout timer started successfully");
   } catch (error) {
-    console.error("Error starting rest timer:", error);
-    showMessage("There was a problem starting the rest timer.", "danger");
-    // Make sure we don't leave a dangling interval
-    stopRestTimer();
+    console.error("Failed to start workout timer:", error);
+    
+    // Attempt recovery by resetting the timer
+    try {
+      stopWorkoutTimer();
+      
+      // Try one more time after a short delay
+      setTimeout(() => {
+        try {
+          console.log("Retrying workout timer start...");
+          
+          // Simpler approach for the retry
+          workoutStartTime = new Date();
+          workoutTimerInterval = setInterval(updateWorkoutTimer, 1000);
+        } catch (retryError) {
+          console.error("Retry failed:", retryError);
+          showMessage("Could not start workout timer. The duration may not track correctly.", "warning");
+        }
+      }, 500);
+    } catch (recoveryError) {
+      console.error("Recovery attempt failed:", recoveryError);
+    }
   }
 }
 
 /**
- * Stop the rest timer
+ * Update the workout timer display with error handling
  */
-function stopRestTimer() {
+function updateWorkoutTimer() {
   try {
-    if (restTimerInterval) {
-      console.log("Stopping rest timer");
-      clearInterval(restTimerInterval);
-      restTimerInterval = null;
+    // Get the display element
+    const durationElement = document.getElementById('workout-duration');
+    
+    // If element doesn't exist or no start time, exit gracefully
+    if (!durationElement || !workoutStartTime) {
+      return;
+    }
+    
+    // Calculate elapsed time
+    const now = new Date();
+    const elapsedMs = now - workoutStartTime;
+    const elapsedSeconds = Math.floor(elapsedMs / 1000);
+    
+    // Format the time
+    const hours = Math.floor(elapsedSeconds / 3600);
+    const minutes = Math.floor((elapsedSeconds % 3600) / 60);
+    const seconds = elapsedSeconds % 60;
+    
+    // Display time with proper formatting
+    if (hours > 0) {
+      durationElement.textContent = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    } else {
+      durationElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+  } catch (error) {
+    console.error("Error updating workout timer:", error);
+    // Don't throw the error further - gracefully handle it here
+  }
+}
+
+/**
+ * Stop the workout timer with enhanced cleanup
+ */
+function stopWorkoutTimer() {
+  try {
+    if (workoutTimerInterval) {
+      console.log("Stopping workout timer");
+      clearInterval(workoutTimerInterval);
+      workoutTimerInterval = null;
       return true;
     }
     return false;
   } catch (error) {
-    console.error("Error stopping rest timer:", error);
-    // Even if there's an error, try to reset the interval
+    console.error("Error stopping workout timer:", error);
+    
+    // Last-resort attempt to clear the interval
     try {
-      if (restTimerInterval) {
-        clearInterval(restTimerInterval);
-        restTimerInterval = null;
+      if (workoutTimerInterval) {
+        clearInterval(workoutTimerInterval);
+        workoutTimerInterval = null;
       }
     } catch (e) {
-      console.error("Fatal error clearing interval:", e);
+      console.error("Fatal error clearing workout timer interval:", e);
     }
+    
     return false;
   }
+}
+
+/**
+ * Placeholder for stopRestTimer to maintain backward compatibility
+ * This function is kept to prevent errors in any code that might still call it
+ * Rest timer functionality has been completely removed
+ */
+function stopRestTimer() {
+  // Rest timer functionality has been removed
+  return false;
 }
 
 /**

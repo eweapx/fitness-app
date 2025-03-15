@@ -1,5 +1,5 @@
 const request = require('supertest');
-const app = require('../../server');
+const app = require('../../robust-express-server');
 const path = require('path');
 const fs = require('fs');
 
@@ -11,7 +11,7 @@ describe('Express Server', () => {
       expect(response.status).toBe(200);
       expect(response.headers['content-type']).toMatch(/text\/html/);
       // Check if the response contains expected HTML content
-      expect(response.text).toContain('Fuel Fitness');
+      expect(response.text).toContain('Fitness Tracker');
     });
   });
 
@@ -21,7 +21,11 @@ describe('Express Server', () => {
       
       expect(response.status).toBe(200);
       expect(response.headers['content-type']).toMatch(/application\/json/);
-      expect(response.body).toEqual({ status: 'healthy' });
+      expect(response.body.status).toEqual('healthy');
+      // Our robust server returns additional data like uptime and timestamp
+      expect(response.body.uptime).toBeDefined();
+      expect(response.body.timestamp).toBeDefined();
+      expect(response.body.version).toBeDefined();
     });
   });
 
