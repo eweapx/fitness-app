@@ -390,13 +390,27 @@ function handleStepsFormSubmit(event) {
 function handleHabitFormSubmit(event) {
   event.preventDefault();
   
-  const name = document.getElementById('habit-name').value;
+  // Check if we're using a predefined habit or custom one
+  const habitType = document.getElementById('habit-type')?.value;
+  let name = '';
+  
+  if (habitType === 'other') {
+    // Get the custom habit name from the custom field
+    name = document.getElementById('custom-habit-name')?.value;
+  } else {
+    // Use the selected habit from the dropdown
+    name = document.getElementById('habit-type')?.options[document.getElementById('habit-type')?.selectedIndex]?.text || '';
+  }
+  
+  // Get other form values
   const description = document.getElementById('habit-description').value;
   const frequency = document.getElementById('habit-frequency').value;
+  const frequencyUnit = document.getElementById('frequency-unit')?.value || 'daily';
   const category = document.getElementById('habit-category').value;
   const trigger = document.getElementById('habit-trigger').value;
   const alternative = document.getElementById('habit-alternative').value;
   const reminderTime = document.getElementById('habit-reminder-time').value;
+  const deloadDuration = document.getElementById('deload-duration')?.value || 21;
   
   const habitId = 'habit_' + Date.now();
   const habit = new BadHabit(
@@ -404,10 +418,12 @@ function handleHabitFormSubmit(event) {
     name,
     description,
     frequency,
+    frequencyUnit,
     category,
     trigger,
     alternative,
-    reminderTime
+    reminderTime,
+    deloadDuration
   );
   
   if (habitTracker.addHabit(habit)) {
@@ -422,7 +438,7 @@ function handleHabitFormSubmit(event) {
     modal.hide();
     
     // Show success message
-    showMessage('Habit added successfully!', 'success');
+    showMessage(`Starting 21-day deload for "${name}" - Check in daily to track your progress!`, 'success');
   } else {
     showMessage('Please fill in all required fields.', 'danger');
   }
