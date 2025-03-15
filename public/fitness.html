@@ -692,8 +692,117 @@
         </section>
 
         <section id="habits-section" class="section-content d-none">
-            <h2 class="mb-4">Habit Tracking</h2>
-            <!-- Habits content here -->
+            <h2 class="mb-4">Deload</h2>
+            
+            <div class="row g-4 mb-4">
+                <!-- Habits Overview Cards -->
+                <div class="col-md-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <h6 class="card-title text-muted mb-2">Habits Being Broken</h6>
+                            <div class="stat-value" id="habits-count">0</div>
+                            <div class="text-muted small mt-1">Active deloads</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <h6 class="card-title text-muted mb-2">Success Rate</h6>
+                            <div class="stat-value" id="habits-success-rate">0%</div>
+                            <div class="progress mt-2" style="height: 5px;">
+                                <div class="progress-bar bg-success" id="success-rate-progress" role="progressbar" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <h6 class="card-title text-muted mb-2">Longest Streak</h6>
+                            <div class="stat-value" id="longest-streak">0</div>
+                            <div class="text-muted small mt-1">consecutive days</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <h6 class="card-title text-muted mb-2">Current Streak</h6>
+                            <div class="stat-value" id="current-streak">0</div>
+                            <div class="text-muted small mt-1">consecutive days</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row g-4 mb-4">
+                <div class="col-md-8">
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">Deload Progress</h5>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button type="button" class="btn btn-outline-secondary active" data-habits-view="list">List</button>
+                                <button type="button" class="btn btn-outline-secondary" data-habits-view="calendar">Calendar</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="habits-list-view">
+                                <!-- Habits will be listed here -->
+                                <div class="text-center py-4 empty-state" id="empty-habits-state">
+                                    <p class="text-muted">No habits being tracked yet.</p>
+                                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addHabitModal">
+                                        Start Breaking a Habit
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="habits-calendar-view" class="d-none">
+                                <!-- Calendar view will be displayed here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">Daily Check-in</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="daily-checkin">
+                                <div class="text-center py-4" id="empty-checkin-state">
+                                    <p class="text-muted">No habits to check in today.</p>
+                                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addHabitModal">
+                                        Add a Habit to Track
+                                    </button>
+                                </div>
+                                <!-- Daily check-in items will appear here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">Your Deload Journey</h5>
+                            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addHabitModal">
+                                <i class="bi bi-plus-lg"></i> Start Breaking a Habit
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div id="habits-detailed-list">
+                                <!-- Habits with detailed info will be shown here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </section>
 
         <section id="profile-section" class="section-content d-none">
@@ -1068,6 +1177,141 @@
         </div>
 
         <!-- Other modals would go here -->
+        
+        <!-- Add Deload (Habit Breaking) Modal -->
+        <div class="modal fade" id="addHabitModal" tabindex="-1" aria-labelledby="addHabitModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addHabitModalLabel">Start a Deload Journey</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="add-habit-form">
+                            <div class="mb-3">
+                                <label for="habit-type" class="form-label">What habit do you want to break?</label>
+                                <select class="form-select" id="habit-type" required>
+                                    <option value="" selected disabled>Select habit</option>
+                                    <option value="smoking">Smoking</option>
+                                    <option value="drinking">Drinking</option>
+                                    <option value="fast-food">Fast Food</option>
+                                    <option value="soda">Soda/Sugary Drinks</option>
+                                    <option value="vaping">Vaping</option>
+                                    <option value="social-media">Social Media Overuse</option>
+                                    <option value="screen-time">Excessive Screen Time</option>
+                                    <option value="procrastination">Procrastination</option>
+                                    <option value="other">Other (specify)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3 d-none" id="custom-habit-container">
+                                <label for="custom-habit" class="form-label">Specify your habit</label>
+                                <input type="text" class="form-control" id="custom-habit" placeholder="Describe the habit you want to break">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="habit-description" class="form-label">Why do you want to break this habit?</label>
+                                <textarea class="form-control" id="habit-description" rows="2" placeholder="Describe your motivation"></textarea>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="habit-frequency" class="form-label">Current frequency</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="habit-frequency" min="1" required>
+                                    <select class="form-select" id="frequency-unit">
+                                        <option value="daily">times per day</option>
+                                        <option value="weekly">times per week</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="deload-duration" class="form-label">Deload duration (days)</label>
+                                <input type="range" class="form-range" id="deload-duration" min="7" max="90" value="21" step="1">
+                                <div class="d-flex justify-content-between">
+                                    <span class="small text-muted">1 week</span>
+                                    <span id="deload-duration-value" class="fw-bold">21 days</span>
+                                    <span class="small text-muted">3 months</span>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="habit-trigger" class="form-label">What triggers this habit?</label>
+                                <input type="text" class="form-control" id="habit-trigger" placeholder="e.g., Stress, boredom, social situations">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="habit-alternative" class="form-label">Healthy alternative</label>
+                                <input type="text" class="form-control" id="habit-alternative" placeholder="What could you do instead?">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="reminder-time" class="form-label">Daily check-in reminder</label>
+                                <input type="time" class="form-control" id="reminder-time">
+                                <div class="form-text">We'll remind you to log your progress each day.</div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">Start Deload Journey</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Check-in Modal -->
+        <div class="modal fade" id="checkInModal" tabindex="-1" aria-labelledby="checkInModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="checkInModalLabel">Daily Check-in</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="check-in-form">
+                            <input type="hidden" id="checkin-habit-id">
+                            <div class="mb-4 text-center">
+                                <h4 id="checkin-habit-name">Habit Name</h4>
+                                <p class="text-muted">Did you succeed in avoiding this habit today?</p>
+                            </div>
+                            <div class="d-flex justify-content-center gap-3 mb-3">
+                                <button type="button" class="btn btn-success btn-lg" id="checkin-success">
+                                    <i class="bi bi-check-lg"></i> Yes, I did great!
+                                </button>
+                                <button type="button" class="btn btn-danger btn-lg" id="checkin-failure">
+                                    <i class="bi bi-x-lg"></i> No, I slipped
+                                </button>
+                            </div>
+                            <div class="mb-3 d-none" id="difficulty-container">
+                                <label class="form-label">How difficult was it to resist?</label>
+                                <div class="btn-group w-100" role="group">
+                                    <input type="radio" class="btn-check" name="difficulty" id="difficulty-1" value="1">
+                                    <label class="btn btn-outline-secondary" for="difficulty-1">Easy</label>
+                                    
+                                    <input type="radio" class="btn-check" name="difficulty" id="difficulty-2" value="2">
+                                    <label class="btn btn-outline-secondary" for="difficulty-2">Moderate</label>
+                                    
+                                    <input type="radio" class="btn-check" name="difficulty" id="difficulty-3" value="3" checked>
+                                    <label class="btn btn-outline-secondary" for="difficulty-3">Hard</label>
+                                    
+                                    <input type="radio" class="btn-check" name="difficulty" id="difficulty-4" value="4">
+                                    <label class="btn btn-outline-secondary" for="difficulty-4">Very Hard</label>
+                                    
+                                    <input type="radio" class="btn-check" name="difficulty" id="difficulty-5" value="5">
+                                    <label class="btn btn-outline-secondary" for="difficulty-5">Extreme</label>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="checkin-notes" class="form-label">Notes (optional)</label>
+                                <textarea class="form-control" id="checkin-notes" rows="2" placeholder="What helped or made it difficult today?"></textarea>
+                            </div>
+                            <div class="text-end">
+                                <button type="submit" class="btn btn-primary">Save Check-in</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
         
         <!-- Add Meal Modal -->
         <div class="modal fade" id="addMealModal" tabindex="-1" aria-labelledby="addMealModalLabel" aria-hidden="true">
