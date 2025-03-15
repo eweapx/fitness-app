@@ -717,7 +717,7 @@ function handleCompleteWorkout() {
  * Handle discarding a workout
  */
 function handleDiscardWorkout() {
-  if (confirm('Are you sure you want to discard this workout? All progress will be lost.')) {
+  if (confirm('Are you sure you want to cancel this workout? All progress will be lost.')) {
     // Discard the workout
     workoutManager.discardWorkout();
     
