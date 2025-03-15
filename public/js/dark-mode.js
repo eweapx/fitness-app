@@ -7,10 +7,8 @@ document.addEventListener('DOMContentLoaded', function() {
   // Initialize dark mode modal functionality
   setupModalDarkMode();
   
-  // Update dark mode status based on data-theme attribute
-  const currentTheme = document.documentElement.getAttribute('data-theme');
-  if (currentTheme === 'dark') {
-    document.body.classList.add('dark-mode');
+  // Update dark mode status based on body class
+  if (document.body.classList.contains('dark-mode')) {
     applyDarkModeToModals(true);
   }
   
@@ -19,31 +17,85 @@ document.addEventListener('DOMContentLoaded', function() {
   if (darkModeToggle) {
     // Add our additional dark mode functionality to the existing click handler
     darkModeToggle.addEventListener('click', function() {
-      // Check if dark mode is active after the original click handler has run
-      const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
+      // Toggle dark mode class
+      document.body.classList.toggle('dark-mode');
       
-      // Update body class for our CSS styling
-      if (isDarkMode) {
-        document.body.classList.add('dark-mode');
-      } else {
-        document.body.classList.remove('dark-mode');
-      }
+      // Check if dark mode is active after toggling
+      const isDarkMode = document.body.classList.contains('dark-mode');
+      
+      // Update the icon
+      darkModeToggle.innerHTML = isDarkMode 
+          ? '<i class="bi bi-sun-fill"></i>' 
+          : '<i class="bi bi-moon-fill"></i>';
+      
+      // Store preference in localStorage
+      localStorage.setItem('darkMode', isDarkMode ? 'true' : 'false');
       
       // Apply dark mode to modals
       applyDarkModeToModals(isDarkMode);
     });
+    
+    // Check for saved preference
+    if (localStorage.getItem('darkMode') === 'true' && !document.body.classList.contains('dark-mode')) {
+      document.body.classList.add('dark-mode');
+      darkModeToggle.innerHTML = '<i class="bi bi-sun-fill"></i>';
+      applyDarkModeToModals(true);
+    }
+  } else {
+    // For login and signup pages that might not have the toggle button yet
+    // Check local storage preference and apply if needed
+    if (localStorage.getItem('darkMode') === 'true') {
+      document.body.classList.add('dark-mode');
+      // Create dark mode toggle if needed
+      createDarkModeToggle();
+    }
+  }
+});
+
+/**
+ * Create a dark mode toggle button for pages that don't have one
+ */
+function createDarkModeToggle() {
+  // Only create if it doesn't exist already
+  if (!document.getElementById('dark-mode-toggle')) {
+    const navbarNav = document.querySelector('.navbar-nav');
+    if (navbarNav) {
+      const darkModeItem = document.createElement('li');
+      darkModeItem.className = 'nav-item ms-2';
+      
+      const darkModeButton = document.createElement('button');
+      darkModeButton.id = 'dark-mode-toggle';
+      darkModeButton.className = 'btn btn-sm btn-outline-secondary';
+      darkModeButton.innerHTML = document.body.classList.contains('dark-mode') ? 
+        '<i class="bi bi-sun-fill"></i>' : 
+        '<i class="bi bi-moon-fill"></i>';
+      
+      darkModeButton.addEventListener('click', function() {
+        document.body.classList.toggle('dark-mode');
+        const isDarkMode = document.body.classList.contains('dark-mode');
+        darkModeButton.innerHTML = isDarkMode ? 
+          '<i class="bi bi-sun-fill"></i>' : 
+          '<i class="bi bi-moon-fill"></i>';
+        localStorage.setItem('darkMode', isDarkMode ? 'true' : 'false');
+        applyDarkModeToModals(isDarkMode);
+      });
+      
+      darkModeItem.appendChild(darkModeButton);
+      navbarNav.appendChild(darkModeItem);
+    }
   }
 }
 
 /**
- * Set up event listeners to ensure modals get dark mode styling.
- * @returns {void}
+ * Set up event listeners to ensure modals get dark mode styling
  */
 function setupModalDarkMode() {
   // Apply dark mode to modals when they open
   document.addEventListener('shown.bs.modal', function(event) {
     if (document.body.classList.contains('dark-mode')) {
       applyDarkModeToModal(event.target, true);
+    } else {
+      applyDarkModeToModal(event.target, false);
     }
   });
   
@@ -53,23 +105,23 @@ function setupModalDarkMode() {
   
   // Handle workout-specific modals and dynamically created elements
   const observer = new MutationObserver(function(mutations) {
-    if (document.body.classList.contains('dark-mode')) {
-      mutations.forEach(function(mutation) {
-        if (mutation.addedNodes && mutation.addedNodes.length > 0) {
-          mutation.addedNodes.forEach(function(node) {
-            // Check if added node is a modal or contains modals
-            if (node.classList && node.classList.contains('modal')) {
-              applyDarkModeToModal(node, true);
-            } else if (node.querySelectorAll) {
-              const modals = node.querySelectorAll('.modal');
-              modals.forEach(function(modal) {
-                applyDarkModeToModal(modal, true);
-              });
-            }
-          });
-        }
-      });
-    }
+    const isDarkMode = document.body.classList.contains('dark-mode');
+    
+    mutations.forEach(function(mutation) {
+      if (mutation.addedNodes && mutation.addedNodes.length > 0) {
+        mutation.addedNodes.forEach(function(node) {
+          // Check if added node is a modal or contains modals
+          if (node.classList && node.classList.contains('modal')) {
+            applyDarkModeToModal(node, isDarkMode);
+          } else if (node.querySelectorAll) {
+            const modals = node.querySelectorAll('.modal');
+            modals.forEach(function(modal) {
+              applyDarkModeToModal(modal, isDarkMode);
+            });
+          }
+        });
+      }
+    });
   });
   
   // Observe the body for changes
@@ -77,9 +129,8 @@ function setupModalDarkMode() {
 }
 
 /**
- * Apply dark mode styling to all modals.
- * @param {boolean} isDark - Whether to apply dark mode.
- * @returns {void}
+ * Apply dark mode styling to all modals
+ * @param {boolean} isDark Whether to apply dark mode
  */
 function applyDarkModeToModals(isDark) {
   const modals = document.querySelectorAll('.modal');
@@ -89,10 +140,9 @@ function applyDarkModeToModals(isDark) {
 }
 
 /**
- * Apply dark mode styling to a specific modal.
- * @param {HTMLElement} modal - The modal element.
- * @param {boolean} isDark - Whether to apply dark mode.
- * @returns {void}
+ * Apply dark mode styling to a specific modal
+ * @param {HTMLElement} modal The modal element
+ * @param {boolean} isDark Whether to apply dark mode
  */
 function applyDarkModeToModal(modal, isDark) {
   if (!modal) return;
