@@ -183,17 +183,71 @@ function setupEventListeners() {
     addStepsForm.addEventListener('submit', handleStepsFormSubmit);
   }
   
-  // Habit form
+  // Deload (Habit Breaking) form
   const addHabitForm = document.getElementById('add-habit-form');
   if (addHabitForm) {
     addHabitForm.addEventListener('submit', handleHabitFormSubmit);
+    
+    // Show/hide custom habit field based on selection
+    const habitTypeSelect = document.getElementById('habit-type');
+    if (habitTypeSelect) {
+      habitTypeSelect.addEventListener('change', function() {
+        const customHabitContainer = document.getElementById('custom-habit-container');
+        if (this.value === 'other') {
+          customHabitContainer.classList.remove('d-none');
+        } else {
+          customHabitContainer.classList.add('d-none');
+        }
+      });
+    }
+    
+    // Update deload duration value display
+    const deloadDurationSlider = document.getElementById('deload-duration');
+    if (deloadDurationSlider) {
+      deloadDurationSlider.addEventListener('input', function() {
+        document.getElementById('deload-duration-value').textContent = this.value + ' days';
+      });
+    }
   }
   
   // Check-in form
-  const habitCheckInForm = document.getElementById('habit-check-in-form');
-  if (habitCheckInForm) {
-    habitCheckInForm.addEventListener('submit', handleCheckInFormSubmit);
+  const checkInForm = document.getElementById('check-in-form');
+  if (checkInForm) {
+    checkInForm.addEventListener('submit', handleCheckInFormSubmit);
+    
+    // Show difficulty rating when user clicks success/failure buttons
+    const successBtn = document.getElementById('checkin-success');
+    const failureBtn = document.getElementById('checkin-failure');
+    
+    if (successBtn && failureBtn) {
+      successBtn.addEventListener('click', function() {
+        this.classList.add('active');
+        failureBtn.classList.remove('active');
+        document.getElementById('difficulty-container').classList.remove('d-none');
+        checkInForm.setAttribute('data-success', 'true');
+      });
+      
+      failureBtn.addEventListener('click', function() {
+        this.classList.add('active');
+        successBtn.classList.remove('active');
+        document.getElementById('difficulty-container').classList.remove('d-none');
+        checkInForm.setAttribute('data-success', 'false');
+      });
+    }
   }
+  
+  // Deload view toggle (list vs calendar)
+  const habitViewButtons = document.querySelectorAll('[data-habits-view]');
+  habitViewButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      const view = this.getAttribute('data-habits-view');
+      toggleHabitsView(view);
+      
+      // Update active state
+      habitViewButtons.forEach(btn => btn.classList.remove('active'));
+      this.classList.add('active');
+    });
+  });
   
   // Meal form
   const addMealForm = document.getElementById('add-meal-form');
@@ -382,13 +436,24 @@ function handleCheckInFormSubmit(event) {
   event.preventDefault();
   
   const habitId = document.getElementById('check-in-habit-id').value;
-  const success = document.getElementById('check-in-success-yes').checked;
+  const successValue = event.target.getAttribute('data-success') === 'true';
   const dateStr = document.getElementById('check-in-date').value;
   const date = new Date(dateStr);
+  const difficultyLevel = parseInt(document.querySelector('input[name="difficulty-level"]:checked')?.value || '3');
+  const notes = document.getElementById('check-in-notes')?.value || '';
   
-  const result = habitTracker.recordCheckIn(habitId, date, success);
+  // Record the check-in
+  const result = habitTracker.recordCheckIn(habitId, date, successValue);
   
   if (result) {
+    // Record the difficulty level
+    habitTracker.recordDifficulty(habitId, date, difficultyLevel);
+    
+    // Add notes if any were provided
+    if (notes.trim()) {
+      habitTracker.addNote(habitId, date, notes);
+    }
+    
     // Update the UI
     updateDashboard();
     
@@ -401,6 +466,9 @@ function handleCheckInFormSubmit(event) {
     
     // Show success message
     showMessage('Check-in recorded successfully!', 'success');
+    
+    // Update habit streaks and update list
+    updateHabitsList();
   } else {
     showMessage('Unable to record check-in. Please try again.', 'danger');
   }
