@@ -1005,20 +1005,41 @@ function updateActivitiesList() {
     activityElement.className = 'card mb-2 activity-card';
     activityElement.dataset.activityId = activity.id;
     
+    // Prepare additional info elements
+    const locationInfo = activity.location ? `<i class="bi bi-geo-alt"></i> ${activity.location}` : '';
+    const distanceInfo = activity.distance ? `<i class="bi bi-arrows-move"></i> ${activity.distance.toFixed(2)} km` : '';
+    const intensityInfo = `<i class="bi bi-lightning-charge"></i> ${activity.getIntensityDescription()}`;
+    
+    // Check if this activity has goals
+    const hasGoals = activity.goals && activity.goals.enabled;
+    const goalStatus = hasGoals ? activity.checkGoalStatus() : null;
+    const goalBadge = hasGoals ? 
+      `<span class="badge ${goalStatus.overall ? 'bg-success' : 'bg-warning'} rounded-pill me-1">
+        <i class="bi ${goalStatus.overall ? 'bi-check-lg' : 'bi-exclamation'}"></i>
+        ${goalStatus.overall ? 'Goals Met' : 'In Progress'}
+      </span>` : '';
+    
     // Create the inner structure with separate card content and info button
     activityElement.innerHTML = `
       <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center">
+        <div class="d-flex justify-content-between align-items-center mb-2">
           <div class="activity-info">
             <h6 class="mb-1">${activity.name}</h6>
             <p class="text-muted mb-0 small">${activity.getFormattedDate()} | ${activity.duration} mins | ${activity.type}</p>
           </div>
           <div class="d-flex align-items-center">
+            ${goalBadge}
             <span class="badge bg-primary rounded-pill me-2">${activity.calories} cal</span>
             <button type="button" class="btn btn-sm btn-outline-primary view-details-btn">
               <i class="bi bi-info-circle"></i>
             </button>
           </div>
+        </div>
+        
+        <div class="activity-details small text-muted d-flex flex-wrap gap-2">
+          ${intensityInfo}
+          ${distanceInfo ? `<span class="me-2">${distanceInfo}</span>` : ''}
+          ${locationInfo ? `<span>${locationInfo}</span>` : ''}
         </div>
       </div>
     `;

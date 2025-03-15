@@ -316,6 +316,96 @@
                 </div>
             </div>
             
+            <!-- Personal Records & Activity Comparison Row -->
+            <div class="row mb-4">
+                <!-- Personal Records Card -->
+                <div class="col-md-6 mb-3">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Personal Records</h5>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-primary active" data-record-type="running">Running</button>
+                                <button class="btn btn-outline-primary" data-record-type="cycling">Cycling</button>
+                                <button class="btn btn-outline-primary" data-record-type="swimming">Swimming</button>
+                                <button class="btn btn-outline-primary" data-record-type="weights">Weights</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="personal-records-container">
+                                <!-- Records will be populated here -->
+                                <div class="text-center py-4" id="no-records">
+                                    <i class="bi bi-trophy text-muted" style="font-size: 2rem;"></i>
+                                    <p class="mt-2">Complete activities to see your personal records</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Activity Comparison Card -->
+                <div class="col-md-6 mb-3">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Activity Comparison</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="comparison-form" class="mb-3">
+                                <div class="row g-2">
+                                    <div class="col-md-5">
+                                        <select class="form-select" id="comparison-activity-1">
+                                            <option value="">Select first activity</option>
+                                            <!-- Activities will be dynamically added here -->
+                                        </select>
+                                    </div>
+                                    <div class="col-md-5">
+                                        <select class="form-select" id="comparison-activity-2">
+                                            <option value="">Select second activity</option>
+                                            <!-- Activities will be dynamically added here -->
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="submit" class="btn btn-primary w-100">Compare</button>
+                                    </div>
+                                </div>
+                            </form>
+                            <div id="comparison-results" class="d-none">
+                                <!-- Comparison results will be displayed here -->
+                            </div>
+                            <div class="text-center py-3" id="no-comparison">
+                                <p class="text-muted">Select two activities to compare</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Exercise Progress Tracking Row -->
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Exercise Progress</h5>
+                            <div>
+                                <select class="form-select form-select-sm" id="exercise-progress-select" style="max-width: 200px;">
+                                    <option value="">Select an exercise</option>
+                                    <!-- Exercises will be dynamically added here -->
+                                </select>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="exercise-progress-chart" height="250"></canvas>
+                            <div class="text-center py-4 d-none" id="no-exercise-data">
+                                <i class="bi bi-graph-up text-muted" style="font-size: 2rem;"></i>
+                                <p class="mt-2">No data available for this exercise</p>
+                            </div>
+                            <div class="text-center py-4" id="no-exercise-selected">
+                                <p class="text-muted">Select an exercise to view progress</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Activities List with Filters Row -->
             <div class="row">
                 <div class="col-md-12 mb-3">
@@ -354,6 +444,8 @@
                                             <option value="date-asc">Oldest First</option>
                                             <option value="duration-desc">Longest Duration</option>
                                             <option value="calories-desc">Most Calories</option>
+                                            <option value="intensity-desc">Highest Intensity</option>
+                                            <option value="distance-desc">Longest Distance</option>
                                         </select>
                                     </div>
                                 </div>
@@ -441,10 +533,61 @@
                                 <label for="activity-calories" class="form-label">Calories Burned</label>
                                 <input type="number" class="form-control" id="activity-calories" min="1" required>
                             </div>
-                            <div class="mb-3">
-                                <label for="activity-date" class="form-label">Date</label>
-                                <input type="datetime-local" class="form-control" id="activity-date" required>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="activity-date" class="form-label">Date</label>
+                                    <input type="datetime-local" class="form-control" id="activity-date" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="activity-location" class="form-label">Location</label>
+                                    <input type="text" class="form-control" id="activity-location" placeholder="e.g. Gym, Park, etc.">
+                                </div>
                             </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="activity-distance" class="form-label">Distance (km/miles)</label>
+                                    <input type="number" class="form-control" id="activity-distance" min="0" step="0.01">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="activity-intensity" class="form-label">Intensity</label>
+                                    <select class="form-select" id="activity-intensity">
+                                        <option value="1">Very Light</option>
+                                        <option value="2">Light</option>
+                                        <option value="3" selected>Moderate</option>
+                                        <option value="4">Vigorous</option>
+                                        <option value="5">Maximum Effort</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="activity-goals-enabled">
+                                    <label class="form-check-label" for="activity-goals-enabled">
+                                        Set goals for this activity
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div id="goals-container" class="mb-3 d-none border rounded p-3 bg-light">
+                                <h6 class="mb-3">Activity Goals</h6>
+                                <div class="row g-2">
+                                    <div class="col-md-4">
+                                        <label for="goal-calories" class="form-label">Calorie Target</label>
+                                        <input type="number" class="form-control" id="goal-calories" min="0">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="goal-duration" class="form-label">Duration Target (min)</label>
+                                        <input type="number" class="form-control" id="goal-duration" min="0">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="goal-distance" class="form-label">Distance Target</label>
+                                        <input type="number" class="form-control" id="goal-distance" min="0" step="0.01">
+                                    </div>
+                                </div>
+                            </div>
+                            
                             <button type="submit" class="btn btn-primary">Save Activity</button>
                         </form>
                     </div>
@@ -737,6 +880,7 @@
     <script src="/js/workout-ui-fixed.js"></script>
     <script src="/js/workout-form.js"></script>
     <script src="/js/dark-mode.js"></script>
+    <script src="/js/activity-enhancements.js"></script>
     <script src="/js/app.js"></script>
 
 </body>
