@@ -4,7 +4,7 @@ const fs = require('fs');
 
 // Create Express app
 const app = express();
-const PORT = 8080; // Use port 8080 explicitly
+const PORT = process.env.PORT || 5000; // Use port 5000 for Replit
 
 // Define paths to static content
 const publicDir = path.join(__dirname, 'public');
@@ -46,14 +46,18 @@ app.get('/basic', (req, res) => {
 
 // Fallback route for SPA
 app.get('*', (req, res) => {
+  const rootIndexPath = path.join(__dirname, 'index.html');
   const indexPath = path.join(publicDir, 'index.html');
   const flutterIndexPath = path.join(flutterBuildDir, 'index.html');
   const basicIndexPath = path.join(__dirname, 'basic-index.html');
 
-  if (fs.existsSync(flutterIndexPath)) {
-    res.sendFile(flutterIndexPath);
+  if (fs.existsSync(rootIndexPath)) {
+    // Use our new root index.html first
+    res.sendFile(rootIndexPath);
   } else if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
+  } else if (fs.existsSync(flutterIndexPath)) {
+    res.sendFile(flutterIndexPath);
   } else if (fs.existsSync(basicIndexPath)) {
     // Use our basic index as a fallback
     res.sendFile(basicIndexPath);

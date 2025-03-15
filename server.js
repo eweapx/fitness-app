@@ -4,7 +4,7 @@ const fs = require('fs');
 
 // Create Express app
 const app = express();
-const PORT = process.env.PORT || 8080; // Using port 8080 as default
+const PORT = process.env.PORT || 5001; // Using port 5001 as port 5000 appears to be in use
 
 // Define paths to static content
 const publicDir = path.join(__dirname, 'public');
@@ -32,6 +32,11 @@ app.get('/api/health', (req, res) => {
 
 app.get('/api/version', (req, res) => {
   res.json({ version: '1.0.0', platform: 'web' });
+});
+
+// Route for our fitness tracker app
+app.get('/fitness', (req, res) => {
+  res.sendFile(path.join(publicDir, 'fitness.html'));
 });
 
 // Fallback route for SPA

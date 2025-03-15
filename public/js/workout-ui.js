@@ -3,6 +3,16 @@
  * Handles the UI interaction for workout tracking functionality
  */
 
+// Helper function to generate UUID for compatibility with older browsers
+function generateUUID() {
+  // Simple UUID generation that works in all browsers
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 // Initialize the workout manager
 let workoutManager = new WorkoutManager();
 
@@ -183,8 +193,11 @@ function initializeWorkoutUI() {
  */
 function initializeWorkoutLibrary() {
   try {
-    // Set up library selection
-    document.querySelector('.exercise-library').addEventListener('click', handleExerciseLibrarySelection);
+    // Set up library selection if the element exists
+    const exerciseLibrary = document.querySelector('.exercise-library');
+    if (exerciseLibrary) {
+      exerciseLibrary.addEventListener('click', handleExerciseLibrarySelection);
+    }
     
     // Initialize exercise sets
     initializeExerciseSets();
@@ -515,6 +528,7 @@ function renderWorkoutExercises(workout) {
  */
 function initializeExerciseSets() {
   const setsContainer = document.getElementById('exercise-sets');
+  if (!setsContainer) return;
   const setElements = setsContainer.querySelectorAll('.set-container');
   
   // Remove all but the first set
@@ -556,9 +570,12 @@ function initializeExerciseSets() {
  */
 function addNewSet() {
   const setsContainer = document.getElementById('exercise-sets');
-  const setElements = setsContainer.querySelectorAll('.set-container');
-  const newIndex = setElements.length;
+  if (!setsContainer) return;
   
+  const setElements = setsContainer.querySelectorAll('.set-container');
+  if (setElements.length === 0) return;
+  
+  const newIndex = setElements.length;
   const setTemplate = setElements[0].cloneNode(true);
   setTemplate.dataset.setIndex = newIndex.toString();
   setTemplate.querySelector('.set-number').textContent = (newIndex + 1).toString();
@@ -667,7 +684,7 @@ function handleAddExercise() {
   
   // Create exercise object
   const exercise = {
-    id: currentExerciseId || crypto.randomUUID(),
+    id: currentExerciseId || generateUUID(),
     name,
     equipment: equipmentType,
     sets,

@@ -1,3111 +1,626 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Fitness Tracker</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css" rel="stylesheet">
-  <link href="public/css/dark-mode.css" rel="stylesheet">
-  <style>
-    :root {
-      /* Light theme (default) */
-      --primary-color: #0d6efd;
-      --secondary-color: #6c757d;
-      --success-color: #28a745;
-      --info-color: #17a2b8;
-      --warning-color: #ffc107;
-      --danger-color: #dc3545;
-      --light-color: #f8f9fa;
-      --dark-color: #343a40;
-      
-      --body-bg: #f5f5f5;
-      --card-bg: #fff;
-      --card-border: rgba(0, 0, 0, 0.125);
-      --card-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-      --text-color: #212529;
-      --text-muted: #6c757d;
-      --border-color: #dee2e6;
-      --input-bg: #fff;
-      --modal-bg: #fff;
-      --navbar-bg: var(--primary-color);
-      --navbar-color: #fff;
-      --shadow-color: rgba(0, 0, 0, 0.1);
-      
-      /* Animation for theme transitions */
-      transition: background-color 0.3s ease, color 0.3s ease;
-    }
-    
-    /* Dark theme */
-    [data-theme="dark"] {
-      --primary-color: #375a7f;
-      --secondary-color: #444;
-      --success-color: #00bc8c;
-      --info-color: #3498db;
-      --warning-color: #f39c12;
-      --danger-color: #e74c3c;
-      --light-color: #444;
-      --dark-color: #222;
-      
-      --body-bg: #222;
-      --card-bg: #303030;
-      --card-border: rgba(255, 255, 255, 0.125);
-      --card-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
-      --text-color: #fff;
-      --text-muted: #adb5bd;
-      --border-color: #444;
-      --input-bg: #444;
-      --modal-bg: #303030;
-      --navbar-bg: #375a7f;
-      --navbar-color: #fff;
-      --shadow-color: rgba(0, 0, 0, 0.5);
-    }
-
-    /* Transition for smooth dark mode switch */
-    body {
-      transition: background-color 0.3s ease, color 0.3s ease;
-      padding-top: 20px;
-      padding-bottom: 130px; /* Extra space for two-row bottom navigation */
-      background-color: var(--body-bg);
-      color: var(--text-color);
-    }
-    
-    .card {
-      margin-bottom: 20px;
-      border-radius: 10px;
-      box-shadow: var(--card-shadow);
-      background-color: var(--card-bg);
-      border-color: var(--card-border);
-      color: var(--text-color);
-    }
-    .stat-card {
-      text-align: center;
-      padding: 15px;
-    }
-    .stat-value {
-      font-size: 2rem;
-      font-weight: bold;
-      color: var(--primary-color);
-    }
-    .activity-item {
-      padding: 15px;
-      border-bottom: 1px solid var(--border-color);
-    }
-    .activity-icon {
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-right: 15px;
-      font-size: 1.5rem;
-    }
-    .nav-tabs .nav-link {
-      border: none;
-      color: var(--text-color);
-      font-weight: 500;
-    }
-    .nav-tabs .nav-link.active {
-      color: var(--primary-color);
-      border-bottom: 3px solid var(--primary-color);
-    }
-    
-    /* Bottom Navigation Styles */
-    .bottom-nav {
-      box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-      padding: 5px 0;
-      background-color: var(--card-bg);
-      border-top: 1px solid var(--border-color);
-    }
-    
-    .bottom-nav .nav-link {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      color: var(--text-muted);
-      padding: 8px 0;
-      font-size: 0.85rem;
-    }
-    
-    .bottom-nav .nav-link i {
-      font-size: 1.2rem;
-      margin-bottom: 4px;
-    }
-    
-    .bottom-nav .nav-link.active {
-      color: var(--primary-color);
-    }
-    
-    /* Extended Navigation */
-    .nav-extended {
-      background-color: var(--light-color);
-      border-top: 1px solid var(--border-color);
-      padding: 5px 0;
-      margin-top: 2px;
-      display: none; /* Hidden by default */
-    }
-    
-    .nav-extended .nav-link {
-      font-size: 0.8rem;
-      color: var(--text-color);
-    }
-    
-    .nav-extended .nav-link i {
-      font-size: 1.2rem;
-    }
-    
-    .nav-extended .nav-link.active {
-      color: var(--primary-color);
-      font-weight: bold;
-    }
-    
-    /* Habit tracker styles */
-    .habit-day-indicator {
-      width: 35px;
-      height: 35px;
-      border-radius: 50%;
-      background-color: var(--light-color);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-      color: var(--text-color);
-      border: 1px solid var(--border-color);
-    }
-    
-    .habit-day-indicator.completed {
-      background-color: var(--success-color);
-      color: white;
-      border-color: var(--success-color);
-    }
-    
-    /* Meditation cards styling */
-    .meditation-card {
-      cursor: pointer;
-      transition: transform 0.2s;
-      background-color: var(--card-bg);
-      color: var(--text-color);
-      border: 1px solid var(--border-color);
-    }
-    
-    .meditation-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 6px 12px var(--shadow-color);
-    }
-    
-    /* Sleep log styling */
-    #sleep-chart {
-      max-height: 200px;
-    }
-    
-    /* Goals styling */
-    .goal-item-progress {
-      height: 8px;
-    }
-    
-    /* Content section additional spacing for two-row nav */
-    .content-section {
-      padding-bottom: 100px;
-    }
-    /* Workout styles */
-    #workout-session-view {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      z-index: 1050;
-      background-color: var(--body-bg);
-      color: var(--text-color);
-      overflow-y: auto;
-    }
-    
-    .filter-scroll {
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: none; /* Firefox */
-    }
-    
-    .filter-scroll::-webkit-scrollbar {
-      display: none; /* Chrome, Safari, Opera */
-    }
-    
-    .set-row {
-      background-color: var(--card-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      padding: 8px;
-      margin-bottom: 8px;
-    }
-    
-    .set-number {
-      width: 25px;
-      text-align: center;
-      font-weight: bold;
-    }
-    
-    .weight-input, .reps-input {
-      width: 60px;
-    }
-    
-    .previous-weight {
-      width: 60px;
-      font-size: 0.75rem;
-      line-height: 1.2;
-    }
-    
-    /* Rest timer styles removed as per requirements */
-    
-    .exercise-list {
-      max-height: 250px;
-      overflow-y: auto;
-    }
-    
-    .exercise-item {
-      cursor: pointer;
-      padding: 10px;
-      border-bottom: 1px solid var(--border-color);
-    }
-    
-    .exercise-item:hover {
-      background-color: var(--light-color);
-    }
-    
-    .complete-set-checkbox {
-      width: 24px;
-      height: 24px;
-    }
-  </style>
-  <link rel="stylesheet" href="public/css/dark-mode.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health & Fitness Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
+    <style>
+        /* Custom styles */
+        body {
+            background-color: #f8f9fa;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .card {
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        .stat-card {
+            height: 100%;
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        .badge-large {
+            font-size: 0.9rem;
+        }
+        /* Dark mode support */
+        body.dark-mode {
+            background-color: #212529;
+            color: #f8f9fa;
+        }
+        .dark-mode .card {
+            background-color: #343a40;
+            border-color: #495057;
+        }
+        .dark-mode .card-header {
+            background-color: #212529;
+            border-color: #495057;
+        }
+        .dark-mode .text-muted {
+            color: #adb5bd !important;
+        }
+        .dark-mode .form-control {
+            background-color: #495057;
+            border-color: #6c757d;
+            color: #f8f9fa;
+        }
+        .dark-mode .form-control:focus {
+            background-color: #495057;
+            color: #f8f9fa;
+        }
+        .dark-mode .modal-content {
+            background-color: #343a40;
+            color: #f8f9fa;
+        }
+        .dark-mode .modal-header,
+        .dark-mode .modal-footer {
+            border-color: #495057;
+        }
+        .dark-mode .btn-close {
+            filter: invert(1) grayscale(100%) brightness(200%);
+        }
+        .dark-mode .dropdown-menu {
+            background-color: #343a40;
+            border-color: #495057;
+        }
+        .dark-mode .dropdown-item {
+            color: #f8f9fa;
+        }
+        .dark-mode .dropdown-item:hover {
+            background-color: #495057;
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <header class="mb-4">
-      <nav class="navbar navbar-expand-lg navbar-dark bg-primary rounded">
-        <div class="container-fluid">
-          <a class="navbar-brand" href="#">Fitness Tracker</a>
-          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-            <span class="navbar-toggler-icon"></span>
-          </button>
-          <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav">
-              <li class="nav-item">
-                <a class="nav-link active" href="#" id="dashboard-tab">Dashboard</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" href="#" id="workouts-tab">Workouts</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" href="#" id="nutrition-tab">Nutrition</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" href="#" id="habits-tab">Bad Habits</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" href="#" id="profile-link" data-bs-toggle="modal" data-bs-target="#profileModal">Profile</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" href="#" id="about-link" data-bs-toggle="modal" data-bs-target="#aboutModal">About</a>
-              </li>
-            </ul>
-            <div class="ms-auto">
-              <button id="dark-mode-toggle" class="btn btn-sm btn-outline-light">
-                <i class="bi bi-moon-stars"></i> Dark Mode
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
-    </header>
-
-    <main>
-      <!-- Dashboard Section -->
-      <div id="dashboard-content" class="content-section">
-        <div class="row mb-4">
-          <div class="col-md-4">
-            <div class="card stat-card">
-              <h5>Steps</h5>
-              <div class="stat-value" id="steps-count">5,000</div>
-              <button class="btn btn-sm btn-outline-primary mt-2" id="add-steps-btn" data-bs-toggle="modal" data-bs-target="#stepsModal">+ Add Steps</button>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="card stat-card">
-              <h5>Calories Burned</h5>
-              <div class="stat-value" id="calories-count">400</div>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="card stat-card">
-              <h5>Activities</h5>
-              <div class="stat-value" id="activities-count">2</div>
-              <button class="btn btn-sm btn-outline-primary mt-2" data-bs-toggle="modal" data-bs-target="#activityModal">
-                + Log Activity
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Progress Chart -->
-        <div class="card mb-4">
-          <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">Activity Trends</h5>
-            <div class="btn-group" role="group">
-              <button type="button" class="btn btn-sm btn-outline-secondary active" id="weekly-view">Week</button>
-              <button type="button" class="btn btn-sm btn-outline-secondary" id="monthly-view">Month</button>
-            </div>
-          </div>
-          <div class="card-body">
-            <canvas id="progress-chart" height="200"></canvas>
-          </div>
-        </div>
-        
-        <!-- Recent Activities -->
-        <div class="card">
-          <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">Recent Activities</h5>
-          </div>
-          <div class="card-body">
-            <div id="activities-list">
-              <!-- Activities will be added here dynamically -->
-            </div>
-            <div id="no-activities" style="display: none;">
-              <div class="text-center py-5">
-                <p class="text-muted">No activities logged yet.</p>
-                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#activityModal">
-                  Log Your First Activity
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Workouts Section (Initially Hidden) -->
-      <div id="workouts-content" class="content-section" style="display: none;">
-        <div class="card mb-4">
-          <div class="card-body">
-            <h4 class="mb-4">Your Workout Plans</h4>
-            
-            <!-- Container for workout plans -->
-            <div id="workout-plans-container">
-              <div id="no-workout-plans" class="alert alert-info mb-4">
-                <i class="bi bi-info-circle me-2"></i>
-                You don't have any workout plans yet. Create your first plan to get started.
-              </div>
-              
-              <div id="workout-list" class="row">
-                <!-- Workout plans will be displayed here -->
-              </div>
-            </div>
-            
-            <div class="row mt-3">
-              <div class="col-md-6 mb-2">
-                <button id="create-empty-workout" class="btn btn-outline-primary w-100">
-                  <i class="bi bi-plus-circle me-2"></i>Start Empty Workout
-                </button>
-              </div>
-              <div class="col-md-6 mb-2">
-                <button class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#workoutModal">
-                  <i class="bi bi-clipboard-plus me-2"></i>Create Workout Plan
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Recent workouts -->
-        <div class="card">
-          <div class="card-header">
-            <h5 class="mb-0">Recent Workouts</h5>
-          </div>
-          <div class="card-body">
-            <div id="recent-workouts-list">
-              <div class="text-center py-3 text-muted">
-                No recent workouts found.
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Nutrition Section (Initially Hidden) -->
-      <div id="nutrition-content" class="content-section" style="display: none;">
-        <div class="card mb-4">
-          <div class="card-body">
-            <h4 class="mb-4">Nutrition Tracker</h4>
-            
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <div class="card">
-                  <div class="card-body text-center">
-                    <h5>Today's Calories</h5>
-                    <div class="display-4 fw-bold" id="today-calories">0</div>
-                    <div class="text-muted small">Daily Goal: 2000</div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-md-6 mb-3">
-                <div class="card">
-                  <div class="card-body text-center">
-                    <h5>Macronutrients</h5>
-                    <div class="progress-stacked mb-2">
-                      <div class="progress" role="progressbar" style="width: 25%">
-                        <div class="progress-bar bg-success">Protein</div>
-                      </div>
-                      <div class="progress" role="progressbar" style="width: 40%">
-                        <div class="progress-bar bg-primary">Carbs</div>
-                      </div>
-                      <div class="progress" role="progressbar" style="width: 15%">
-                        <div class="progress-bar bg-warning">Fat</div>
-                      </div>
-                    </div>
-                    <div class="d-flex justify-content-between text-muted small">
-                      <span>Protein: <span id="protein-perc">25</span>%</span>
-                      <span>Carbs: <span id="carbs-perc">40</span>%</span>
-                      <span>Fat: <span id="fat-perc">15</span>%</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Meal history section -->
-            <div class="mt-4">
-              <h5 class="mb-3">Recent Meals</h5>
-              <div id="no-meals" class="alert alert-info">
-                <i class="bi bi-info-circle me-2"></i>
-                You haven't logged any meals yet. Add your first meal to get started.
-              </div>
-              <div id="meal-list">
-                <!-- Meals will be displayed here -->
-              </div>
-            </div>
-            
-            <button class="btn btn-primary w-100 mt-3" data-bs-toggle="modal" data-bs-target="#mealModal">
-              Log a Meal
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-heart-pulse-fill me-2"></i>
+                Health & Fitness Tracker
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
             </button>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Bad Habits Section (Initially Hidden) -->
-      <div id="habits-content" class="content-section" style="display: none;">
-        <div class="card mb-4">
-          <div class="card-body">
-            <h4 class="mb-4">Bad Habit Quitting Tracker</h4>
-            <p class="text-muted mb-4">Track your efforts to break bad habits and live a healthier lifestyle.</p>
-            
-            <!-- Habit progress section -->
-            <div class="row mb-4">
-              <div class="col-md-6 mb-3">
-                <div class="card h-100">
-                  <div class="card-body">
-                    <h5 class="card-title">This Week's Progress</h5>
-                    <div class="d-flex flex-wrap mt-3">
-                      <div class="habit-day-indicator completed me-2 mb-2" data-bs-toggle="tooltip" title="Mon">M</div>
-                      <div class="habit-day-indicator completed me-2 mb-2" data-bs-toggle="tooltip" title="Tue">T</div>
-                      <div class="habit-day-indicator completed me-2 mb-2" data-bs-toggle="tooltip" title="Wed">W</div>
-                      <div class="habit-day-indicator me-2 mb-2" data-bs-toggle="tooltip" title="Thu">T</div>
-                      <div class="habit-day-indicator me-2 mb-2" data-bs-toggle="tooltip" title="Fri">F</div>
-                      <div class="habit-day-indicator me-2 mb-2" data-bs-toggle="tooltip" title="Sat">S</div>
-                      <div class="habit-day-indicator me-2 mb-2" data-bs-toggle="tooltip" title="Sun">S</div>
-                    </div>
-                    <div class="progress mt-3">
-                      <div class="progress-bar bg-success" style="width: 43%" role="progressbar" aria-valuenow="43" aria-valuemin="0" aria-valuemax="100">43% Success</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-md-6 mb-3">
-                <div class="card h-100">
-                  <div class="card-body">
-                    <h5 class="card-title">Quitting Streaks</h5>
-                    <div class="d-flex justify-content-between align-items-center mt-3">
-                      <div class="text-center">
-                        <div class="display-6">3</div>
-                        <div class="text-muted small">Current Streak</div>
-                      </div>
-                      <div class="text-center">
-                        <div class="display-6">7</div>
-                        <div class="text-muted small">Best Streak</div>
-                      </div>
-                      <div class="text-center">
-                        <div class="display-6">12</div>
-                        <div class="text-muted small">Days Without</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Bad Habit list section -->
-            <div>
-              <h5 class="mb-3">Habits You're Breaking</h5>
-              <div id="no-habits" style="display: none;" class="alert alert-info">
-                <i class="bi bi-info-circle me-2"></i>
-                You haven't added any bad habits to track yet. Add your first one to start breaking it.
-              </div>
-              
-              <div id="habit-list">
-                <!-- Bad Habit item -->
-                <div class="card mb-3">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                      <div>
-                        <h5 class="card-title mb-1">Social Media Scrolling</h5>
-                        <div class="text-muted small">Trying to quit • Started 12 days ago</div>
-                      </div>
-                      <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="habit-1-toggle" checked>
-                        <label class="form-check-label" for="habit-1-toggle">Avoided Today</label>
-                      </div>
-                    </div>
-                    <div class="progress mt-3">
-                      <div class="progress-bar bg-success" style="width: 75%" role="progressbar">75% Success Rate</div>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Bad Habit item -->
-                <div class="card mb-3">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                      <div>
-                        <h5 class="card-title mb-1">Late Night Snacking</h5>
-                        <div class="text-muted small">Trying to quit • Started 5 days ago</div>
-                      </div>
-                      <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="habit-2-toggle" checked>
-                        <label class="form-check-label" for="habit-2-toggle">Avoided Today</label>
-                      </div>
-                    </div>
-                    <div class="progress mt-3">
-                      <div class="progress-bar bg-success" style="width: 60%" role="progressbar">60% Success Rate</div>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Bad Habit item -->
-                <div class="card mb-3">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                      <div>
-                        <h5 class="card-title mb-1">Procrastination</h5>
-                        <div class="text-muted small">Trying to quit • Started 8 days ago</div>
-                      </div>
-                      <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="habit-3-toggle">
-                        <label class="form-check-label" for="habit-3-toggle">Avoided Today</label>
-                      </div>
-                    </div>
-                    <div class="progress mt-3">
-                      <div class="progress-bar bg-success" style="width: 25%" role="progressbar">25% Success Rate</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <button class="btn btn-primary w-100 mt-3" data-bs-toggle="modal" data-bs-target="#habitModal">
-              Track a Bad Habit to Quit
-            </button>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Sleep Tracker Section (Initially Hidden) -->
-      <div id="sleep-content" class="content-section" style="display: none;">
-        <div class="card mb-4">
-          <div class="card-body">
-            <h4 class="mb-4">Sleep Tracker</h4>
-            <p class="text-muted mb-4">Track your sleep patterns to improve your rest and recovery.</p>
-            
-            <!-- Sleep Summary -->
-            <div class="row mb-4">
-              <div class="col-md-6 mb-3">
-                <div class="card h-100">
-                  <div class="card-body">
-                    <h5 class="card-title">Sleep Quality</h5>
-                    <div class="text-center mt-3">
-                      <div class="display-1 text-primary mb-2">
-                        <i class="bi bi-moon-stars"></i>
-                      </div>
-                      <div class="display-6">7.5</div>
-                      <div class="text-muted">Hours Last Night</div>
-                      <div class="badge bg-success mt-2">Good Quality</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-md-6 mb-3">
-                <div class="card h-100">
-                  <div class="card-body">
-                    <h5 class="card-title">Weekly Average</h5>
-                    <canvas id="sleep-chart" height="150"></canvas>
-                    <div class="text-center mt-2">
-                      <div class="text-muted small">Weekly Average: 7.2 hours</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Sleep Logs -->
-            <div>
-              <h5 class="mb-3">Recent Sleep Logs</h5>
-              <div id="no-sleep-logs" style="display: none;" class="alert alert-info">
-                <i class="bi bi-info-circle me-2"></i>
-                You haven't logged any sleep yet. Log your first night to start tracking.
-              </div>
-              
-              <div id="sleep-log-list">
-                <!-- Sleep Log Item -->
-                <div class="card mb-3">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                      <div>
-                        <h5 class="card-title mb-1">March 13, 2025</h5>
-                        <div class="text-muted small">7.5 hours • 11:00 PM - 6:30 AM</div>
-                      </div>
-                      <div class="text-end">
-                        <span class="badge bg-success mb-2">Good Quality</span>
-                        <div class="text-muted small">Deep Sleep: 2.5 hours</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Sleep Log Item -->
-                <div class="card mb-3">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                      <div>
-                        <h5 class="card-title mb-1">March 12, 2025</h5>
-                        <div class="text-muted small">6.5 hours • 12:00 AM - 6:30 AM</div>
-                      </div>
-                      <div class="text-end">
-                        <span class="badge bg-warning mb-2">Fair Quality</span>
-                        <div class="text-muted small">Deep Sleep: 1.8 hours</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Sleep Log Item -->
-                <div class="card mb-3">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                      <div>
-                        <h5 class="card-title mb-1">March 11, 2025</h5>
-                        <div class="text-muted small">8.0 hours • 10:30 PM - 6:30 AM</div>
-                      </div>
-                      <div class="text-end">
-                        <span class="badge bg-success mb-2">Good Quality</span>
-                        <div class="text-muted small">Deep Sleep: 3.2 hours</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <button class="btn btn-primary w-100 mt-3" data-bs-toggle="modal" data-bs-target="#sleepModal">
-              Log Sleep
-            </button>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Meditation Section (Initially Hidden) -->
-      <div id="meditation-content" class="content-section" style="display: none;">
-        <div class="card mb-4">
-          <div class="card-body">
-            <h4 class="mb-4">Meditation & Mindfulness</h4>
-            <p class="text-muted mb-4">Track your meditation practice and mindfulness sessions.</p>
-            
-            <!-- Meditation Stats -->
-            <div class="row mb-4">
-              <div class="col-md-6 mb-3">
-                <div class="card h-100">
-                  <div class="card-body text-center">
-                    <h5 class="card-title">Current Streak</h5>
-                    <div class="display-1 text-primary mb-2">
-                      <i class="bi bi-peace"></i>
-                    </div>
-                    <div class="display-6">4 Days</div>
-                    <div class="text-muted">Keep going!</div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-md-6 mb-3">
-                <div class="card h-100">
-                  <div class="card-body">
-                    <h5 class="card-title">Total Practice Time</h5>
-                    <div class="d-flex justify-content-around align-items-center mt-4">
-                      <div class="text-center">
-                        <div class="display-6">3.5</div>
-                        <div class="text-muted small">Hours This Week</div>
-                      </div>
-                      <div class="text-center">
-                        <div class="display-6">15</div>
-                        <div class="text-muted small">Hours This Month</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Quick Start Section -->
-            <div class="mb-4">
-              <h5 class="mb-3">Quick Start</h5>
-              <div class="row g-3">
-                <div class="col-6 col-md-3">
-                  <div class="card h-100 text-center meditation-card">
-                    <div class="card-body">
-                      <div class="mb-2"><i class="bi bi-hourglass-split fs-3"></i></div>
-                      <h6 class="card-title">5 Minutes</h6>
-                      <div class="text-muted small">Breathing</div>
-                    </div>
-                  </div>
-                </div>
-                <div class="col-6 col-md-3">
-                  <div class="card h-100 text-center meditation-card">
-                    <div class="card-body">
-                      <div class="mb-2"><i class="bi bi-hourglass-split fs-3"></i></div>
-                      <h6 class="card-title">10 Minutes</h6>
-                      <div class="text-muted small">Mindfulness</div>
-                    </div>
-                  </div>
-                </div>
-                <div class="col-6 col-md-3">
-                  <div class="card h-100 text-center meditation-card">
-                    <div class="card-body">
-                      <div class="mb-2"><i class="bi bi-hourglass-split fs-3"></i></div>
-                      <h6 class="card-title">15 Minutes</h6>
-                      <div class="text-muted small">Stress Relief</div>
-                    </div>
-                  </div>
-                </div>
-                <div class="col-6 col-md-3">
-                  <div class="card h-100 text-center meditation-card">
-                    <div class="card-body">
-                      <div class="mb-2"><i class="bi bi-hourglass-split fs-3"></i></div>
-                      <h6 class="card-title">20 Minutes</h6>
-                      <div class="text-muted small">Deep Focus</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Meditation History -->
-            <div>
-              <h5 class="mb-3">Recent Sessions</h5>
-              <div id="no-meditation-logs" style="display: none;" class="alert alert-info">
-                <i class="bi bi-info-circle me-2"></i>
-                You haven't logged any meditation sessions yet. Start your practice today.
-              </div>
-              
-              <div id="meditation-log-list">
-                <!-- Meditation Log Item -->
-                <div class="card mb-3">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                      <div>
-                        <h5 class="card-title mb-1">Morning Mindfulness</h5>
-                        <div class="text-muted small">Today • 10 minutes</div>
-                      </div>
-                      <div class="text-end">
-                        <span class="badge bg-info mb-2">Mindfulness</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Meditation Log Item -->
-                <div class="card mb-3">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                      <div>
-                        <h5 class="card-title mb-1">Stress Relief</h5>
-                        <div class="text-muted small">Yesterday • 15 minutes</div>
-                      </div>
-                      <div class="text-end">
-                        <span class="badge bg-warning mb-2">Stress Relief</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Meditation Log Item -->
-                <div class="card mb-3">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                      <div>
-                        <h5 class="card-title mb-1">Evening Wind-Down</h5>
-                        <div class="text-muted small">2 days ago • 20 minutes</div>
-                      </div>
-                      <div class="text-end">
-                        <span class="badge bg-primary mb-2">Sleep Prep</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <button class="btn btn-primary w-100 mt-3" data-bs-toggle="modal" data-bs-target="#meditationModal">
-              Log Meditation
-            </button>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Goals Section (Initially Hidden) -->
-      <div id="goals-content" class="content-section" style="display: none;">
-        <div class="card mb-4">
-          <div class="card-body">
-            <h4 class="mb-4">Goals Tracker</h4>
-            <p class="text-muted mb-4">Set, track, and achieve your health and fitness goals.</p>
-            
-            <!-- Goals Summary -->
-            <div class="row mb-4">
-              <div class="col-md-4 mb-3">
-                <div class="card h-100">
-                  <div class="card-body text-center">
-                    <h5 class="card-title">Active Goals</h5>
-                    <div class="display-4 mt-3">5</div>
-                    <div class="text-muted small">In Progress</div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-md-4 mb-3">
-                <div class="card h-100">
-                  <div class="card-body text-center">
-                    <h5 class="card-title">Completed</h5>
-                    <div class="display-4 mt-3">3</div>
-                    <div class="text-muted small">This Month</div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-md-4 mb-3">
-                <div class="card h-100">
-                  <div class="card-body text-center">
-                    <h5 class="card-title">Success Rate</h5>
-                    <div class="display-4 mt-3">75%</div>
-                    <div class="text-muted small">All Time</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Goals List -->
-            <div>
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">Your Goals</h5>
-                <div class="dropdown">
-                  <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                    Filter
-                  </button>
-                  <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#">All Goals</a></li>
-                    <li><a class="dropdown-item" href="#">Activity Goals</a></li>
-                    <li><a class="dropdown-item" href="#">Nutrition Goals</a></li>
-                    <li><a class="dropdown-item" href="#">Weight Goals</a></li>
-                    <li><a class="dropdown-item" href="#">Habit Goals</a></li>
-                  </ul>
-                </div>
-              </div>
-              
-              <div id="no-goals" style="display: none;" class="alert alert-info">
-                <i class="bi bi-info-circle me-2"></i>
-                You haven't set any goals yet. Create your first goal to start tracking.
-              </div>
-              
-              <div id="goals-list">
-                <!-- Goal Item - Activity -->
-                <div class="card mb-3">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                      <div>
-                        <span class="badge bg-primary mb-2">Activity</span>
-                        <h5 class="card-title mb-1">10,000 Steps Daily</h5>
-                        <div class="text-muted small mb-2">Ends in 23 days</div>
-                        <div class="progress">
-                          <div class="progress-bar bg-primary" style="width: 65%" role="progressbar">65% Complete</div>
-                        </div>
-                      </div>
-                      <div class="text-end ms-3">
-                        <div class="display-6">6,500</div>
-                        <div class="text-muted small">Steps Today</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Goal Item - Weight -->
-                <div class="card mb-3">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                      <div>
-                        <span class="badge bg-info mb-2">Weight</span>
-                        <h5 class="card-title mb-1">Lose 5kg</h5>
-                        <div class="text-muted small mb-2">Ends in 45 days</div>
-                        <div class="progress">
-                          <div class="progress-bar bg-info" style="width: 40%" role="progressbar">40% Complete</div>
-                        </div>
-                      </div>
-                      <div class="text-end ms-3">
-                        <div class="display-6">2 kg</div>
-                        <div class="text-muted small">Lost So Far</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Goal Item - Nutrition -->
-                <div class="card mb-3">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                      <div>
-                        <span class="badge bg-success mb-2">Nutrition</span>
-                        <h5 class="card-title mb-1">Drink 2L Water Daily</h5>
-                        <div class="text-muted small mb-2">Ongoing goal</div>
-                        <div class="progress">
-                          <div class="progress-bar bg-success" style="width: 75%" role="progressbar">75% Complete</div>
-                        </div>
-                      </div>
-                      <div class="text-end ms-3">
-                        <div class="display-6">1.5 L</div>
-                        <div class="text-muted small">Today</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Goal Item - Habit -->
-                <div class="card mb-3">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                      <div>
-                        <span class="badge bg-danger mb-2">Habit</span>
-                        <h5 class="card-title mb-1">30 Days No Social Media</h5>
-                        <div class="text-muted small mb-2">Ends in 18 days</div>
-                        <div class="progress">
-                          <div class="progress-bar bg-danger" style="width: 40%" role="progressbar">40% Complete</div>
-                        </div>
-                      </div>
-                      <div class="text-end ms-3">
-                        <div class="display-6">12</div>
-                        <div class="text-muted small">Days Streak</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Goal Item - Workout -->
-                <div class="card mb-3">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                      <div>
-                        <span class="badge bg-warning mb-2">Workout</span>
-                        <h5 class="card-title mb-1">Exercise 4x Weekly</h5>
-                        <div class="text-muted small mb-2">Ongoing goal</div>
-                        <div class="progress">
-                          <div class="progress-bar bg-warning" style="width: 50%" role="progressbar">50% Complete</div>
-                        </div>
-                      </div>
-                      <div class="text-end ms-3">
-                        <div class="display-6">2/4</div>
-                        <div class="text-muted small">This Week</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <button class="btn btn-primary w-100 mt-3" data-bs-toggle="modal" data-bs-target="#goalModal">
-              Create New Goal
-            </button>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Medications & Supplements Section (Initially Hidden) -->
-      <div id="meds-content" class="content-section" style="display: none;">
-        <div class="card mb-4">
-          <div class="card-body">
-            <h4 class="mb-4">Medications & Supplements</h4>
-            <p class="text-muted mb-4">Track your medications and supplements intake and set reminders.</p>
-            
-            <!-- Adherence Summary -->
-            <div class="row mb-4">
-              <div class="col-md-6 mb-3">
-                <div class="card h-100">
-                  <div class="card-body">
-                    <h5 class="card-title">Today's Schedule</h5>
-                    <div class="d-flex justify-content-between mt-3">
-                      <div class="text-center">
-                        <div class="display-6">3/5</div>
-                        <div class="text-muted small">Taken</div>
-                      </div>
-                      <div class="text-center">
-                        <div class="display-6">2</div>
-                        <div class="text-muted small">Remaining</div>
-                      </div>
-                    </div>
-                    <div class="progress mt-3">
-                      <div class="progress-bar bg-success" style="width: 60%" role="progressbar">60% Complete</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-md-6 mb-3">
-                <div class="card h-100">
-                  <div class="card-body">
-                    <h5 class="card-title">Adherence Rate</h5>
-                    <div class="text-center mt-3">
-                      <div class="display-1 text-primary mb-2">
-                        <i class="bi bi-capsule"></i>
-                      </div>
-                      <div class="display-6">92%</div>
-                      <div class="text-muted">Last 30 Days</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Today's Medications & Supplements -->
-            <div class="mb-4">
-              <h5 class="mb-3">Today's Schedule</h5>
-              <div id="no-meds-today" style="display: none;" class="alert alert-info">
-                <i class="bi bi-info-circle me-2"></i>
-                No medications or supplements scheduled for today.
-              </div>
-              
-              <div id="today-meds-list">
-                <!-- Med Item -->
-                <div class="card mb-3">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                      <div>
-                        <h5 class="card-title mb-1">Vitamin D</h5>
-                        <div class="text-muted small">1000 IU • Once daily • Morning</div>
-                      </div>
-                      <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="vitamin-d-toggle" checked>
-                        <label class="form-check-label" for="vitamin-d-toggle">Taken</label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Med Item -->
-                <div class="card mb-3">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                      <div>
-                        <h5 class="card-title mb-1">Multivitamin</h5>
-                        <div class="text-muted small">1 tablet • Once daily • With food</div>
-                      </div>
-                      <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="multivitamin-toggle" checked>
-                        <label class="form-check-label" for="multivitamin-toggle">Taken</label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Med Item -->
-                <div class="card mb-3">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                      <div>
-                        <h5 class="card-title mb-1">Omega-3</h5>
-                        <div class="text-muted small">1000mg • Once daily • With meal</div>
-                      </div>
-                      <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="omega-toggle" checked>
-                        <label class="form-check-label" for="omega-toggle">Taken</label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Med Item -->
-                <div class="card mb-3">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                      <div>
-                        <h5 class="card-title mb-1">Probiotics</h5>
-                        <div class="text-muted small">1 capsule • Once daily • Morning</div>
-                      </div>
-                      <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="probiotic-toggle">
-                        <label class="form-check-label" for="probiotic-toggle">Taken</label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Med Item -->
-                <div class="card mb-3">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                      <div>
-                        <h5 class="card-title mb-1">Magnesium</h5>
-                        <div class="text-muted small">250mg • Once daily • Evening</div>
-                      </div>
-                      <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="magnesium-toggle">
-                        <label class="form-check-label" for="magnesium-toggle">Taken</label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <!-- All Medications & Supplements -->
-            <div>
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">All Medications & Supplements</h5>
-                <div class="dropdown">
-                  <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                    Filter
-                  </button>
-                  <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#">All</a></li>
-                    <li><a class="dropdown-item" href="#">Medications</a></li>
-                    <li><a class="dropdown-item" href="#">Vitamins</a></li>
-                    <li><a class="dropdown-item" href="#">Supplements</a></li>
-                  </ul>
-                </div>
-              </div>
-              
-              <div class="table-responsive">
-                <table class="table table-hover">
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Dosage</th>
-                      <th>Frequency</th>
-                      <th>Time</th>
-                      <th>Type</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>Vitamin D</td>
-                      <td>1000 IU</td>
-                      <td>Daily</td>
-                      <td>Morning</td>
-                      <td><span class="badge bg-primary">Vitamin</span></td>
-                    </tr>
-                    <tr>
-                      <td>Multivitamin</td>
-                      <td>1 tablet</td>
-                      <td>Daily</td>
-                      <td>Morning</td>
-                      <td><span class="badge bg-primary">Vitamin</span></td>
-                    </tr>
-                    <tr>
-                      <td>Omega-3</td>
-                      <td>1000mg</td>
-                      <td>Daily</td>
-                      <td>Lunch</td>
-                      <td><span class="badge bg-success">Supplement</span></td>
-                    </tr>
-                    <tr>
-                      <td>Probiotics</td>
-                      <td>1 capsule</td>
-                      <td>Daily</td>
-                      <td>Morning</td>
-                      <td><span class="badge bg-success">Supplement</span></td>
-                    </tr>
-                    <tr>
-                      <td>Magnesium</td>
-                      <td>250mg</td>
-                      <td>Daily</td>
-                      <td>Evening</td>
-                      <td><span class="badge bg-success">Supplement</span></td>
-                    </tr>
-                    <tr>
-                      <td>Zinc</td>
-                      <td>15mg</td>
-                      <td>Daily</td>
-                      <td>Morning</td>
-                      <td><span class="badge bg-success">Supplement</span></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            
-            <button class="btn btn-primary w-100 mt-3" data-bs-toggle="modal" data-bs-target="#medsModal">
-              Add Medication or Supplement
-            </button>
-          </div>
-        </div>
-      </div>
-    </main>
-    
-    <!-- Bottom Navigation Tabs -->
-    <nav class="bottom-nav fixed-bottom bg-white">
-      <div class="container">
-        <!-- Main Navigation -->
-        <div class="row text-center mb-1 nav-main">
-          <div class="col">
-            <a href="#" class="nav-link active" id="dashboard-tab">
-              <i class="bi bi-speedometer2"></i>
-              <span>Dashboard</span>
-            </a>
-          </div>
-          <div class="col">
-            <a href="#" class="nav-link" id="activity-tab">
-              <i class="bi bi-activity"></i>
-              <span>Activity</span>
-            </a>
-          </div>
-          <div class="col">
-            <a href="#" class="nav-link" id="nutrition-tab">
-              <i class="bi bi-egg-fried"></i>
-              <span>Nutrition</span>
-            </a>
-          </div>
-          <div class="col">
-            <a href="#" class="nav-link" id="habits-tab">
-              <i class="bi bi-check2-square"></i>
-              <span>Habits</span>
-            </a>
-          </div>
-          <div class="col">
-            <a href="#" class="nav-link" id="more-tab">
-              <i class="bi bi-three-dots"></i>
-              <span>More</span>
-            </a>
-          </div>
-        </div>
-        
-        <!-- Extended Navigation (initially hidden) -->
-        <div class="row text-center nav-extended" style="display: none;">
-          <div class="col">
-            <a href="#" class="nav-link" id="sleep-tab">
-              <i class="bi bi-moon"></i>
-              <span>Sleep</span>
-            </a>
-          </div>
-          <div class="col">
-            <a href="#" class="nav-link" id="meditation-tab">
-              <i class="bi bi-peace"></i>
-              <span>Meditation</span>
-            </a>
-          </div>
-          <div class="col">
-            <a href="#" class="nav-link" id="goals-tab">
-              <i class="bi bi-flag"></i>
-              <span>Goals</span>
-            </a>
-          </div>
-          <div class="col">
-            <a href="#" class="nav-link" id="meds-tab">
-              <i class="bi bi-capsule"></i>
-              <span>Meds & Supps</span>
-            </a>
-          </div>
-          <div class="col">
-            <a href="#" class="nav-link" id="profile-tab" data-bs-toggle="modal" data-bs-target="#profileModal">
-              <i class="bi bi-person"></i>
-              <span>Profile</span>
-            </a>
-          </div>
-        </div>
-      </div>
-    </nav>
-    
-    <!-- About Modal -->
-    <div class="modal fade" id="aboutModal" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">About Fitness Tracker</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <p><strong>Platform:</strong> Web</p>
-            <p><strong>Version:</strong> 1.0</p>
-            <p><strong>Created by:</strong> Fitness Team</p>
-            <p>This application helps you track your fitness activities, nutrition, and health metrics.</p>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Log Activity Modal -->
-    <div class="modal fade" id="activityModal" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Log Activity</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <form id="activity-form">
-              <div class="mb-3">
-                <label for="activity-name" class="form-label">Activity Name</label>
-                <input type="text" class="form-control" id="activity-name" placeholder="e.g., Morning Run">
-              </div>
-              <div class="mb-3">
-                <label for="activity-calories" class="form-label">Calories Burned</label>
-                <input type="number" class="form-control" id="activity-calories" placeholder="e.g., 200">
-              </div>
-              <div class="mb-3">
-                <label for="activity-duration" class="form-label">Duration (minutes)</label>
-                <input type="number" class="form-control" id="activity-duration" placeholder="e.g., 30">
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Activity Type</label>
-                <div class="form-check">
-                  <input class="form-check-input" type="radio" name="activity-type" id="type-running" value="running" checked>
-                  <label class="form-check-label" for="type-running">Running</label>
-                </div>
-                <div class="form-check">
-                  <input class="form-check-input" type="radio" name="activity-type" id="type-cycling" value="cycling">
-                  <label class="form-check-label" for="type-cycling">Cycling</label>
-                </div>
-                <div class="form-check">
-                  <input class="form-check-input" type="radio" name="activity-type" id="type-weights" value="weights">
-                  <label class="form-check-label" for="type-weights">Weight Training</label>
-                </div>
-                <div class="form-check">
-                  <input class="form-check-input" type="radio" name="activity-type" id="type-swimming" value="swimming">
-                  <label class="form-check-label" for="type-swimming">Swimming</label>
-                </div>
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" id="save-activity">Save Activity</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Add Steps Modal -->
-    <div class="modal fade" id="stepsModal" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Add Steps</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <form id="steps-form">
-              <div class="mb-3">
-                <label for="steps-input" class="form-label">Number of Steps</label>
-                <input type="number" class="form-control" id="steps-input" placeholder="e.g., 2500">
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" id="save-steps">Save Steps</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Workout modals are now defined at the end of the document -->
-    
-    <!-- Meal Modal -->
-    <div class="modal fade" id="mealModal" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Log a Meal</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <form id="meal-form">
-              <div class="mb-3">
-                <label for="meal-name" class="form-label">Meal Name</label>
-                <input type="text" class="form-control" id="meal-name" placeholder="e.g., Breakfast, Lunch, Dinner, Snack">
-              </div>
-              <div class="mb-3">
-                <label for="meal-description" class="form-label">Description</label>
-                <input type="text" class="form-control" id="meal-description" placeholder="e.g., Grilled Chicken Salad">
-              </div>
-              <div class="mb-3">
-                <label for="meal-calories" class="form-label">Calories</label>
-                <input type="number" class="form-control" id="meal-calories" placeholder="e.g., 500">
-              </div>
-              <div class="row">
-                <div class="col-md-4 mb-3">
-                  <label for="meal-protein" class="form-label">Protein (g)</label>
-                  <input type="number" class="form-control" id="meal-protein" placeholder="e.g., 30">
-                </div>
-                <div class="col-md-4 mb-3">
-                  <label for="meal-carbs" class="form-label">Carbs (g)</label>
-                  <input type="number" class="form-control" id="meal-carbs" placeholder="e.g., 50">
-                </div>
-                <div class="col-md-4 mb-3">
-                  <label for="meal-fat" class="form-label">Fat (g)</label>
-                  <input type="number" class="form-control" id="meal-fat" placeholder="e.g., 15">
-                </div>
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" id="save-meal">Save Meal</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Bad Habit Modal -->
-    <div class="modal fade" id="habitModal" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Track a Bad Habit to Quit</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <form id="habit-form">
-              <div class="mb-3">
-                <label for="habit-name" class="form-label">Bad Habit Name</label>
-                <input type="text" class="form-control" id="habit-name" placeholder="e.g., Social Media Scrolling">
-              </div>
-              <div class="mb-3">
-                <label for="habit-description" class="form-label">Why You Want to Quit</label>
-                <textarea class="form-control" id="habit-description" rows="2" placeholder="Describe why you want to break this habit..."></textarea>
-              </div>
-              <div class="mb-3">
-                <label for="habit-frequency" class="form-label">When Do You Usually Do It?</label>
-                <select class="form-select" id="habit-frequency">
-                  <option value="daily" selected>Multiple times per day</option>
-                  <option value="daily-once">Once per day</option>
-                  <option value="weekdays">Only on weekdays</option>
-                  <option value="weekends">Only on weekends</option>
-                  <option value="weekly">A few times per week</option>
-                </select>
-              </div>
-              <div class="mb-3">
-                <label for="habit-reminder" class="form-label">Set Reminder to Check In</label>
-                <input type="time" class="form-control" id="habit-reminder">
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Habit Category</label>
-                <div class="d-flex flex-wrap">
-                  <div class="form-check me-3 mb-2">
-                    <input class="form-check-input" type="radio" name="habit-type" id="type-screen" value="screen" checked>
-                    <label class="form-check-label" for="type-screen">Screen Time</label>
-                  </div>
-                  <div class="form-check me-3 mb-2">
-                    <input class="form-check-input" type="radio" name="habit-type" id="type-food" value="food">
-                    <label class="form-check-label" for="type-food">Food Related</label>
-                  </div>
-                  <div class="form-check me-3 mb-2">
-                    <input class="form-check-input" type="radio" name="habit-type" id="type-productivity" value="productivity">
-                    <label class="form-check-label" for="type-productivity">Productivity</label>
-                  </div>
-                  <div class="form-check me-3 mb-2">
-                    <input class="form-check-input" type="radio" name="habit-type" id="type-health" value="health">
-                    <label class="form-check-label" for="type-health">Health</label>
-                  </div>
-                  <div class="form-check mb-2">
-                    <input class="form-check-input" type="radio" name="habit-type" id="type-other" value="other">
-                    <label class="form-check-label" for="type-other">Other</label>
-                  </div>
-                </div>
-              </div>
-              <div class="mb-3">
-                <label for="habit-trigger" class="form-label">What Triggers This Habit?</label>
-                <input type="text" class="form-control" id="habit-trigger" placeholder="e.g., Boredom, Stress, Tiredness">
-              </div>
-              <div class="mb-3">
-                <label for="habit-alternative" class="form-label">Healthier Alternative</label>
-                <input type="text" class="form-control" id="habit-alternative" placeholder="e.g., Reading, Walking, Meditating">
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" id="save-habit">Start Tracking</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Sleep Logging Modal -->
-    <div class="modal fade" id="sleepModal" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Log Sleep</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <form id="sleep-form">
-              <div class="mb-3">
-                <label for="sleep-date" class="form-label">Date</label>
-                <input type="date" class="form-control" id="sleep-date">
-              </div>
-              <div class="row mb-3">
-                <div class="col-6">
-                  <label for="sleep-start" class="form-label">Bed Time</label>
-                  <input type="time" class="form-control" id="sleep-start">
-                </div>
-                <div class="col-6">
-                  <label for="sleep-end" class="form-label">Wake Time</label>
-                  <input type="time" class="form-control" id="sleep-end">
-                </div>
-              </div>
-              <div class="mb-3">
-                <label for="sleep-hours" class="form-label">Total Hours (auto-calculated)</label>
-                <input type="number" class="form-control" id="sleep-hours" readonly>
-              </div>
-              <div class="mb-3">
-                <label for="sleep-quality" class="form-label">Sleep Quality</label>
-                <select class="form-select" id="sleep-quality">
-                  <option value="poor">Poor</option>
-                  <option value="fair">Fair</option>
-                  <option value="good" selected>Good</option>
-                  <option value="excellent">Excellent</option>
-                </select>
-              </div>
-              <div class="mb-3">
-                <label for="sleep-factors" class="form-label">Factors That Affected Sleep</label>
-                <div class="d-flex flex-wrap">
-                  <div class="form-check me-3 mb-2">
-                    <input class="form-check-input" type="checkbox" id="factor-stress">
-                    <label class="form-check-label" for="factor-stress">Stress</label>
-                  </div>
-                  <div class="form-check me-3 mb-2">
-                    <input class="form-check-input" type="checkbox" id="factor-caffeine">
-                    <label class="form-check-label" for="factor-caffeine">Caffeine</label>
-                  </div>
-                  <div class="form-check me-3 mb-2">
-                    <input class="form-check-input" type="checkbox" id="factor-alcohol">
-                    <label class="form-check-label" for="factor-alcohol">Alcohol</label>
-                  </div>
-                  <div class="form-check me-3 mb-2">
-                    <input class="form-check-input" type="checkbox" id="factor-screen">
-                    <label class="form-check-label" for="factor-screen">Screen Time</label>
-                  </div>
-                  <div class="form-check me-3 mb-2">
-                    <input class="form-check-input" type="checkbox" id="factor-exercise">
-                    <label class="form-check-label" for="factor-exercise">Late Exercise</label>
-                  </div>
-                  <div class="form-check mb-2">
-                    <input class="form-check-input" type="checkbox" id="factor-temperature">
-                    <label class="form-check-label" for="factor-temperature">Room Temperature</label>
-                  </div>
-                </div>
-              </div>
-              <div class="mb-3">
-                <label for="sleep-notes" class="form-label">Notes</label>
-                <textarea class="form-control" id="sleep-notes" rows="2" placeholder="Any additional notes about your sleep..."></textarea>
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" id="save-sleep">Save Sleep Log</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Meditation Modal -->
-    <div class="modal fade" id="meditationModal" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Log Meditation</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <form id="meditation-form">
-              <div class="mb-3">
-                <label for="meditation-date" class="form-label">Date</label>
-                <input type="date" class="form-control" id="meditation-date">
-              </div>
-              <div class="mb-3">
-                <label for="meditation-type" class="form-label">Meditation Type</label>
-                <select class="form-select" id="meditation-type">
-                  <option value="mindfulness" selected>Mindfulness</option>
-                  <option value="breathing">Breathing</option>
-                  <option value="body-scan">Body Scan</option>
-                  <option value="loving-kindness">Loving Kindness</option>
-                  <option value="stress-relief">Stress Relief</option>
-                  <option value="sleep-prep">Sleep Preparation</option>
-                  <option value="guided">Guided Meditation</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-              <div class="mb-3">
-                <label for="meditation-duration" class="form-label">Duration (minutes)</label>
-                <input type="number" class="form-control" id="meditation-duration" min="1" value="10">
-              </div>
-              <div class="mb-3">
-                <label for="meditation-notes" class="form-label">Notes</label>
-                <textarea class="form-control" id="meditation-notes" rows="2" placeholder="How did the session go? How do you feel?"></textarea>
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" id="save-meditation">Save Session</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Goal Creation Modal -->
-    <div class="modal fade" id="goalModal" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Create New Goal</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <form id="goal-form">
-              <div class="mb-3">
-                <label for="goal-name" class="form-label">Goal Name</label>
-                <input type="text" class="form-control" id="goal-name" placeholder="e.g., 10,000 Steps Daily">
-              </div>
-              <div class="mb-3">
-                <label for="goal-type" class="form-label">Goal Type</label>
-                <select class="form-select" id="goal-type">
-                  <option value="activity" selected>Activity</option>
-                  <option value="nutrition">Nutrition</option>
-                  <option value="weight">Weight</option>
-                  <option value="habit">Habit</option>
-                  <option value="workout">Workout</option>
-                  <option value="sleep">Sleep</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-              <div class="mb-3">
-                <label for="goal-target" class="form-label">Target Value</label>
-                <input type="text" class="form-control" id="goal-target" placeholder="e.g., 10000">
-              </div>
-              <div class="mb-3">
-                <label for="goal-unit" class="form-label">Unit</label>
-                <input type="text" class="form-control" id="goal-unit" placeholder="e.g., steps, kg, minutes">
-              </div>
-              <div class="mb-3">
-                <label for="goal-timeframe" class="form-label">Timeframe</label>
-                <select class="form-select" id="goal-timeframe">
-                  <option value="daily" selected>Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="custom">Custom End Date</option>
-                  <option value="ongoing">Ongoing</option>
-                </select>
-              </div>
-              <div class="mb-3" id="goal-enddate-group" style="display: none;">
-                <label for="goal-enddate" class="form-label">End Date</label>
-                <input type="date" class="form-control" id="goal-enddate">
-              </div>
-              <div class="mb-3">
-                <label for="goal-notes" class="form-label">Notes</label>
-                <textarea class="form-control" id="goal-notes" rows="2" placeholder="Additional details about your goal..."></textarea>
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" id="save-goal">Save Goal</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Meds & Supplements Modal -->
-    <div class="modal fade" id="medsModal" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Add Medication or Supplement</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <form id="meds-form">
-              <div class="mb-3">
-                <label for="med-name" class="form-label">Name</label>
-                <input type="text" class="form-control" id="med-name" placeholder="e.g., Vitamin D">
-              </div>
-              <div class="mb-3">
-                <label for="med-type" class="form-label">Type</label>
-                <select class="form-select" id="med-type">
-                  <option value="medication">Medication</option>
-                  <option value="vitamin" selected>Vitamin</option>
-                  <option value="supplement">Supplement</option>
-                  <option value="herb">Herbal</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-              <div class="mb-3">
-                <label for="med-dosage" class="form-label">Dosage</label>
-                <input type="text" class="form-control" id="med-dosage" placeholder="e.g., 1000 IU, 1 tablet">
-              </div>
-              <div class="mb-3">
-                <label for="med-frequency" class="form-label">Frequency</label>
-                <select class="form-select" id="med-frequency">
-                  <option value="daily" selected>Daily</option>
-                  <option value="twice-daily">Twice Daily</option>
-                  <option value="three-times-daily">Three Times Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="as-needed">As Needed</option>
-                  <option value="custom">Custom</option>
-                </select>
-              </div>
-              <div class="mb-3">
-                <label for="med-time" class="form-label">Time of Day</label>
-                <select class="form-select" id="med-time">
-                  <option value="morning" selected>Morning</option>
-                  <option value="afternoon">Afternoon</option>
-                  <option value="evening">Evening</option>
-                  <option value="before-food">Before Food</option>
-                  <option value="with-food">With Food</option>
-                  <option value="after-food">After Food</option>
-                  <option value="bedtime">Bedtime</option>
-                </select>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Set Reminder</label>
-                <div class="form-check form-switch">
-                  <input class="form-check-input" type="checkbox" id="med-reminder" checked>
-                  <label class="form-check-label" for="med-reminder">Enable Reminders</label>
-                </div>
-              </div>
-              <div class="mb-3">
-                <label for="med-notes" class="form-label">Notes</label>
-                <textarea class="form-control" id="med-notes" rows="2" placeholder="Additional notes..."></textarea>
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" id="save-med">Save</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- User Profile Modal -->
-    <div class="modal fade" id="profileModal" tabindex="-1">
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">User Profile</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <div class="row">
-              <div class="col-md-4 mb-4 mb-md-0">
-                <div class="text-center">
-                  <div class="mb-3">
-                    <div style="width: 120px; height: 120px; background-color: #e9ecef; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;">
-                      <i class="bi bi-person" style="font-size: 60px; color: #6c757d;"></i>
-                    </div>
-                  </div>
-                  <h5 class="mb-1">John Doe</h5>
-                  <p class="text-muted">Member since March 2023</p>
-                  <div class="d-grid gap-2">
-                    <button class="btn btn-sm btn-outline-primary" disabled>Change Profile Photo</button>
-                  </div>
-                </div>
-              </div>
-              <div class="col-md-8">
-                <ul class="nav nav-tabs" id="profileTabs" role="tablist">
-                  <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="personal-tab" data-bs-toggle="tab" data-bs-target="#personal-tab-pane" type="button" role="tab">Personal Info</button>
-                  </li>
-                  <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="goals-tab" data-bs-toggle="tab" data-bs-target="#goals-tab-pane" type="button" role="tab">Goals</button>
-                  </li>
-                  <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="preferences-tab" data-bs-toggle="tab" data-bs-target="#preferences-tab-pane" type="button" role="tab">Preferences</button>
-                  </li>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#" data-section="dashboard">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="activities">Activities</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="nutrition">Nutrition</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="sleep">Sleep</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="habits">Habits</a>
+                    </li>
                 </ul>
-                <div class="tab-content p-3 border border-top-0 rounded-bottom" id="profileTabContent">
-                  <div class="tab-pane fade show active" id="personal-tab-pane" role="tabpanel" tabindex="0">
-                    <form id="personal-info-form">
-                      <div class="row">
-                        <div class="col-md-6 mb-3">
-                          <label for="user-first-name" class="form-label">First Name</label>
-                          <input type="text" class="form-control" id="user-first-name" value="John">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                          <label for="user-last-name" class="form-label">Last Name</label>
-                          <input type="text" class="form-control" id="user-last-name" value="Doe">
-                        </div>
-                      </div>
-                      <div class="mb-3">
-                        <label for="user-email" class="form-label">Email</label>
-                        <input type="email" class="form-control" id="user-email" value="john.doe@example.com">
-                      </div>
-                      <div class="row">
-                        <div class="col-md-6 mb-3">
-                          <label for="user-height" class="form-label">Height (cm)</label>
-                          <input type="number" class="form-control" id="user-height" value="178">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                          <label for="user-weight" class="form-label">Weight (kg)</label>
-                          <input type="number" class="form-control" id="user-weight" value="75">
-                        </div>
-                      </div>
-                      <div class="row">
-                        <div class="col-md-6 mb-3">
-                          <label for="user-gender" class="form-label">Gender</label>
-                          <select class="form-select" id="user-gender">
-                            <option value="male" selected>Male</option>
-                            <option value="female">Female</option>
-                            <option value="other">Other</option>
-                            <option value="prefer-not-to-say">Prefer not to say</option>
-                          </select>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                          <label for="user-birthdate" class="form-label">Date of Birth</label>
-                          <input type="date" class="form-control" id="user-birthdate" value="1990-01-01">
-                        </div>
-                      </div>
-                    </form>
-                  </div>
-                  <div class="tab-pane fade" id="goals-tab-pane" role="tabpanel" tabindex="0">
-                    <form id="goals-form">
-                      <div class="mb-3">
-                        <label for="goal-type" class="form-label">Primary Goal</label>
-                        <select class="form-select" id="goal-type">
-                          <option value="lose-weight" selected>Lose Weight</option>
-                          <option value="maintain-weight">Maintain Weight</option>
-                          <option value="gain-weight">Gain Weight/Muscle</option>
-                          <option value="increase-endurance">Increase Endurance</option>
-                          <option value="increase-strength">Increase Strength</option>
-                        </select>
-                      </div>
-                      <div class="mb-3">
-                        <label for="activity-level" class="form-label">Activity Level</label>
-                        <select class="form-select" id="activity-level">
-                          <option value="1">Sedentary (little or no exercise)</option>
-                          <option value="2" selected>Lightly active (light exercise 1-3 days/week)</option>
-                          <option value="3">Moderately active (moderate exercise 3-5 days/week)</option>
-                          <option value="4">Very active (hard exercise 6-7 days/week)</option>
-                          <option value="5">Extra active (very hard exercise, physical job or training twice a day)</option>
-                        </select>
-                      </div>
-                      <div class="mb-4">
-                        <label class="form-label">Daily Goals</label>
-                        <div class="row mb-2">
-                          <div class="col-md-6">
-                            <label for="goal-calories" class="form-label">Calories</label>
-                            <input type="number" class="form-control" id="goal-calories" value="2000">
-                          </div>
-                          <div class="col-md-6">
-                            <label for="goal-steps" class="form-label">Steps</label>
-                            <input type="number" class="form-control" id="goal-steps" value="10000">
-                          </div>
-                        </div>
-                        <div class="row">
-                          <div class="col-md-4">
-                            <label for="goal-protein" class="form-label">Protein (g)</label>
-                            <input type="number" class="form-control" id="goal-protein" value="140">
-                          </div>
-                          <div class="col-md-4">
-                            <label for="goal-carbs" class="form-label">Carbs (g)</label>
-                            <input type="number" class="form-control" id="goal-carbs" value="200">
-                          </div>
-                          <div class="col-md-4">
-                            <label for="goal-fat" class="form-label">Fat (g)</label>
-                            <input type="number" class="form-control" id="goal-fat" value="65">
-                          </div>
-                        </div>
-                      </div>
-                    </form>
-                  </div>
-                  <div class="tab-pane fade" id="preferences-tab-pane" role="tabpanel" tabindex="0">
-                    <form id="preferences-form">
-                      <div class="mb-3">
-                        <label class="form-label">Units of Measurement</label>
-                        <div class="form-check">
-                          <input class="form-check-input" type="radio" name="units" id="metric-units" value="metric" checked>
-                          <label class="form-check-label" for="metric-units">
-                            Metric (kg, cm, km)
-                          </label>
-                        </div>
-                        <div class="form-check">
-                          <input class="form-check-input" type="radio" name="units" id="imperial-units" value="imperial">
-                          <label class="form-check-label" for="imperial-units">
-                            Imperial (lb, ft, miles)
-                          </label>
-                        </div>
-                      </div>
-                      <div class="mb-3">
-                        <label class="form-label">Notifications</label>
-                        <div class="form-check form-switch mb-2">
-                          <input class="form-check-input" type="checkbox" role="switch" id="reminder-notifications" checked>
-                          <label class="form-check-label" for="reminder-notifications">Daily Reminders</label>
-                        </div>
-                        <div class="form-check form-switch mb-2">
-                          <input class="form-check-input" type="checkbox" role="switch" id="goal-notifications" checked>
-                          <label class="form-check-label" for="goal-notifications">Goal Achievements</label>
-                        </div>
-                        <div class="form-check form-switch">
-                          <input class="form-check-input" type="checkbox" role="switch" id="weekly-notifications" checked>
-                          <label class="form-check-label" for="weekly-notifications">Weekly Reports</label>
-                        </div>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" id="save-profile">Save Changes</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Bootstrap Icons -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-  
-  <!-- Bootstrap JS and dependencies -->
-  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
-  
-  <!-- Chart.js for data visualization -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  
-  <!-- Application JavaScript -->
-  <script src="public/js/activity.js"></script>
-  <script src="public/js/badHabit.js"></script>
-  <script src="public/js/nutrition.js"></script>
-  <script src="public/js/sleep.js"></script>
-  <script src="public/js/healthConnections.js"></script>
-  <script src="public/js/healthSnapshot.js"></script>
-  <script src="public/js/user.js"></script>
-  <script src="public/js/workout.js"></script>
-  <script src="public/js/workout-ui.js"></script>
-  <script src="public/js/app.js"></script>
-  <script src="public/js/dark-mode.js"></script>
-  
-  <!-- Dark Mode Toggle Script -->
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      // Check for saved theme preference or use the system preference
-      const savedTheme = localStorage.getItem('theme');
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const defaultDark = savedTheme === 'dark' || (savedTheme === null && prefersDark);
-      
-      // Set initial theme
-      if (defaultDark) {
-        document.documentElement.setAttribute('data-theme', 'dark');
-        document.getElementById('dark-mode-toggle').innerHTML = '<i class="bi bi-sun"></i> Light Mode';
-      }
-      
-      // Toggle dark/light mode
-      document.getElementById('dark-mode-toggle').addEventListener('click', function() {
-        const currentTheme = document.documentElement.getAttribute('data-theme');
-        let targetTheme, buttonText;
-        
-        if (currentTheme === 'dark') {
-          targetTheme = 'light';
-          buttonText = '<i class="bi bi-moon-stars"></i> Dark Mode';
-        } else {
-          targetTheme = 'dark';
-          buttonText = '<i class="bi bi-sun"></i> Light Mode';
-        }
-        
-        // Apply new theme
-        document.documentElement.setAttribute('data-theme', targetTheme);
-        localStorage.setItem('theme', targetTheme);
-        
-        // Update button text
-        document.getElementById('dark-mode-toggle').innerHTML = buttonText;
-      });
-    });
-  </script>
-  
-  <script>
-    // Initialize the progress chart with sample data
-    function initializeProgressChart() {
-      const ctx = document.getElementById('progress-chart');
-      
-      // Sample data for the chart (7 days)
-      const labels = [];
-      const calorieData = [];
-      const stepsData = [];
-      
-      // Generate dates for the last 7 days
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        labels.push(date.toLocaleDateString('en-US', { weekday: 'short' }));
-        
-        // Random data for demonstration
-        calorieData.push(Math.floor(Math.random() * 500) + 100);
-        stepsData.push(Math.floor(Math.random() * 5000) + 2000);
-      }
-      
-      // Create the chart
-      const progressChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: [
-            {
-              label: 'Calories Burned',
-              data: calorieData,
-              borderColor: '#e74c3c',
-              backgroundColor: 'rgba(231, 76, 60, 0.1)',
-              borderWidth: 2,
-              fill: true,
-              tension: 0.3,
-              yAxisID: 'y'
-            },
-            {
-              label: 'Steps',
-              data: stepsData,
-              borderColor: '#3498db',
-              backgroundColor: 'rgba(52, 152, 219, 0.1)',
-              borderWidth: 2,
-              fill: true,
-              tension: 0.3,
-              yAxisID: 'y1'
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          interaction: {
-            mode: 'index',
-            intersect: false,
-          },
-          scales: {
-            y: {
-              type: 'linear',
-              display: true,
-              position: 'left',
-              title: {
-                display: true,
-                text: 'Calories'
-              }
-            },
-            y1: {
-              type: 'linear',
-              display: true,
-              position: 'right',
-              title: {
-                display: true,
-                text: 'Steps'
-              },
-              grid: {
-                drawOnChartArea: false
-              }
-            }
-          }
-        }
-      });
-      
-      // Set up event listeners for the chart view toggle
-      document.getElementById('weekly-view').addEventListener('click', function() {
-        this.classList.add('active');
-        document.getElementById('monthly-view').classList.remove('active');
-        // In a real app, we would fetch weekly data and update the chart
-      });
-      
-      document.getElementById('monthly-view').addEventListener('click', function() {
-        this.classList.add('active');
-        document.getElementById('weekly-view').classList.remove('active');
-        // In a real app, we would fetch monthly data and update the chart
-      });
-    }
-    
-    document.addEventListener('DOMContentLoaded', function() {
-      // Initialize the progress chart with sample data
-      try {
-        initializeProgressChart();
-      } catch (error) {
-        console.error('Error initializing chart:', error);
-      }
-      
-      // Set up tab navigation for both top bar and bottom navigation
-      setupTabNavigation();
-      
-      // Initialize tooltips for habit tracker
-      var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-      tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl)
-      });
-      
-      // Add a global click handler to help debug
-      document.addEventListener('click', function(event) {
-        const extendedNav = document.querySelector('.nav-extended');
-        if (extendedNav && extendedNav.style.display === 'flex') {
-          // Only check clicks outside the extended navigation and more tab
-          if (!event.target.closest('.nav-extended') && !event.target.closest('#more-tab')) {
-            console.log('Click outside extended nav detected');
-          }
-        }
-      });
-      
-      // Initialize UI with placeholder data until the real data loads
-      const placeholderData = {
-        stepsCount: 5000,
-        caloriesBurned: 400,
-        activitiesLogged: 2,
-        activities: [
-          {
-            name: 'Morning Run',
-            calories: 250,
-            duration: 30,
-            type: 'running',
-            date: new Date().toISOString()
-          },
-          {
-            name: 'Weight Training',
-            calories: 150,
-            duration: 45,
-            type: 'weights',
-            date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-          }
-        ]
-      };
-      
-      // Update UI with placeholder data
-      updateUI(placeholderData);
-      
-      // Try to fetch tracking data from the server
-      fetch('/api/tracker')
-        .then(response => response.json())
-        .then(data => {
-          // Initialize UI with real data
-          updateUI(data);
-        })
-        .catch(error => {
-          console.error('Error fetching tracker data:', error);
-          // Keep showing placeholder data
-        });
-      
-      // Set up tab navigation
-      setupTabNavigation();
-      
-      // Setup event listeners
-      setupEventListeners();
-    });
-    
-    // Update UI with tracker data
-    function updateUI(data) {
-      // Update stats
-      document.getElementById('steps-count').textContent = (data.stepsCount || 0).toLocaleString();
-      document.getElementById('calories-count').textContent = (data.caloriesBurned || 0).toLocaleString();
-      document.getElementById('activities-count').textContent = (data.activitiesLogged || 0).toLocaleString();
-      
-      // Update activities list
-      const activitiesList = document.getElementById('activities-list');
-      activitiesList.innerHTML = '';
-      
-      if (!data.activities || data.activities.length === 0) {
-        document.getElementById('no-activities').style.display = 'block';
-      } else {
-        document.getElementById('no-activities').style.display = 'none';
-        
-        data.activities.forEach(activity => {
-          const activityElement = createActivityElement(activity);
-          activitiesList.appendChild(activityElement);
-        });
-      }
-    }
-    
-    // Create activity element
-    function createActivityElement(activity) {
-      const activityElement = document.createElement('div');
-      activityElement.className = 'activity-item d-flex align-items-center';
-      
-      // Activity icon and color based on type
-      let iconClass = 'bi-lightning';
-      let iconColor = '#3498db';
-      
-      switch (activity.type) {
-        case 'running':
-          iconClass = 'bi-lightning';
-          iconColor = '#3498db';
-          break;
-        case 'cycling':
-          iconClass = 'bi-bicycle';
-          iconColor = '#e74c3c';
-          break;
-        case 'weights':
-          iconClass = 'bi-trophy';
-          iconColor = '#9b59b6';
-          break;
-        case 'swimming':
-          iconClass = 'bi-water';
-          iconColor = '#2ecc71';
-          break;
-      }
-      
-      activityElement.innerHTML = `
-        <div class="activity-icon" style="background-color: ${iconColor}20;">
-          <i class="${iconClass}" style="color: ${iconColor};"></i>
-        </div>
-        <div>
-          <div class="fw-bold">${activity.name}</div>
-          <div class="text-muted small">${activity.calories} calories · ${activity.duration} min</div>
-          <div class="activity-time">${formatDate(activity.date)}</div>
-        </div>
-      `;
-      
-      return activityElement;
-    }
-    
-    // Create workout plan element
-    function createWorkoutElement(workout) {
-      const colElement = document.createElement('div');
-      colElement.className = 'col-md-6 mb-3';
-      
-      // Define difficulty labels and colors
-      const difficultyLabels = ['Easy', 'Light', 'Moderate', 'Challenging', 'Intense'];
-      const difficultyColors = ['success', 'info', 'primary', 'warning', 'danger'];
-      
-      // Get the correct difficulty label and color (1-indexed)
-      const difficultyIndex = Math.min(Math.max(workout.difficulty - 1, 0), 4);
-      
-      colElement.innerHTML = `
-        <div class="card h-100">
-          <div class="card-body">
-            <h5 class="card-title">${workout.name}</h5>
-            <span class="badge bg-${difficultyColors[difficultyIndex]} mb-2">${difficultyLabels[difficultyIndex]}</span>
-            <p class="card-text">${workout.description}</p>
-            <div class="d-flex justify-content-between align-items-center mt-3">
-              <small class="text-muted">${workout.frequency}x per week</small>
-              <button class="btn btn-sm btn-outline-primary">Start Workout</button>
-            </div>
-          </div>
-        </div>
-      `;
-      
-      return colElement;
-    }
-    
-    // Create meal element
-    function createMealElement(meal) {
-      const mealElement = document.createElement('div');
-      mealElement.className = 'card mb-3';
-      
-      mealElement.innerHTML = `
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-start">
-            <div>
-              <h5 class="card-title">${meal.name}</h5>
-              <h6 class="card-subtitle mb-2 text-muted">${meal.description}</h6>
-              <div class="mt-2">
-                <span class="badge bg-primary me-1">${meal.calories} cal</span>
-                <span class="badge bg-success me-1">${meal.protein}g protein</span>
-                <span class="badge bg-info me-1">${meal.carbs}g carbs</span>
-                <span class="badge bg-warning me-1">${meal.fat}g fat</span>
-              </div>
-            </div>
-            <div class="text-end">
-              <small class="text-muted">${formatDate(meal.date)}</small>
-            </div>
-          </div>
-        </div>
-      `;
-      
-      return mealElement;
-    }
-    
-    // Format date helper
-    function formatDate(dateStr) {
-      const date = new Date(dateStr);
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    }
-    
-    // Setup tab navigation
-    function setupTabNavigation() {
-      // Get all tabs (both top navbar and bottom navigation)
-      const dashboardTab = document.getElementById('dashboard-tab');
-      const workoutsTab = document.getElementById('workouts-tab');
-      const nutritionTab = document.getElementById('nutrition-tab');
-      const habitsTab = document.getElementById('habits-tab');
-      
-      // Get all bottom nav tabs
-      const bottomDashboardTab = document.querySelector('.bottom-nav #dashboard-tab');
-      const bottomActivityTab = document.querySelector('.bottom-nav #activity-tab');
-      const bottomNutritionTab = document.querySelector('.bottom-nav #nutrition-tab');
-      const bottomHabitsTab = document.querySelector('.bottom-nav #habits-tab');
-      const bottomMoreTab = document.querySelector('.bottom-nav #more-tab');
-      
-      // Get all extended nav tabs
-      const bottomSleepTab = document.querySelector('.nav-extended #sleep-tab');
-      const bottomMeditationTab = document.querySelector('.nav-extended #meditation-tab');
-      const bottomGoalsTab = document.querySelector('.nav-extended #goals-tab');
-      const bottomMedsTab = document.querySelector('.nav-extended #meds-tab');
-      
-      // Get all content sections
-      const dashboardContent = document.getElementById('dashboard-content');
-      const workoutsContent = document.getElementById('workouts-content');
-      const nutritionContent = document.getElementById('nutrition-content');
-      const habitsContent = document.getElementById('habits-content');
-      const sleepContent = document.getElementById('sleep-content');
-      const meditationContent = document.getElementById('meditation-content');
-      const goalsContent = document.getElementById('goals-content');
-      const medsContent = document.getElementById('meds-content');
-      
-      // Get the extended navigation row
-      const extendedNav = document.querySelector('.nav-extended');
-      console.log("More tab reference:", bottomMoreTab);
-      console.log("Extended nav reference:", extendedNav);
-      
-      // Create tab mapping for easy referencing
-      const contentMap = {
-        'dashboard': dashboardContent,
-        'workouts': workoutsContent,
-        'nutrition': nutritionContent,
-        'habits': habitsContent,
-        'activity': workoutsContent, // activity tab in bottom nav shows workout content
-        'sleep': sleepContent,
-        'meditation': meditationContent,
-        'goals': goalsContent,
-        'meds': medsContent
-      };
-      
-      // Top navbar tabs
-      if (dashboardTab) {
-        dashboardTab.addEventListener('click', function(event) {
-          event.preventDefault();
-          activateTabAndContent('dashboard');
-        });
-      }
-      
-      if (workoutsTab) {
-        workoutsTab.addEventListener('click', function(event) {
-          event.preventDefault();
-          activateTabAndContent('workouts');
-        });
-      }
-      
-      if (nutritionTab) {
-        nutritionTab.addEventListener('click', function(event) {
-          event.preventDefault();
-          activateTabAndContent('nutrition');
-        });
-      }
-      
-      if (habitsTab) {
-        habitsTab.addEventListener('click', function(event) {
-          event.preventDefault();
-          activateTabAndContent('habits');
-        });
-      }
-      
-      // Bottom navigation tabs
-      if (bottomDashboardTab) {
-        bottomDashboardTab.addEventListener('click', function(event) {
-          event.preventDefault();
-          // Hide extended nav when clicking on main tabs
-          if (extendedNav) extendedNav.style.display = 'none';
-          activateTabAndContent('dashboard');
-        });
-      }
-      
-      if (bottomActivityTab) {
-        bottomActivityTab.addEventListener('click', function(event) {
-          event.preventDefault();
-          // Hide extended nav when clicking on main tabs
-          if (extendedNav) extendedNav.style.display = 'none';
-          activateTabAndContent('activity');
-        });
-      }
-      
-      if (bottomNutritionTab) {
-        bottomNutritionTab.addEventListener('click', function(event) {
-          event.preventDefault();
-          // Hide extended nav when clicking on main tabs
-          if (extendedNav) extendedNav.style.display = 'none';
-          activateTabAndContent('nutrition');
-        });
-      }
-      
-      if (bottomHabitsTab) {
-        bottomHabitsTab.addEventListener('click', function(event) {
-          event.preventDefault();
-          // Hide extended nav when clicking on main tabs
-          if (extendedNav) extendedNav.style.display = 'none';
-          activateTabAndContent('habits');
-        });
-      }
-      
-      // More tab to show/hide extended navigation
-      let isExtendedNavVisible = false; // Use a variable to track state
-      
-      if (bottomMoreTab) {
-        bottomMoreTab.addEventListener('click', function(event) {
-          event.preventDefault();
-          event.stopPropagation(); // Stop event from bubbling
-          
-          console.log('More tab clicked');
-          
-          if (extendedNav) {
-            // Toggle based on our tracked state, not the current display property
-            if (!isExtendedNavVisible) {
-              // Show extended navigation
-              extendedNav.style.display = 'flex';
-              bottomMoreTab.classList.add('active');
-              isExtendedNavVisible = true;
-              console.log('Extended nav shown');
-            } else {
-              // Hide extended navigation
-              extendedNav.style.display = 'none';
-              bottomMoreTab.classList.remove('active');
-              isExtendedNavVisible = false;
-              console.log('Extended nav hidden');
-            }
-          } else {
-            console.log('Extended nav element not found');
-          }
-          
-          // Stop the click from propagating further
-          return false;
-        });
-        
-        // Add a document click handler to hide the extended nav when clicking elsewhere
-        document.addEventListener('click', function(event) {
-          // If nav is visible and the click is outside the nav and more tab
-          if (isExtendedNavVisible && extendedNav && 
-              !event.target.closest('.nav-extended') && 
-              !event.target.closest('#more-tab')) {
-            
-            extendedNav.style.display = 'none';
-            bottomMoreTab.classList.remove('active');
-            isExtendedNavVisible = false;
-            console.log('Extended nav hidden by document click');
-          }
-        });
-      }
-      
-      // Extended navigation tabs
-      if (bottomSleepTab) {
-        bottomSleepTab.addEventListener('click', function(event) {
-          event.preventDefault();
-          event.stopPropagation(); // Prevent document click from hiding the menu
-          isExtendedNavVisible = true; // Keep track of state
-          activateTabAndContent('sleep');
-        });
-      }
-      
-      if (bottomMeditationTab) {
-        bottomMeditationTab.addEventListener('click', function(event) {
-          event.preventDefault();
-          event.stopPropagation(); // Prevent document click from hiding the menu
-          isExtendedNavVisible = true; // Keep track of state
-          activateTabAndContent('meditation');
-        });
-      }
-      
-      if (bottomGoalsTab) {
-        bottomGoalsTab.addEventListener('click', function(event) {
-          event.preventDefault();
-          event.stopPropagation(); // Prevent document click from hiding the menu
-          isExtendedNavVisible = true; // Keep track of state
-          activateTabAndContent('goals');
-        });
-      }
-      
-      if (bottomMedsTab) {
-        bottomMedsTab.addEventListener('click', function(event) {
-          event.preventDefault();
-          event.stopPropagation(); // Prevent document click from hiding the menu
-          isExtendedNavVisible = true; // Keep track of state
-          activateTabAndContent('meds');
-        });
-      }
-      
-      // Function to activate tab and content
-      function activateTabAndContent(contentType) {
-        // Hide all content
-        Object.values(contentMap).forEach(content => {
-          if (content) content.style.display = 'none';
-        });
-        
-        // Show selected content
-        if (contentMap[contentType]) {
-          contentMap[contentType].style.display = 'block';
-        }
-        
-        // Hide extended navigation by default when switching to main tabs
-        if (!['sleep', 'meditation', 'goals', 'meds'].includes(contentType) && extendedNav) {
-          extendedNav.style.display = 'none';
-          isExtendedNavVisible = false; // Update state variable
-        }
-        
-        // Update active tab in top navbar
-        const topNavTabs = [dashboardTab, workoutsTab, nutritionTab, habitsTab];
-        topNavTabs.forEach(tab => {
-          if (tab) tab.classList.remove('active');
-        });
-        
-        // Update active tab in bottom nav (main navigation)
-        const bottomNavTabs = [bottomDashboardTab, bottomActivityTab, bottomNutritionTab, bottomHabitsTab, bottomMoreTab];
-        bottomNavTabs.forEach(tab => {
-          if (tab) tab.classList.remove('active');
-        });
-        
-        // Update active tab in extended navigation
-        const extendedNavTabs = [bottomSleepTab, bottomMeditationTab, bottomGoalsTab, bottomMedsTab];
-        extendedNavTabs.forEach(tab => {
-          if (tab) tab.classList.remove('active');
-        });
-        
-        // Set active tab in top navbar
-        if (contentType === 'dashboard' && dashboardTab) {
-          dashboardTab.classList.add('active');
-        } else if ((contentType === 'workouts' || contentType === 'activity') && workoutsTab) {
-          workoutsTab.classList.add('active');
-        } else if (contentType === 'nutrition' && nutritionTab) {
-          nutritionTab.classList.add('active');
-        } else if (contentType === 'habits' && habitsTab) {
-          habitsTab.classList.add('active');
-        }
-        
-        // Set active tab in bottom navbar
-        if (contentType === 'dashboard' && bottomDashboardTab) {
-          bottomDashboardTab.classList.add('active');
-        } else if ((contentType === 'activity' || contentType === 'workouts') && bottomActivityTab) {
-          bottomActivityTab.classList.add('active');
-        } else if (contentType === 'nutrition' && bottomNutritionTab) {
-          bottomNutritionTab.classList.add('active');
-        } else if (contentType === 'habits' && bottomHabitsTab) {
-          bottomHabitsTab.classList.add('active');
-        } else if (['sleep', 'meditation', 'goals', 'meds'].includes(contentType) && bottomMoreTab) {
-          // Activate "More" tab for extended navigation items
-          bottomMoreTab.classList.add('active');
-          // Show extended navigation
-          if (extendedNav) {
-            extendedNav.style.display = 'flex';
-            isExtendedNavVisible = true; // Update state variable
-          }
-          
-          // Set active tab in extended navigation
-          if (contentType === 'sleep' && bottomSleepTab) {
-            bottomSleepTab.classList.add('active');
-          } else if (contentType === 'meditation' && bottomMeditationTab) {
-            bottomMeditationTab.classList.add('active');
-          } else if (contentType === 'goals' && bottomGoalsTab) {
-            bottomGoalsTab.classList.add('active');
-          } else if (contentType === 'meds' && bottomMedsTab) {
-            bottomMedsTab.classList.add('active');
-          }
-        }
-      }
-      
-      // Initialize with dashboard view
-      activateTabAndContent('dashboard');
-    }
-    
-    // Setup event listeners
-    function setupEventListeners() {
-      // Save steps button
-      const saveStepsBtn = document.getElementById('save-steps');
-      if (saveStepsBtn) {
-        saveStepsBtn.addEventListener('click', function() {
-          const stepsInput = document.getElementById('steps-input');
-          const steps = parseInt(stepsInput.value);
-          
-          if (!isNaN(steps) && steps > 0) {
-            // Send data to server
-            fetch('/api/steps', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ steps }),
-            })
-            .then(response => response.json())
-            .then(data => {
-              // Update UI
-              updateUI(data);
-              
-              // Close modal and reset form
-              const modal = bootstrap.Modal.getInstance(document.getElementById('stepsModal'));
-              modal.hide();
-              document.getElementById('steps-form').reset();
-              
-              // Show success alert
-              alert('Steps added successfully!');
-            })
-            .catch(error => {
-              console.error('Error adding steps:', error);
-              alert('Failed to add steps. Please try again.');
-            });
-          } else {
-            alert('Please enter a valid number of steps');
-          }
-        });
-      }
-      
-      // Save activity button
-      const saveActivityBtn = document.getElementById('save-activity');
-      if (saveActivityBtn) {
-        saveActivityBtn.addEventListener('click', function() {
-          const nameInput = document.getElementById('activity-name');
-          const caloriesInput = document.getElementById('activity-calories');
-          const durationInput = document.getElementById('activity-duration');
-          const activityTypeEl = document.querySelector('input[name="activity-type"]:checked');
-          
-          const name = nameInput.value.trim();
-          const calories = parseInt(caloriesInput.value);
-          const duration = parseInt(durationInput.value);
-          const type = activityTypeEl.value;
-          
-          if (!name || isNaN(calories) || isNaN(duration)) {
-            alert('Please fill in all fields');
-            return;
-          }
-          
-          // Send data to server
-          fetch('/api/activities', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ name, calories, duration, type }),
-          })
-          .then(response => response.json())
-          .then(data => {
-            // Update UI
-            updateUI(data);
-            
-            // Close modal and reset form
-            const modal = bootstrap.Modal.getInstance(document.getElementById('activityModal'));
-            modal.hide();
-            document.getElementById('activity-form').reset();
-            
-            // Show success alert
-            alert('Activity logged successfully!');
-          })
-          .catch(error => {
-            console.error('Error logging activity:', error);
-            alert('Failed to log activity. Please try again.');
-            
-            // If fetch fails, add activity locally
-            const now = new Date();
-            const placeholder = {
-              stepsCount: parseInt(document.getElementById('steps-count').textContent.replace(/,/g, '')) || 0,
-              caloriesBurned: parseInt(document.getElementById('calories-count').textContent.replace(/,/g, '')) + calories,
-              activitiesLogged: parseInt(document.getElementById('activities-count').textContent.replace(/,/g, '')) + 1,
-              activities: [{
-                name: name,
-                calories: calories,
-                duration: duration,
-                type: type,
-                date: now.toISOString()
-              }]
-            };
-            
-            // Update UI with local data
-            updateUI(placeholder);
-            
-            // Close modal and reset form
-            const modal = bootstrap.Modal.getInstance(document.getElementById('activityModal'));
-            modal.hide();
-            document.getElementById('activity-form').reset();
-          });
-        });
-      }
-      
-      // Save workout button
-      const saveWorkoutBtn = document.getElementById('save-workout');
-      if (saveWorkoutBtn) {
-        saveWorkoutBtn.addEventListener('click', function() {
-          const nameInput = document.getElementById('workout-name');
-          const descriptionInput = document.getElementById('workout-description');
-          const frequencyInput = document.getElementById('workout-frequency');
-          const difficultyInput = document.getElementById('workout-difficulty');
-          
-          const name = nameInput.value.trim();
-          const description = descriptionInput.value.trim();
-          const frequency = parseInt(frequencyInput.value);
-          const difficulty = parseInt(difficultyInput.value);
-          
-          if (!name || !description) {
-            alert('Please fill in all required fields');
-            return;
-          }
-          
-          // Create a workout object
-          const workout = {
-            name: name,
-            description: description,
-            frequency: frequency,
-            difficulty: difficulty,
-            date: new Date().toISOString()
-          };
-          
-          // Hide the 'no workout plans' message if it's visible
-          document.getElementById('no-workout-plans').style.display = 'none';
-          
-          // Add the workout to the list
-          const workoutList = document.getElementById('workout-list');
-          const workoutElement = createWorkoutElement(workout);
-          workoutList.appendChild(workoutElement);
-          
-          // Close modal and reset form
-          const modal = bootstrap.Modal.getInstance(document.getElementById('workoutModal'));
-          modal.hide();
-          document.getElementById('workout-form').reset();
-          
-          // Show success alert
-          alert('Workout plan created successfully!');
-        });
-      }
-      
-      // Save meal button
-      const saveMealBtn = document.getElementById('save-meal');
-      if (saveMealBtn) {
-        saveMealBtn.addEventListener('click', function() {
-          const nameInput = document.getElementById('meal-name');
-          const descriptionInput = document.getElementById('meal-description');
-          const caloriesInput = document.getElementById('meal-calories');
-          const proteinInput = document.getElementById('meal-protein');
-          const carbsInput = document.getElementById('meal-carbs');
-          const fatInput = document.getElementById('meal-fat');
-          
-          const name = nameInput.value.trim();
-          const description = descriptionInput.value.trim();
-          const calories = parseInt(caloriesInput.value);
-          const protein = parseInt(proteinInput.value) || 0;
-          const carbs = parseInt(carbsInput.value) || 0;
-          const fat = parseInt(fatInput.value) || 0;
-          
-          if (!name || !description || isNaN(calories)) {
-            alert('Please fill in all required fields');
-            return;
-          }
-          
-          // Create a meal object
-          const meal = {
-            name: name,
-            description: description,
-            calories: calories,
-            protein: protein,
-            carbs: carbs,
-            fat: fat,
-            date: new Date().toISOString()
-          };
-          
-          // Hide the 'no meals' message if it's visible
-          document.getElementById('no-meals').style.display = 'none';
-          
-          // Add the meal to the list
-          const mealList = document.getElementById('meal-list');
-          const mealElement = createMealElement(meal);
-          mealList.prepend(mealElement); // Add at the top
-          
-          // Update the daily calories counter
-          const todayCalories = document.getElementById('today-calories');
-          const currentCalories = parseInt(todayCalories.textContent) || 0;
-          todayCalories.textContent = currentCalories + calories;
-          
-          // Update macronutrient percentages
-          updateMacroPercentages(protein, carbs, fat);
-          
-          // Close modal and reset form
-          const modal = bootstrap.Modal.getInstance(document.getElementById('mealModal'));
-          modal.hide();
-          document.getElementById('meal-form').reset();
-          
-          // Show success alert
-          alert('Meal logged successfully!');
-        });
-      }
-      
-      // Function to update macronutrient percentages in the UI
-      function updateMacroPercentages(protein, carbs, fat) {
-        const totalGrams = protein + carbs + fat;
-        if (totalGrams === 0) return;
-        
-        const proteinPerc = Math.round((protein / totalGrams) * 100);
-        const carbsPerc = Math.round((carbs / totalGrams) * 100);
-        const fatPerc = Math.round((fat / totalGrams) * 100);
-        
-        // Update the UI elements
-        document.getElementById('protein-perc').textContent = proteinPerc;
-        document.getElementById('carbs-perc').textContent = carbsPerc;
-        document.getElementById('fat-perc').textContent = fatPerc;
-        
-        // Update the progress bars
-        const progressBars = document.querySelectorAll('.progress-stacked .progress');
-        progressBars[0].style.width = proteinPerc + '%';
-        progressBars[1].style.width = carbsPerc + '%';
-        progressBars[2].style.width = fatPerc + '%';
-      }
-      
-
-      
-      // Save profile button
-      const saveProfileBtn = document.getElementById('save-profile');
-      if (saveProfileBtn) {
-        saveProfileBtn.addEventListener('click', function() {
-          // Here we would normally send data to the server
-          // but for demo purposes, just show success message
-          
-          // Close modal
-          const modal = bootstrap.Modal.getInstance(document.getElementById('profileModal'));
-          modal.hide();
-          
-          // Show success alert
-          alert('Profile updated successfully!');
-        });
-      }
-    }
-  </script>
-  
-  <!-- Dark Mode Toggle Script -->
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      // Get the dark mode toggle button
-      const darkModeToggle = document.getElementById('dark-mode-toggle');
-      
-      // Check for saved user preference in localStorage
-      const currentTheme = localStorage.getItem('theme');
-      
-      // If a theme preference exists in localStorage
-      if (currentTheme) {
-        // Set the theme attribute on the document
-        document.documentElement.setAttribute('data-theme', currentTheme);
-        
-        // Update the toggle button text/icon based on the current theme
-        updateToggleButtonUI(currentTheme === 'dark');
-      }
-      
-      // Add click event listener to the toggle button
-      darkModeToggle.addEventListener('click', function() {
-        // Check current theme
-        const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-        
-        // Determine new theme to set
-        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        
-        // Set the new theme on the document
-        document.documentElement.setAttribute('data-theme', newTheme);
-        
-        // Save the theme preference to localStorage
-        localStorage.setItem('theme', newTheme);
-        
-        // Update the toggle button text/icon
-        updateToggleButtonUI(newTheme === 'dark');
-      });
-      
-      // Function to update the toggle button UI
-      function updateToggleButtonUI(isDarkMode) {
-        if (isDarkMode) {
-          darkModeToggle.innerHTML = '<i class="bi bi-sun"></i> Light Mode';
-          darkModeToggle.classList.remove('btn-outline-light');
-          darkModeToggle.classList.add('btn-outline-warning');
-        } else {
-          darkModeToggle.innerHTML = '<i class="bi bi-moon-stars"></i> Dark Mode';
-          darkModeToggle.classList.remove('btn-outline-warning');
-          darkModeToggle.classList.add('btn-outline-light');
-        }
-      }
-    });
-  </script>
-  
-  <!-- Workout Modals -->
-  <!-- Workout Plan Modal -->
-  <div class="modal fade" id="workoutModal" tabindex="-1">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Create Workout Plan</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <form id="workout-form">
-            <div class="mb-3">
-              <label for="workout-name" class="form-label">Workout Name</label>
-              <input type="text" class="form-control" id="workout-name" required placeholder="e.g., Upper Body, Push Day">
-            </div>
-            
-            <div class="mb-3">
-              <label for="workout-description" class="form-label">Description</label>
-              <textarea class="form-control" id="workout-description" rows="2" placeholder="Describe your workout plan"></textarea>
-            </div>
-            
-            <p class="mb-2">After creating your workout plan, you'll be able to add exercises to it.</p>
-          </form>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-primary" id="create-workout-btn">Create Plan</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Exercise Modal -->
-  <div class="modal fade" id="exerciseModal" tabindex="-1">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Add Exercise</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <form id="exercise-form">
-            <div class="mb-3">
-              <label for="exercise-name" class="form-label">Exercise Name</label>
-              <div class="input-group">
-                <input type="text" class="form-control" id="exercise-name" required placeholder="e.g., Bench Press, Squats">
-                <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                  Library
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end exercise-library">
-                  <li><h6 class="dropdown-header">Chest</h6></li>
-                  <li><a class="dropdown-item" href="#" data-name="Bench Press" data-equipment="barbell">Bench Press</a></li>
-                  <li><a class="dropdown-item" href="#" data-name="Push-up" data-equipment="bodyweight">Push-up</a></li>
-                  <li><a class="dropdown-item" href="#" data-name="Dumbbell Fly" data-equipment="dumbbell">Dumbbell Fly</a></li>
-                  
-                  <li><div class="dropdown-divider"></div></li>
-                  <li><h6 class="dropdown-header">Back</h6></li>
-                  <li><a class="dropdown-item" href="#" data-name="Deadlift" data-equipment="barbell">Deadlift</a></li>
-                  <li><a class="dropdown-item" href="#" data-name="Pull-up" data-equipment="bodyweight">Pull-up</a></li>
-                  <li><a class="dropdown-item" href="#" data-name="Barbell Row" data-equipment="barbell">Barbell Row</a></li>
-                  
-                  <li><div class="dropdown-divider"></div></li>
-                  <li><h6 class="dropdown-header">Legs</h6></li>
-                  <li><a class="dropdown-item" href="#" data-name="Squat" data-equipment="barbell">Squat</a></li>
-                  <li><a class="dropdown-item" href="#" data-name="Leg Press" data-equipment="machine">Leg Press</a></li>
-                  <li><a class="dropdown-item" href="#" data-name="Lunge" data-equipment="bodyweight">Lunge</a></li>
-                </ul>
-              </div>
-            </div>
-            
-            <div class="mb-3">
-              <label class="form-label d-block">Equipment</label>
-              <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="equipment-type" id="equipment-barbell" value="barbell" checked>
-                <label class="form-check-label" for="equipment-barbell">Barbell</label>
-              </div>
-              <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="equipment-type" id="equipment-dumbbell" value="dumbbell">
-                <label class="form-check-label" for="equipment-dumbbell">Dumbbell</label>
-              </div>
-              <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="equipment-type" id="equipment-machine" value="machine">
-                <label class="form-check-label" for="equipment-machine">Machine</label>
-              </div>
-              <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="equipment-type" id="equipment-bodyweight" value="bodyweight">
-                <label class="form-check-label" for="equipment-bodyweight">Bodyweight</label>
-              </div>
-            </div>
-            
-            <div id="exercise-sets" class="mb-3">
-              <label class="form-label d-flex justify-content-between">
-                <span>Sets</span>
-                <button type="button" class="btn btn-sm btn-outline-primary" id="add-set-btn">+ Add Set</button>
-              </label>
-              
-              <div class="set-container mb-2" data-set-index="0">
                 <div class="d-flex align-items-center">
-                  <div class="me-2 set-number">1</div>
-                  <div class="flex-grow-1 row g-0">
-                    <div class="col-5 pe-1">
-                      <input type="number" class="form-control set-weight" placeholder="Weight" inputmode="numeric" min="0" max="999">
+                    <button id="dark-mode-toggle" class="btn btn-outline-light me-2">
+                        <i class="bi bi-moon-fill"></i>
+                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-light dropdown-toggle" type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-person-circle me-1"></i> Profile
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
+                            <li><a class="dropdown-item" href="#" data-section="profile">Settings</a></li>
+                            <li><a class="dropdown-item" href="#" data-section="connections">Connections</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#">Sign Out</a></li>
+                        </ul>
                     </div>
-                    <div class="col-4 px-1">
-                      <input type="number" class="form-control set-reps" placeholder="Reps" inputmode="numeric" min="1" max="100">
-                    </div>
-                    <div class="col-3 ps-1 d-flex">
-                      <button type="button" class="btn btn-outline-danger btn-sm remove-set-btn" tabindex="-1">
-                        <i class="bi bi-trash"></i>
-                      </button>
-                      <div class="form-check ms-1">
-                        <input class="form-check-input set-complete" type="checkbox" title="Completed">
-                      </div>
-                    </div>
-                  </div>
                 </div>
-              </div>
             </div>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <div class="my-3 text-center" id="status-message"></div>
+        
+        <!-- Dashboard Section -->
+        <section id="dashboard-section" class="section-content">
+            <div class="row mb-4">
+                <div class="col-md-3 mb-3">
+                    <div class="card stat-card">
+                        <div class="card-body text-center">
+                            <h5 class="card-title mb-3">Calories Burned</h5>
+                            <div class="stat-value text-primary mb-2" id="calories-stat">0</div>
+                            <p class="card-text text-muted">Last 7 days</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card stat-card">
+                        <div class="card-body text-center">
+                            <h5 class="card-title mb-3">Steps</h5>
+                            <div class="stat-value text-success mb-2" id="steps-stat">0</div>
+                            <p class="card-text text-muted">Daily average</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card stat-card">
+                        <div class="card-body text-center">
+                            <h5 class="card-title mb-3">Activities</h5>
+                            <div class="stat-value text-info mb-2" id="activities-stat">0</div>
+                            <p class="card-text text-muted">Total tracked</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card stat-card">
+                        <div class="card-body text-center">
+                            <h5 class="card-title mb-3">Sleep Quality</h5>
+                            <div class="stat-value text-warning mb-2" id="sleep-stat">0</div>
+                            <p class="card-text text-muted">Average rating</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-md-8 mb-3">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Activity Overview</h5>
+                            <div class="btn-group btn-group-sm" role="group" id="chart-type-buttons">
+                                <button type="button" class="btn btn-outline-primary active" data-chart-type="weekly">Weekly</button>
+                                <button type="button" class="btn btn-outline-primary" data-chart-type="type">By Type</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="activity-chart" height="250"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Recent Activities</h5>
+                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addActivityModal">
+                                <i class="bi bi-plus-lg"></i> Add
+                            </button>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="list-group list-group-flush" id="recent-activities-list">
+                                <!-- Activities will be dynamically added here -->
+                                <div class="list-group-item list-group-item-action d-flex gap-3 py-3">
+                                    <div class="d-flex gap-2 w-100 justify-content-between">
+                                        <div>
+                                            <h6 class="mb-0">No activities yet</h6>
+                                            <p class="mb-0 opacity-75">Try adding some activities to get started!</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Habits Progress</h5>
+                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addHabitModal">
+                                <i class="bi bi-plus-lg"></i> Add
+                            </button>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="list-group list-group-flush" id="habits-list">
+                                <!-- Habits will be dynamically added here -->
+                                <div class="list-group-item list-group-item-action d-flex gap-3 py-3">
+                                    <div class="d-flex gap-2 w-100 justify-content-between">
+                                        <div>
+                                            <h6 class="mb-0">No habits tracked yet</h6>
+                                            <p class="mb-0 opacity-75">Start tracking habits to improve!</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Sleep Tracker</h5>
+                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addSleepModal">
+                                <i class="bi bi-plus-lg"></i> Add
+                            </button>
+                        </div>
+                        <div class="card-body pb-0">
+                            <canvas id="sleep-chart" height="180"></canvas>
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Average sleep: <span id="avg-sleep-duration">0 hrs</span></span>
+                                <span class="text-muted">Quality: <span id="avg-sleep-quality">0/5</span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Add more sections for activities, nutrition, sleep, habits, etc. -->
+        <section id="activities-section" class="section-content d-none">
+            <h2 class="mb-4">Activity Tracking</h2>
+            <div class="row">
+                <div class="col-md-12 mb-3">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Your Activities</h5>
+                            <div>
+                                <button class="btn btn-sm btn-outline-secondary me-2" id="add-steps-btn" data-bs-toggle="modal" data-bs-target="#addStepsModal">
+                                    <i class="bi bi-shoe-print"></i> Add Steps
+                                </button>
+                                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addActivityModal">
+                                    <i class="bi bi-plus-lg"></i> Add Activity
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="activities-list" class="row g-3">
+                                <!-- Activities will be dynamically added here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Other section content goes here -->
+
+        <!-- Modals -->
+        <!-- Add Activity Modal -->
+        <div class="modal fade" id="addActivityModal" tabindex="-1" aria-labelledby="addActivityModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addActivityModalLabel">Add New Activity</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="add-activity-form">
+                            <div class="mb-3">
+                                <label for="activity-name" class="form-label">Activity Name</label>
+                                <input type="text" class="form-control" id="activity-name" required>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col">
+                                    <label for="activity-type" class="form-label">Type</label>
+                                    <select class="form-select" id="activity-type" required>
+                                        <option value="" selected disabled>Select type</option>
+                                        <option value="running">Running</option>
+                                        <option value="cycling">Cycling</option>
+                                        <option value="swimming">Swimming</option>
+                                        <option value="weights">Weight Training</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="col">
+                                    <label for="activity-duration" class="form-label">Duration (min)</label>
+                                    <input type="number" class="form-control" id="activity-duration" min="1" required>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="activity-calories" class="form-label">Calories Burned</label>
+                                <input type="number" class="form-control" id="activity-calories" min="1" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="activity-date" class="form-label">Date</label>
+                                <input type="datetime-local" class="form-control" id="activity-date" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Save Activity</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Steps Modal -->
+        <div class="modal fade" id="addStepsModal" tabindex="-1" aria-labelledby="addStepsModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addStepsModalLabel">Add Steps</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="add-steps-form">
+                            <div class="mb-3">
+                                <label for="steps-count" class="form-label">Steps Count</label>
+                                <input type="number" class="form-control" id="steps-count" min="1" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="steps-date" class="form-label">Date</label>
+                                <input type="date" class="form-control" id="steps-date" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Save Steps</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Habit Modal -->
+        <div class="modal fade" id="addHabitModal" tabindex="-1" aria-labelledby="addHabitModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addHabitModalLabel">Track New Habit</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="add-habit-form">
+                            <div class="mb-3">
+                                <label for="habit-name" class="form-label">Habit Name</label>
+                                <input type="text" class="form-control" id="habit-name" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="habit-description" class="form-label">Why do you want to quit?</label>
+                                <textarea class="form-control" id="habit-description" rows="2" required></textarea>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col">
+                                    <label for="habit-frequency" class="form-label">Frequency</label>
+                                    <select class="form-select" id="habit-frequency" required>
+                                        <option value="daily">Daily</option>
+                                        <option value="weekly">Weekly</option>
+                                        <option value="occasionally">Occasionally</option>
+                                    </select>
+                                </div>
+                                <div class="col">
+                                    <label for="habit-category" class="form-label">Category</label>
+                                    <select class="form-select" id="habit-category" required>
+                                        <option value="screen">Screen Time</option>
+                                        <option value="food">Unhealthy Food</option>
+                                        <option value="productivity">Procrastination</option>
+                                        <option value="health">Health</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="habit-trigger" class="form-label">What triggers this habit?</label>
+                                <input type="text" class="form-control" id="habit-trigger" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="habit-alternative" class="form-label">Healthier alternative</label>
+                                <input type="text" class="form-control" id="habit-alternative" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="habit-reminder" class="form-label">Daily reminder time</label>
+                                <input type="time" class="form-control" id="habit-reminder" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Start Tracking</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Sleep Modal -->
+        <div class="modal fade" id="addSleepModal" tabindex="-1" aria-labelledby="addSleepModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addSleepModalLabel">Add Sleep Record</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="add-sleep-form">
+                            <div class="row mb-3">
+                                <div class="col">
+                                    <label for="sleep-bedtime" class="form-label">Bedtime</label>
+                                    <input type="datetime-local" class="form-control" id="sleep-bedtime" required>
+                                </div>
+                                <div class="col">
+                                    <label for="sleep-waketime" class="form-label">Wake Time</label>
+                                    <input type="datetime-local" class="form-control" id="sleep-waketime" required>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Sleep Quality (1-5)</label>
+                                <div class="d-flex">
+                                    <div class="form-check form-check-inline flex-fill">
+                                        <input class="form-check-input" type="radio" name="sleep-quality" id="quality-1" value="1" required>
+                                        <label class="form-check-label" for="quality-1">1</label>
+                                    </div>
+                                    <div class="form-check form-check-inline flex-fill">
+                                        <input class="form-check-input" type="radio" name="sleep-quality" id="quality-2" value="2">
+                                        <label class="form-check-label" for="quality-2">2</label>
+                                    </div>
+                                    <div class="form-check form-check-inline flex-fill">
+                                        <input class="form-check-input" type="radio" name="sleep-quality" id="quality-3" value="3">
+                                        <label class="form-check-label" for="quality-3">3</label>
+                                    </div>
+                                    <div class="form-check form-check-inline flex-fill">
+                                        <input class="form-check-input" type="radio" name="sleep-quality" id="quality-4" value="4">
+                                        <label class="form-check-label" for="quality-4">4</label>
+                                    </div>
+                                    <div class="form-check form-check-inline flex-fill">
+                                        <input class="form-check-input" type="radio" name="sleep-quality" id="quality-5" value="5">
+                                        <label class="form-check-label" for="quality-5">5</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Disturbances</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="sleep-disturbances" id="disturbance-none" value="none" checked>
+                                    <label class="form-check-label" for="disturbance-none">None</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="sleep-disturbances" id="disturbance-noise" value="noise">
+                                    <label class="form-check-label" for="disturbance-noise">Noise</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="sleep-disturbances" id="disturbance-light" value="light">
+                                    <label class="form-check-label" for="disturbance-light">Light</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="sleep-disturbances" id="disturbance-temp" value="temperature">
+                                    <label class="form-check-label" for="disturbance-temp">Temperature</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="sleep-disturbances" id="disturbance-stress" value="stress">
+                                    <label class="form-check-label" for="disturbance-stress">Stress/Anxiety</label>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="sleep-notes" class="form-label">Notes</label>
+                                <textarea class="form-control" id="sleep-notes" rows="2"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Save Sleep Record</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="public/js/activity.js"></script>
+    <script src="public/js/badHabit.js"></script>
+    <script src="public/js/sleep.js"></script>
+    <script src="public/js/nutrition.js"></script>
+    <script src="public/js/healthSnapshot.js"></script>
+    <script src="public/js/healthConnections.js"></script>
+    <script src="public/js/user.js"></script>
+    <script src="public/js/dark-mode.js"></script>
+    <script src="public/js/workout.js"></script>
+    <script src="public/js/workout-ui.js"></script>
+    <script src="public/js/app.js"></script>
+    <script>
+        // Initialize the app when document is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set up dark mode toggling
+            const darkModeToggle = document.getElementById('dark-mode-toggle');
+            darkModeToggle.addEventListener('click', function() {
+                document.body.classList.toggle('dark-mode');
+                const isDarkMode = document.body.classList.contains('dark-mode');
+                darkModeToggle.innerHTML = isDarkMode 
+                    ? '<i class="bi bi-sun-fill"></i>' 
+                    : '<i class="bi bi-moon-fill"></i>';
+                
+                // Store preference in localStorage
+                localStorage.setItem('darkMode', isDarkMode ? 'true' : 'false');
+                
+                // Apply dark mode to modals
+                if (typeof applyDarkModeToModals === 'function') {
+                    applyDarkModeToModals(isDarkMode);
+                }
+            });
             
-            <div class="mb-3">
-              <label for="exercise-notes" class="form-label">Notes</label>
-              <textarea class="form-control" id="exercise-notes" rows="2" placeholder="Optional notes for this exercise"></textarea>
-            </div>
-          </form>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-primary" id="add-exercise-btn">Add to Workout</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Active Workout Modal -->
-  <div class="modal fade" id="activeWorkoutModal" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <div class="modal-header d-flex">
-          <h5 class="modal-title">Current Workout</h5>
-          <!-- Rest timer removed as per requirements -->
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <div class="workout-info mb-3">
-            <h4 id="active-workout-name">Workout Name</h4>
-            <p id="active-workout-description" class="text-muted">Workout description will appear here</p>
-          </div>
-          
-          <div id="workout-exercises-container">
-            <!-- Exercises will be added here dynamically -->
-            <div class="text-center py-4 empty-state">
-              <p class="text-muted">No exercises added yet. Click "Add Exercise" to begin.</p>
-            </div>
-          </div>
-          
-          <div class="d-flex justify-content-center mt-3">
-            <button class="btn btn-primary me-2" id="add-workout-exercise-btn">
-              <i class="bi bi-plus-circle me-1"></i> Add Exercise
-            </button>
-            <button class="btn btn-outline-primary" id="quick-add-exercise-btn">Quick Add</button>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <div class="workout-stats me-auto">
-            <span class="me-3">Duration: <span id="workout-duration">0:00</span></span>
-            <span>Exercises: <span id="workout-exercise-count">0</span></span>
-          </div>
-          <button type="button" class="btn btn-outline-danger me-2" id="discard-workout-btn">Cancel</button>
-          <button type="button" class="btn btn-success" id="complete-workout-btn">Save</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Rest Timer Modal removed as per requirements -->
-
+            // Check for saved preference
+            if (localStorage.getItem('darkMode') === 'true') {
+                document.body.classList.add('dark-mode');
+                darkModeToggle.innerHTML = '<i class="bi bi-sun-fill"></i>';
+                
+                // Apply dark mode to modals
+                if (typeof applyDarkModeToModals === 'function') {
+                    applyDarkModeToModals(true);
+                }
+            }
+            
+            // Navigation between sections
+            const navLinks = document.querySelectorAll('[data-section]');
+            const sections = document.querySelectorAll('.section-content');
+            
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const targetSection = this.getAttribute('data-section');
+                    
+                    // Update active nav link
+                    document.querySelectorAll('.nav-link').forEach(navLink => {
+                        navLink.classList.remove('active');
+                    });
+                    
+                    // Only activate nav links, not dropdown items
+                    if (this.classList.contains('nav-link')) {
+                        this.classList.add('active');
+                    }
+                    
+                    // Show the target section, hide others
+                    sections.forEach(section => {
+                        section.classList.add('d-none');
+                    });
+                    
+                    const sectionToShow = document.getElementById(`${targetSection}-section`);
+                    if (sectionToShow) {
+                        sectionToShow.classList.remove('d-none');
+                    }
+                });
+            });
+            
+            // Form submissions
+            const activityForm = document.getElementById('add-activity-form');
+            if (activityForm) {
+                activityForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    // Get form data
+                    const name = document.getElementById('activity-name').value;
+                    const type = document.getElementById('activity-type').value;
+                    const duration = Number(document.getElementById('activity-duration').value);
+                    const calories = Number(document.getElementById('activity-calories').value);
+                    const date = new Date(document.getElementById('activity-date').value);
+                    
+                    // Create and add activity
+                    const activity = new Activity(name, calories, duration, type, date);
+                    fitnessTracker.addActivity(activity);
+                    
+                    // Update UI
+                    updateDashboard();
+                    
+                    // Reset form and close modal
+                    this.reset();
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('addActivityModal'));
+                    modal.hide();
+                    
+                    // Show success message
+                    showMessage('Activity added successfully!', 'success');
+                });
+            }
+            
+            // Initialize everything else
+            if (typeof updateDashboard === 'function') {
+                updateDashboard();
+            }
+        });
+        
+        // Show status message
+        function showMessage(message, type = 'info') {
+            const statusMessage = document.getElementById('status-message');
+            statusMessage.innerHTML = `
+                <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `;
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                const alert = statusMessage.querySelector('.alert');
+                if (alert) {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }
+            }, 5000);
+        }
+    </script>
 </body>
 </html>
