@@ -553,6 +553,21 @@ class WorkoutManager {
   getCurrentWorkout() {
     return this.currentWorkout;
   }
+  
+  /**
+   * Get workout by ID
+   * @param {string} id - ID of the workout to retrieve
+   * @returns {Object|null} The workout object or null if not found
+   */
+  getWorkoutById(id) {
+    // If current workout matches the ID, return it
+    if (this.currentWorkout && this.currentWorkout.id === id) {
+      return this.currentWorkout;
+    }
+    
+    // Otherwise return null as we only track one active workout at a time
+    return null;
+  }
 
   /**
    * Save data to localStorage
