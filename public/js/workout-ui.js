@@ -52,7 +52,40 @@ function initializeWorkoutUI() {
   document.getElementById('discard-workout-btn').addEventListener('click', handleDiscardWorkout);
   
   // Set up rest timer
-  document.querySelector('.rest-timer-btn').addEventListener('click', toggleRestTimer);
+  const restTimerBtn = document.querySelector('.rest-timer-btn');
+  if (restTimerBtn) {
+    restTimerBtn.addEventListener('click', toggleRestTimer);
+  }
+  
+  // Set up rest timer modal
+  const restTimeRange = document.getElementById('restTimeRange');
+  const restTimeValue = document.getElementById('restTimeValue');
+  const startRestTimerBtn = document.getElementById('startRestTimerBtn');
+  
+  if (restTimeRange) {
+    restTimeRange.addEventListener('input', function() {
+      if (restTimeValue) {
+        restTimeValue.textContent = this.value;
+      }
+    });
+  }
+  
+  if (startRestTimerBtn) {
+    startRestTimerBtn.addEventListener('click', function() {
+      // Get selected minutes
+      const minutes = parseInt(restTimeRange.value || 1);
+      
+      // Convert to seconds
+      const seconds = minutes * 60;
+      startActualTimer(seconds);
+      
+      // Hide the modal
+      const restModal = bootstrap.Modal.getInstance(document.getElementById('restTimerModal'));
+      if (restModal) {
+        restModal.hide();
+      }
+    });
+  }
   
   // Set up library selection
   document.querySelector('.exercise-library').addEventListener('click', handleExerciseLibrarySelection);
@@ -759,33 +792,17 @@ function toggleRestTimer() {
     timerBtn.classList.remove('btn-danger');
     timerBtn.classList.add('btn-outline-primary');
   } else {
-    // Show the rest timer modal
-    const restModal = new bootstrap.Modal(document.getElementById('restTimerModal'));
-    
-    // Initialize slider value display
+    // Reset slider to default value of 1
     const restTimeRange = document.getElementById('restTimeRange');
     const restTimeValue = document.getElementById('restTimeValue');
     
-    // Update display when slider changes
-    restTimeRange.addEventListener('input', function() {
-      restTimeValue.textContent = this.value;
-    });
+    if (restTimeRange && restTimeValue) {
+      restTimeRange.value = 1;
+      restTimeValue.textContent = '1';
+    }
     
-    // Set up the start timer button
-    const startRestTimerBtn = document.getElementById('startRestTimerBtn');
-    startRestTimerBtn.addEventListener('click', function() {
-      // Get selected minutes
-      const minutes = parseInt(restTimeRange.value);
-      
-      // Convert to seconds
-      const seconds = minutes * 60;
-      startActualTimer(seconds);
-      
-      // Hide the modal
-      restModal.hide();
-    });
-    
-    // Show the modal
+    // Show the rest timer modal
+    const restModal = new bootstrap.Modal(document.getElementById('restTimerModal'));
     restModal.show();
   }
 }
