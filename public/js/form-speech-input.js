@@ -491,6 +491,12 @@ class FormSpeechInput {
   handleRecognitionError(event) {
     console.error('Speech recognition error:', event.error);
     
+    // Get current timestamp for error tracking
+    const now = Date.now();
+    const timeSinceLastRecovery = now - this.lastRecoveryTime;
+    const maxRecoveryAttempts = 5; // Maximum consecutive recovery attempts
+    const recoveryBackoff = [500, 1000, 2000, 3000, 5000]; // Exponential backoff in ms
+    
     const statusLabel = document.getElementById('speech-status-label');
     if (statusLabel) {
       let errorMessage = 'Error in speech recognition';
@@ -517,7 +523,52 @@ class FormSpeechInput {
       statusLabel.textContent = errorMessage;
     }
     
-    // Reset state
+    // Special handling for InvalidStateError
+    if (event instanceof Error && event.name === 'InvalidStateError') {
+      console.warn(`InvalidStateError detected in form speech input. Recovery attempt ${this.recoveryAttempt + 1}`);
+      
+      // Reset recovery attempt counter if it's been a while
+      if (timeSinceLastRecovery > 10000) { // 10 seconds
+        this.recoveryAttempt = 0;
+      }
+      
+      // Enter recovery mode
+      this.inRecoveryMode = true;
+      this.lastRecoveryTime = now;
+      
+      // Attempt to recover with exponential backoff
+      if (this.recoveryAttempt < maxRecoveryAttempts) {
+        const delay = recoveryBackoff[this.recoveryAttempt] || 5000;
+        console.log(`Attempting recovery in ${delay}ms (attempt ${this.recoveryAttempt + 1}/${maxRecoveryAttempts})`);
+        
+        // Try to recreate speech recognition with delay
+        setTimeout(() => {
+          try {
+            // Re-initialize speech recognition
+            this.initializeSpeechRecognition();
+            
+            if (statusLabel) {
+              statusLabel.className = 'form-text text-info small mt-1 mb-2';
+              statusLabel.textContent = 'Speech recognition recovered. Try again.';
+            }
+            
+            this.inRecoveryMode = false;
+            this.recoveryAttempt++;
+          } catch (error) {
+            console.error('Error during recovery attempt:', error);
+            this.recoveryAttempt++;
+          }
+        }, delay);
+      } else {
+        console.warn('Maximum recovery attempts reached. Please refresh the page.');
+        if (statusLabel) {
+          statusLabel.className = 'form-text text-danger small mt-1 mb-2';
+          statusLabel.textContent = 'Speech recognition unavailable. Please refresh the page.';
+        }
+      }
+    }
+    
+    // Reset button state
     if (this.targetInput) {
       const inputGroup = this.targetInput.closest('.input-group');
       const micButton = inputGroup.querySelector('.speech-input-btn');

@@ -3995,16 +3995,73 @@ function initializeSpeechRecognition() {
   
   // Create the speech recognizer instance if it doesn't exist yet
   if (!window.speechRecognizer) {
-    window.speechRecognizer = new SpeechRecognizer();
-    console.log('Speech recognizer instance created');
+    try {
+      window.speechRecognizer = new SpeechRecognizer();
+      console.log('Speech recognizer instance created');
+      
+      // Initialize recovery properties
+      window.speechRecognizer.recoveryAttempt = 0;
+      window.speechRecognizer.lastRecoveryTime = 0;
+      window.speechRecognizer.inRecoveryMode = false;
+    } catch (error) {
+      console.error('Failed to create speech recognizer:', error);
+      // Schedule a retry with exponential backoff
+      setTimeout(() => {
+        console.log('Retrying speech recognizer initialization...');
+        initializeSpeechRecognition();
+      }, 2000);
+      return;
+    }
   } else {
     console.log('Using existing speech recognizer instance');
+    
+    // Check if the instance needs to be reset
+    if (window.speechRecognizer.recognition) {
+      try {
+        const state = window.speechRecognizer.recognition.state;
+        // If recognition is in an invalid state, reset it
+        if (state === 'active') {
+          console.log('Stopping active recognition during initialization');
+          try {
+            window.speechRecognizer.stopListening();
+          } catch (e) {
+            console.warn('Could not stop existing recognition:', e);
+            // Force reset if stopping fails
+            try {
+              window.speechRecognizer.resetRecognitionState();
+            } catch (resetError) {
+              console.error('Error during recognition reset:', resetError);
+            }
+          }
+        }
+      } catch (stateError) {
+        // Some browsers don't expose the state property
+        console.warn('Could not check recognition state, attempting reset:', stateError);
+        try {
+          window.speechRecognizer.resetRecognitionState();
+        } catch (resetError) {
+          console.error('Error during recognition reset:', resetError);
+        }
+      }
+    } else {
+      // If the recognition object is missing, reinitialize
+      try {
+        window.speechRecognizer.initializeSpeechRecognition();
+        console.log('Reinitialized missing recognition object');
+      } catch (error) {
+        console.error('Failed to reinitialize speech recognition:', error);
+      }
+    }
   }
 
   // Make sure the microphone button exists in the DOM
   if (typeof window.addMicrophoneButton === 'function') {
-    window.addMicrophoneButton();
-    console.log('Added/verified microphone button');
+    try {
+      window.addMicrophoneButton();
+      console.log('Added/verified microphone button');
+    } catch (error) {
+      console.error('Error adding microphone button:', error);
+    }
   } else {
     console.error('addMicrophoneButton function not found - speech-recognition.js may not be loaded');
   }
@@ -4012,22 +4069,44 @@ function initializeSpeechRecognition() {
   // Set up click handler for the voice command toggle button
   const voiceCommandBtn = document.getElementById('voice-command-toggle');
   if (voiceCommandBtn) {
-    // Remove any existing listeners to avoid duplication
-    const newBtn = voiceCommandBtn.cloneNode(true);
-    voiceCommandBtn.parentNode.replaceChild(newBtn, voiceCommandBtn);
-    
-    // Add the click event listener
-    newBtn.addEventListener('click', function() {
-      if (window.speechRecognizer) {
-        window.speechRecognizer.toggleListening();
-        console.log('Voice command button clicked, toggling speech recognition');
-      } else {
-        console.error('Speech recognizer not initialized');
-        showToast('Speech recognition not available', 'error');
-      }
-    });
-    
-    console.log('Voice command button event listener set up');
+    try {
+      // Remove any existing listeners to avoid duplication
+      const newBtn = voiceCommandBtn.cloneNode(true);
+      voiceCommandBtn.parentNode.replaceChild(newBtn, voiceCommandBtn);
+      
+      // Add the click event listener with error handling
+      newBtn.addEventListener('click', function() {
+        if (window.speechRecognizer) {
+          try {
+            window.speechRecognizer.toggleListening();
+            console.log('Voice command button clicked, toggling speech recognition');
+          } catch (error) {
+            console.error('Error toggling speech recognition:', error);
+            
+            // Handle InvalidStateError specially
+            if (error.name === 'InvalidStateError') {
+              showToast('Resetting speech recognition...', 'info');
+              setTimeout(() => {
+                try {
+                  window.speechRecognizer.resetRecognitionState();
+                  console.log('Reset recognition state after toggle error');
+                } catch (resetError) {
+                  console.error('Error during recognition reset:', resetError);
+                  showToast('Speech recognition error. Please try again.', 'error');
+                }
+              }, 500);
+            } else {
+              showToast('Speech recognition error. Please try again.', 'error');
+            }
+          }
+        } else {
+          console.error('Speech recognizer not initialized');
+          showToast('Speech recognition not available', 'error');
+        }
+      });
+      
+      console.log('Voice command button event listener set up');
+    }
   } else {
     console.warn('Voice command button not found in the DOM after setup');
   }

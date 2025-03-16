@@ -205,12 +205,20 @@ app.get('*', (req, res) => {
 
 // Only start the server if this file is run directly
 if (require.main === module) {
-  const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running at http://0.0.0.0:${PORT}`);
+  // Make sure we're binding to 0.0.0.0
+  const HOST = '0.0.0.0';
+  const server = app.listen(PORT, HOST, () => {
+    console.log(`Server running at http://${HOST}:${PORT}`);
+    
     // Signal that the server is ready to accept connections
     console.log(`Server ready - listening on port ${PORT}`);
+    
     // Log additional binding information for debugging
-    console.log(`Server IP bindings: ${JSON.stringify(server.address())}`);
+    const addressInfo = server.address();
+    console.log(`Server IP bindings: ${JSON.stringify(addressInfo)}`);
+    
+    // Extra debug output to ensure proper startup
+    console.log(`Server is listening on ${addressInfo.address}:${addressInfo.port}`);
   });
 
   // Handle server errors

@@ -578,58 +578,145 @@ class SpeechRecognizer {
    * Handle recognition error event
    * @param {SpeechRecognitionError} event - Speech recognition error event
    */
+  /**
+   * Handle speech recognition errors with advanced recovery
+   * @param {SpeechRecognitionErrorEvent|Error} event - The error event or object
+   */
   handleRecognitionError(event) {
-    console.error('Speech recognition error:', event.error);
+    // Get current timestamp for tracking recovery attempts
+    const now = Date.now();
     
+    // Check if error is a native Error object or a SpeechRecognitionErrorEvent
+    const isNativeError = event instanceof Error;
+    const errorName = isNativeError ? event.name : (event.error || 'unknown');
+    
+    console.error(`Speech recognition error: ${errorName}`, event);
+    
+    // Initialize recovery details
     let errorMessage = 'Speech recognition error';
     let needsReset = false;
+    let criticalError = false;
+    let recoveryDelay = 500;
     
-    switch (event.error) {
-      case 'no-speech':
-        errorMessage = 'No speech detected. Please try again.';
-        break;
-      case 'aborted':
-        errorMessage = 'Recognition aborted.';
+    // Determine error specifics based on error type
+    if (isNativeError) {
+      // Handle JavaScript errors
+      if (event.name === 'InvalidStateError') {
+        errorMessage = 'Speech recognition is in an invalid state. Resetting...';
         needsReset = true;
-        break;
-      case 'audio-capture':
-        errorMessage = 'Could not capture audio. Please check your microphone.';
+        criticalError = true;
+      } else {
+        errorMessage = `Speech recognition error: ${event.message || 'Unknown error'}`;
         needsReset = true;
-        break;
-      case 'network':
-        errorMessage = 'Network error occurred. Please check your connection.';
-        needsReset = true;
-        break;
-      case 'not-allowed':
-        errorMessage = 'Microphone access denied. Please check browser permissions.';
-        needsReset = true;
-        break;
-      case 'service-not-allowed':
-        errorMessage = 'Speech recognition service not allowed.';
-        needsReset = true;
-        break;
-      case 'bad-grammar':
-        errorMessage = 'Speech recognition grammar issue.';
-        needsReset = true;
-        break;
-      case 'language-not-supported':
-        errorMessage = 'Language not supported for speech recognition.';
-        needsReset = true;
-        break;
+        criticalError = true;
+      }
+    } else {
+      // Handle SpeechRecognitionErrorEvent
+      switch (event.error) {
+        case 'no-speech':
+          errorMessage = 'No speech detected. Please try again.';
+          break;
+        case 'aborted':
+          errorMessage = 'Recognition aborted.';
+          needsReset = true;
+          break;
+        case 'audio-capture':
+          errorMessage = 'Could not capture audio. Please check your microphone.';
+          needsReset = true;
+          recoveryDelay = 1000;
+          break;
+        case 'network':
+          errorMessage = 'Network error occurred. Please check your connection.';
+          needsReset = true;
+          recoveryDelay = 2000;
+          break;
+        case 'not-allowed':
+          errorMessage = 'Microphone access denied. Please check browser permissions.';
+          needsReset = true;
+          criticalError = true;
+          break;
+        case 'service-not-allowed':
+          errorMessage = 'Speech recognition service not allowed.';
+          needsReset = true;
+          criticalError = true;
+          break;
+        case 'bad-grammar':
+          errorMessage = 'Speech recognition grammar issue.';
+          needsReset = true;
+          break;
+        case 'language-not-supported':
+          errorMessage = 'Language not supported for speech recognition.';
+          needsReset = true;
+          criticalError = true;
+          break;
+      }
     }
     
     // Update internal state and UI
     this.isListening = false;
     this.updateMicrophoneButton(false);
     
-    // Show error message
-    showToast(errorMessage, 'error');
+    // Handle recovery attempt tracking
+    const timeSinceLastError = now - this.lastErrorTime;
+    this.lastErrorTime = now;
     
-    // If needed, reset the recognition state after error
+    // Reset recovery counter if enough time has passed between errors
+    if (timeSinceLastError > this.cooldownPeriod) {
+      this.recoveryAttempts = 0;
+    }
+    
+    // For critical errors, or if we're hitting too many errors, show a more detailed message
+    if (criticalError || this.recoveryAttempts >= this.maxRecoveryAttempts - 1) {
+      errorMessage += ' You may need to refresh the page to use speech recognition again.';
+      showToast(errorMessage, 'error');
+    } else if (this.recoveryAttempts > 0) {
+      // For subsequent attempts, show a brief toast
+      showToast(errorMessage, 'warning');
+    } else {
+      // For first attempt, show normal toast
+      showToast(errorMessage, 'error');
+    }
+    
+    // Clear any previous recovery timeout
+    if (this.recoveryTimeout) {
+      clearTimeout(this.recoveryTimeout);
+      this.recoveryTimeout = null;
+    }
+    
+    // If needed, reset the recognition state after error with appropriate backoff
     if (needsReset) {
-      setTimeout(() => {
-        this.resetRecognitionState();
-      }, 500);
+      // Implement exponential backoff for recovery
+      const backoffFactor = Math.min(this.recoveryAttempts, 4); // Cap at 4 to prevent excessive delays
+      const backoffDelay = recoveryDelay * Math.pow(2, backoffFactor);
+      
+      console.log(`Recognition recovery attempt ${this.recoveryAttempts + 1}/${this.maxRecoveryAttempts} in ${backoffDelay}ms`);
+      
+      this.recoveryTimeout = setTimeout(() => {
+        // Check if we've exceeded max recovery attempts
+        if (this.recoveryAttempts < this.maxRecoveryAttempts) {
+          this.recoveryAttempts++;
+          try {
+            this.resetRecognitionState();
+            console.log(`Recovery attempt ${this.recoveryAttempts} completed`);
+          } catch (resetError) {
+            console.error('Error during recovery attempt:', resetError);
+            
+            // If recovery fails, try one more time with a bigger delay
+            setTimeout(() => {
+              try {
+                this.resetRecognitionState();
+                console.log('Final recovery attempt completed');
+              } catch (finalError) {
+                console.error('Final recovery attempt failed:', finalError);
+                showToast('Speech recognition unavailable. Please refresh the page.', 'error');
+              }
+            }, 2000);
+          }
+        } else {
+          console.warn('Maximum recovery attempts reached');
+          showToast('Speech recognition temporarily unavailable. Please try again later or refresh the page.', 'error');
+        }
+      }, backoffDelay);
     }
   }
 
