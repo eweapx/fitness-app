@@ -10,6 +10,11 @@ class FormSpeechInput {
     this.stopTimeout = null;
     this.inactivityTimeout = 5000; // Stop after 5 seconds of silence
     
+    // Recovery state flags
+    this.inRecoveryMode = false;
+    this.recoveryAttempt = 0;
+    this.lastRecoveryTime = 0;
+    
     this.initializeSpeechRecognition();
     this.setupSpeechButtons();
   }
@@ -209,20 +214,55 @@ class FormSpeechInput {
           } catch (delayedError) {
             if (delayedError.name === 'InvalidStateError') {
               console.warn('InvalidStateError when starting recognition. Attempting recovery...');
-              // Try to create a new recognition instance
-              this.initializeSpeechRecognition();
               
-              // Try one more time after a longer delay
-              setTimeout(() => {
-                try {
-                  this.recognition.start();
-                  console.log('Started listening for form input (second attempt)');
-                } catch (finalError) {
-                  console.error('Still failed to start recognition:', finalError);
-                  this.showSpeechError(finalError);
+              // Check if there's a global speechRecognizer instance we can use for recovery
+              if (window.speechRecognizer && typeof window.speechRecognizer.handleStartError === 'function') {
+                console.log('Delegating InvalidStateError recovery to global speech recognizer');
+                
+                // Use the main speech recognizer's sophisticated recovery mechanism
+                window.speechRecognizer.handleStartError(delayedError);
+                
+                // Set a flag to indicate we're in recovery mode
+                this.inRecoveryMode = true;
+                
+                // Reset UI state after a delay
+                setTimeout(() => {
                   this.resetButtonState(micButton, stopButton);
-                }
-              }, 300);
+                  this.inRecoveryMode = false;
+                  
+                  // Show a helpful message
+                  const statusLabel = document.getElementById('speech-status-label');
+                  if (statusLabel) {
+                    statusLabel.className = 'form-text text-warning small mt-1 mb-2';
+                    statusLabel.innerHTML = 'Speech recognition temporarily unavailable. Please try again in a moment.';
+                    
+                    // Remove the message after 3 seconds
+                    setTimeout(() => {
+                      if (statusLabel && statusLabel.parentNode) {
+                        statusLabel.remove();
+                      }
+                    }, 3000);
+                  }
+                }, 300);
+              } else {
+                // Fallback to original recovery mechanism if global handler isn't available
+                console.warn('No global speech recognizer available for advanced recovery. Using basic recovery...');
+                
+                // Try to create a new recognition instance
+                this.initializeSpeechRecognition();
+              
+                // Try one more time after a longer delay
+                setTimeout(() => {
+                  try {
+                    this.recognition.start();
+                    console.log('Started listening for form input (second attempt)');
+                  } catch (finalError) {
+                    console.error('Still failed to start recognition:', finalError);
+                    this.showSpeechError(finalError);
+                    this.resetButtonState(micButton, stopButton);
+                  }
+                }, 500); // Increased delay for better chance of recovery
+              }
             } else {
               console.error('Error starting speech recognition after delay:', delayedError);
               this.showSpeechError(delayedError);

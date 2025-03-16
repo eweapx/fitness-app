@@ -1,6 +1,8 @@
 /**
  * Speech Recognition functionality for Health & Fitness Tracker
  * Allows users to log activities, nutrition, sleep, and other data using voice commands
+ * 
+ * Updated with advanced error handling and recovery mechanisms
  */
 
 // Speech Recognition class that handles all voice command functionality
@@ -16,6 +18,13 @@ class SpeechRecognizer {
     // Tracking for results state
     this.expectingResults = false;
     this.resultReceived = false;
+    
+    // Error recovery state
+    this.recoveryAttempts = 0;
+    this.maxRecoveryAttempts = 5;
+    this.lastErrorTime = 0;
+    this.cooldownPeriod = 5000; // 5 seconds cooldown between recovery attempts
+    this.recoveryTimeout = null;
     
     // Command handlers for different types of data
     // Explicitly bind all handlers to this instance to preserve context
@@ -382,16 +391,53 @@ class SpeechRecognizer {
   handleStartError(error) {
     this.updateMicrophoneButton(false);
     
+    // Check if we're getting too many errors in a short period of time
+    const now = Date.now();
+    const timeSinceLastError = now - this.lastErrorTime;
+    this.lastErrorTime = now;
+    
+    // Reset recovery attempts if it's been a while since the last error
+    if (timeSinceLastError > this.cooldownPeriod) {
+      this.recoveryAttempts = 0;
+    }
+    
     // Provide more specific error messages
     if (error.name === 'NotAllowedError') {
       showToast('Microphone access denied. Please allow access in your browser settings.', 'error');
     } else if (error.name === 'InvalidStateError') {
-      console.warn('InvalidStateError detected. Creating new recognition instance.');
+      console.warn(`InvalidStateError detected. Recovery attempt ${this.recoveryAttempts + 1}/${this.maxRecoveryAttempts}`);
+      
+      // Increment attempt counter
+      this.recoveryAttempts++;
+      
+      // If we've tried too many times recently, back off
+      if (this.recoveryAttempts > this.maxRecoveryAttempts) {
+        console.warn(`Max recovery attempts (${this.maxRecoveryAttempts}) reached. Cooling down.`);
+        showToast('Speech recognition is temporarily unavailable. Please try again in a moment.', 'warning');
+        
+        // Reset after a longer cooldown
+        setTimeout(() => {
+          console.log('Resetting recovery attempts after cooldown');
+          this.recoveryAttempts = 0;
+        }, this.cooldownPeriod * 2);
+        
+        return;
+      }
+      
       // Call the more robust reset function
       this.resetRecognitionState();
       
-      // Try again after a short delay with a completely new instance
-      setTimeout(() => {
+      // Calculate a progressive delay based on the number of attempts
+      // This implements exponential backoff
+      const baseDelay = 200;
+      const recoverDelay = baseDelay * Math.pow(1.5, this.recoveryAttempts - 1);
+      
+      // Try again after a calculated delay with a completely new instance
+      if (this.recoveryTimeout) {
+        clearTimeout(this.recoveryTimeout);
+      }
+      
+      this.recoveryTimeout = setTimeout(() => {
         try {
           // If recognition is null, create a new instance
           if (!this.recognition) {
@@ -403,36 +449,45 @@ class SpeechRecognizer {
             this.recognition.start();
             this.isListening = true;
             this.updateMicrophoneButton(true);
-            console.log('Speech recognition successfully restarted after InvalidStateError');
+            console.log(`Speech recognition successfully restarted after InvalidStateError (attempt ${this.recoveryAttempts})`);
+            
+            // When we succeed, reduce but don't reset the recovery counter
+            // This helps prevent rapid cycling of failures and recoveries
+            if (this.recoveryAttempts > 1) {
+              this.recoveryAttempts--;
+            }
           } catch (retryError) {
             console.error('Failed to restart recognition after reset:', retryError);
             
-            // If we still get an InvalidStateError, try with another new instance after a longer delay
+            // If we still get an InvalidStateError, trigger another recovery cycle
             if (retryError.name === 'InvalidStateError') {
-              console.warn('Another InvalidStateError. Creating fresh instance with longer delay...');
-              this.recognition = null;
+              console.warn('Persistent InvalidStateError. Triggering another recovery cycle...');
               
-              setTimeout(() => {
-                this.initializeSpeechRecognition();
-                try {
-                  this.recognition.start();
-                  this.isListening = true;
-                  this.updateMicrophoneButton(true);
-                  console.log('Speech recognition started on third attempt');
-                } catch (finalError) {
-                  console.error('Final attempt to restart recognition failed:', finalError);
-                  showToast('Speech recognition unavailable. Please try again later.', 'error');
-                }
-              }, 500);
+              // Only recurse if we haven't hit the max attempts
+              if (this.recoveryAttempts < this.maxRecoveryAttempts) {
+                this.handleStartError(retryError);  // Recursive call with safeguards
+              } else {
+                showToast('Speech recognition unavailable. Please try again later.', 'error');
+                this.isListening = false;
+                this.updateMicrophoneButton(false);
+              }
             } else {
+              this.isListening = false;
+              this.updateMicrophoneButton(false);
               showToast('Speech recognition failed to restart. Please try again.', 'error');
             }
           }
-        } catch (e) {
-          console.error('Error during recovery from InvalidStateError:', e);
+        } catch (error) {
+          console.error('Error during recovery attempt:', error);
+          this.isListening = false;
+          this.updateMicrophoneButton(false);
           showToast('Speech recognition failed to restart. Please refresh the page.', 'error');
         }
-      }, 300);
+      }, recoverDelay);
+      
+      // Log the recovery attempt
+      console.log(`Scheduled recovery attempt in ${recoverDelay}ms`);
+      
     } else {
       showToast('Could not start speech recognition: ' + (error.message || 'Unknown error'), 'error');
     }
