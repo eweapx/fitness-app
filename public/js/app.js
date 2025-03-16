@@ -6,29 +6,38 @@
 console.log('Health & Wellness App Initializing...');
 
 // Initialize the fitness tracker
-const fitnessTracker = new FitnessTracker();
-fitnessTracker.loadFromLocalStorage();
-console.log('Fitness tracker loaded', fitnessTracker.getActivities().length, 'activities');
+window.fitnessTracker = new FitnessTracker();
+window.fitnessTracker.loadFromLocalStorage();
+console.log('Fitness tracker loaded', window.fitnessTracker.getActivities().length, 'activities');
 
 // Initialize the habit tracker
-const habitTracker = new HabitTracker();
-habitTracker.loadFromLocalStorage();
-console.log('Habit tracker loaded', habitTracker.getHabits().length, 'habits');
+window.habitTracker = new HabitTracker();
+window.habitTracker.loadFromLocalStorage();
+console.log('Habit tracker loaded', window.habitTracker.getHabits().length, 'habits');
 
 // Initialize the nutrition tracker
-const nutritionTracker = new NutritionTracker();
-nutritionTracker.loadFromLocalStorage();
-console.log('Nutrition tracker loaded', nutritionTracker.getMeals().length, 'meals');
+window.nutritionTracker = new NutritionTracker();
+window.nutritionTracker.loadFromLocalStorage();
+console.log('Nutrition tracker loaded', window.nutritionTracker.getMeals().length, 'meals');
 
 // Initialize the sleep tracker
-const sleepTracker = new SleepTracker();
-sleepTracker.loadFromLocalStorage();
-console.log('Sleep tracker loaded', sleepTracker.getSleepRecords().length, 'records');
+window.sleepTracker = new SleepTracker();
+window.sleepTracker.loadFromLocalStorage();
+console.log('Sleep tracker loaded', window.sleepTracker.getSleepRecords().length, 'records');
 
 // Initialize the health connection manager
-const healthConnectionManager = new HealthConnectionManager();
-healthConnectionManager.loadFromLocalStorage();
-console.log('Health connections loaded', healthConnectionManager.getConnections().length, 'connections');
+window.healthConnectionManager = new HealthConnectionManager();
+window.healthConnectionManager.loadFromLocalStorage();
+console.log('Health connections loaded', window.healthConnectionManager.getConnections().length, 'connections');
+
+// Initialize the health snapshot tracker
+window.healthSnapshotTracker = new HealthSnapshotTracker();
+window.healthSnapshotTracker.loadFromLocalStorage();
+console.log('Health snapshots loaded', window.healthSnapshotTracker.getSnapshots().length, 'snapshots');
+
+// Initialize form speech input
+window.formSpeechInput = new FormSpeechInput();
+console.log('Form speech input initialized');
 
 // Set up event listeners once the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', function() {
@@ -84,7 +93,7 @@ document.addEventListener('DOMContentLoaded', function() {
   initializeSpeechRecognition();
   
   // Sync data from all health connections if any exist
-  if (healthConnectionManager.getConnections().length > 0) {
+  if (window.healthConnectionManager.getConnections().length > 0) {
     syncAllHealthConnections();
   }
   
@@ -98,7 +107,7 @@ document.addEventListener('DOMContentLoaded', function() {
 function syncAllHealthConnections() {
   showMessage('Syncing data from all connected health sources...', 'info');
   
-  healthConnectionManager.syncAllConnections()
+  window.healthConnectionManager.syncAllConnections()
     .then(results => {
       // Process all the synced data
       if (results.results && results.results.length > 0) {
@@ -106,7 +115,7 @@ function syncAllHealthConnections() {
           if (result.data) {
             // Update steps if available
             if (result.data.steps && result.data.steps > 0) {
-              fitnessTracker.addSteps(result.data.steps);
+              window.fitnessTracker.addSteps(result.data.steps);
             }
             
             // Add workouts if available
@@ -119,12 +128,12 @@ function syncAllHealthConnections() {
                   workout.type,
                   workout.date
                 );
-                fitnessTracker.addActivity(activity);
+                window.fitnessTracker.addActivity(activity);
               });
             }
             
             // Add sleep data if available
-            if (result.data.sleep && sleepTracker) {
+            if (result.data.sleep && window.sleepTracker) {
               const sleep = result.data.sleep;
               const sleepRecord = new SleepRecord(
                 new Date(sleep.startTime),
@@ -133,14 +142,14 @@ function syncAllHealthConnections() {
                 'Synced from connected device',
                 []
               );
-              sleepTracker.addSleepRecord(sleepRecord);
+              window.sleepTracker.addSleepRecord(sleepRecord);
             }
           }
         });
         
         // Save updated data
-        fitnessTracker.saveToLocalStorage();
-        sleepTracker.saveToLocalStorage();
+        window.fitnessTracker.saveToLocalStorage();
+        window.sleepTracker.saveToLocalStorage();
       }
       
       updateDashboard();
@@ -341,7 +350,7 @@ function handleActivityFormSubmit(event) {
   
   const activity = new Activity(name, calories, duration, type);
   
-  if (fitnessTracker.addActivity(activity)) {
+  if (window.fitnessTracker.addActivity(activity)) {
     // Update the UI
     updateDashboard();
     
@@ -368,7 +377,7 @@ function handleStepsFormSubmit(event) {
   
   const steps = parseInt(document.getElementById('steps-count-input').value);
   
-  if (fitnessTracker.addSteps(steps)) {
+  if (window.fitnessTracker.addSteps(steps)) {
     // Update the UI
     updateDashboard();
     
@@ -429,7 +438,7 @@ function handleHabitFormSubmit(event) {
     deloadDuration
   );
   
-  if (habitTracker.addHabit(habit)) {
+  if (window.habitTracker.addHabit(habit)) {
     // Update the UI
     updateDashboard();
     
@@ -462,15 +471,15 @@ function handleCheckInFormSubmit(event) {
   const notes = document.getElementById('check-in-notes')?.value || '';
   
   // Record the check-in
-  const result = habitTracker.recordCheckIn(habitId, date, successValue);
+  const result = window.habitTracker.recordCheckIn(habitId, date, successValue);
   
   if (result) {
     // Record the difficulty level
-    habitTracker.recordDifficulty(habitId, date, difficultyLevel);
+    window.habitTracker.recordDifficulty(habitId, date, difficultyLevel);
     
     // Add notes if any were provided
     if (notes.trim()) {
-      habitTracker.addNote(habitId, date, notes);
+      window.habitTracker.addNote(habitId, date, notes);
     }
     
     // Update the UI
@@ -499,7 +508,7 @@ function handleCheckInFormSubmit(event) {
  */
 function deleteHabit(habitId) {
   if (confirm('Are you sure you want to delete this habit?')) {
-    if (habitTracker.deleteHabit(habitId)) {
+    if (window.habitTracker.deleteHabit(habitId)) {
       updateDashboard();
       showMessage('Habit deleted successfully!', 'success');
     } else {
@@ -556,7 +565,7 @@ function handleMealFormSubmit(event) {
   
   const meal = new Meal(name, description, calories, protein, carbs, fat, category, now);
   
-  if (nutritionTracker.addMeal(meal)) {
+  if (window.nutritionTracker.addMeal(meal)) {
     // Update the UI
     updateDashboard();
     
@@ -611,7 +620,7 @@ function handleSleepFormSubmit(event) {
   
   const sleepRecord = new SleepRecord(bedtime, waketime, quality, notes, disturbances);
   
-  if (sleepTracker.addSleepRecord(sleepRecord)) {
+  if (window.sleepTracker.addSleepRecord(sleepRecord)) {
     // Update the UI
     updateDashboard();
     
@@ -719,7 +728,7 @@ function updateHabitsCalendar() {
   const currentYear = today.getFullYear();
   
   // Get all habits
-  const habits = habitTracker.getHabits();
+  const habits = window.habitTracker.getHabits();
   
   // Create a header with month and year
   const header = document.createElement('div');
@@ -907,7 +916,7 @@ function handleConnectionFormSubmit(event) {
   showMessage('Connecting to health data source...', 'info');
   
   // Add the connection
-  healthConnectionManager.addConnection(connection)
+  window.healthConnectionManager.addConnection(connection)
     .then(result => {
       // Process the synced data from initial connection
       if (result.syncResult && result.syncResult.data) {
@@ -915,7 +924,7 @@ function handleConnectionFormSubmit(event) {
         
         // Update steps if available
         if (syncData.steps && syncData.steps > 0) {
-          fitnessTracker.addSteps(syncData.steps);
+          window.fitnessTracker.addSteps(syncData.steps);
         }
         
         // Add workouts if available
@@ -928,7 +937,7 @@ function handleConnectionFormSubmit(event) {
               workout.type,
               workout.date
             );
-            fitnessTracker.addActivity(activity);
+            window.fitnessTracker.addActivity(activity);
           });
         }
         
@@ -942,12 +951,12 @@ function handleConnectionFormSubmit(event) {
             'Synced from ' + connection.getDisplayName(),
             []
           );
-          sleepTracker.addSleepRecord(sleepRecord);
+          window.sleepTracker.addSleepRecord(sleepRecord);
         }
         
         // Save updated data
-        fitnessTracker.saveToLocalStorage();
-        sleepTracker.saveToLocalStorage();
+        window.fitnessTracker.saveToLocalStorage();
+        window.sleepTracker.saveToLocalStorage();
       }
       
       updateConnectionsView();
@@ -1038,9 +1047,9 @@ function updateFitnessStats() {
   const caloriesCount = document.getElementById('calories-count');
   const activitiesCount = document.getElementById('activities-count');
   
-  if (stepsCount) stepsCount.textContent = fitnessTracker.getTotalSteps().toLocaleString();
-  if (caloriesCount) caloriesCount.textContent = fitnessTracker.getTotalCalories().toLocaleString();
-  if (activitiesCount) activitiesCount.textContent = fitnessTracker.getActivitiesCount().toString();
+  if (stepsCount) stepsCount.textContent = window.fitnessTracker.getTotalSteps().toLocaleString();
+  if (caloriesCount) caloriesCount.textContent = window.fitnessTracker.getTotalCalories().toLocaleString();
+  if (activitiesCount) activitiesCount.textContent = window.fitnessTracker.getActivitiesCount().toString();
 }
 
 /**
@@ -1053,19 +1062,19 @@ function updateActivityStatistics() {
   const avgDurationStat = document.getElementById('avg-duration-stat');
   
   if (weeklyCaloriesStat) {
-    weeklyCaloriesStat.textContent = fitnessTracker.getWeeklyCalories().toLocaleString();
+    weeklyCaloriesStat.textContent = window.fitnessTracker.getWeeklyCalories().toLocaleString();
   }
   
   if (weeklyDurationStat) {
-    weeklyDurationStat.textContent = fitnessTracker.getWeeklyDuration().toLocaleString();
+    weeklyDurationStat.textContent = window.fitnessTracker.getWeeklyDuration().toLocaleString();
   }
   
   if (monthlyActivitiesStat) {
-    monthlyActivitiesStat.textContent = fitnessTracker.getActivitiesThisMonth().length.toString();
+    monthlyActivitiesStat.textContent = window.fitnessTracker.getActivitiesThisMonth().length.toString();
   }
   
   if (avgDurationStat) {
-    avgDurationStat.textContent = fitnessTracker.getAverageDuration().toString();
+    avgDurationStat.textContent = window.fitnessTracker.getAverageDuration().toString();
   }
 }
 
@@ -1089,7 +1098,7 @@ function updateActivityCalendar() {
   const weekViewActive = document.getElementById('week-view-btn')?.classList.contains('active');
   
   // Get activity data organized by date
-  const activityData = fitnessTracker.getCalendarActivityData();
+  const activityData = window.fitnessTracker.getCalendarActivityData();
   
   if (monthViewActive || (!monthViewActive && !weekViewActive)) {
     // Month view (default)
@@ -1330,7 +1339,7 @@ function updateActivitiesList() {
   const allActivitiesList = document.getElementById('all-activities-list');
   const noAllActivities = document.getElementById('no-all-activities');
   
-  const activities = fitnessTracker.getActivities();
+  const activities = window.fitnessTracker.getActivities();
   
   /**
    * Creates an activity card element with separate view details button
@@ -1447,8 +1456,8 @@ function updateHabitStats() {
   const successRateCount = document.getElementById('success-rate-count');
   const deloadProgressStat = document.getElementById('deload-progress-stat');
   
-  const stats = habitTracker.getOverallProgress() || { currentStreak: 0, bestStreak: 0, successRate: 0 };
-  const habits = habitTracker.getHabits();
+  const stats = window.habitTracker.getOverallProgress() || { currentStreak: 0, bestStreak: 0, successRate: 0 };
+  const habits = window.habitTracker.getHabits();
   
   if (habitsCount) habitsCount.textContent = habits.length.toString();
   if (currentStreakCount) currentStreakCount.textContent = (stats.currentStreak || 0).toString();
@@ -1568,7 +1577,7 @@ function updateHabitsList() {
   const allHabitsList = document.getElementById('all-habits-list');
   const noAllHabits = document.getElementById('no-all-habits');
   
-  const habits = habitTracker.getHabits();
+  const habits = window.habitTracker.getHabits();
   
   // Update the dashboard habits list (recent habits only)
   if (habitsList && noHabits) {
@@ -1840,7 +1849,7 @@ function updateNutritionStats() {
   const nutritionCarbs = document.getElementById('nutrition-carbs');
   const nutritionFat = document.getElementById('nutrition-fat');
   
-  const todaySummary = nutritionTracker.getNutritionSummaryByDate(new Date());
+  const todaySummary = window.nutritionTracker.getNutritionSummaryByDate(new Date());
   
   if (nutritionCalories) nutritionCalories.textContent = todaySummary.calories.toString();
   if (nutritionProtein) nutritionProtein.textContent = `${todaySummary.protein}g`;
@@ -1858,7 +1867,7 @@ function updateMealsList() {
   
   // Get today's meals
   const today = new Date();
-  const meals = nutritionTracker.getMealsByDate(today);
+  const meals = window.nutritionTracker.getMealsByDate(today);
   
   // Clear the list
   mealsList.innerHTML = '';
@@ -1922,7 +1931,7 @@ function updateNutritionChart() {
   const ctx = chartCanvas.getContext('2d');
   
   // Get the weekly nutrition data
-  const weeklyData = nutritionTracker.getWeeklyNutritionSummary();
+  const weeklyData = window.nutritionTracker.getWeeklyNutritionSummary();
   
   // Prepare data for Chart.js
   const labels = weeklyData.map(day => {
@@ -2087,7 +2096,7 @@ function applyActivityFiltersAndSort() {
   const searchText = searchInput ? searchInput.value.trim() : '';
   
   // Get and filter activities
-  let filteredActivities = fitnessTracker.getActivities();
+  let filteredActivities = window.fitnessTracker.getActivities();
   
   // Apply type filter
   if (filterType && filterType !== 'all') {
@@ -2096,7 +2105,7 @@ function applyActivityFiltersAndSort() {
   
   // Apply search filter
   if (searchText) {
-    filteredActivities = fitnessTracker.searchActivities(searchText);
+    filteredActivities = window.fitnessTracker.searchActivities(searchText);
     
     // Also apply type filter to search results if needed
     if (filterType && filterType !== 'all') {
@@ -2105,11 +2114,11 @@ function applyActivityFiltersAndSort() {
   }
   
   // Apply sorting
-  filteredActivities = fitnessTracker.getSortedActivities(sortBy);
+  filteredActivities = window.fitnessTracker.getSortedActivities(sortBy);
   
   // First apply search if provided
   if (searchText) {
-    filteredActivities = fitnessTracker.searchActivities(searchText);
+    filteredActivities = window.fitnessTracker.searchActivities(searchText);
   }
   
   // Then apply type filter if not 'all'
@@ -2162,7 +2171,7 @@ function updateSleepStats() {
   const sleepQuality = document.getElementById('sleep-quality');
   const sleepConsistency = document.getElementById('sleep-consistency');
   
-  const stats = sleepTracker.getStats();
+  const stats = window.sleepTracker.getStats();
   
   if (sleepDuration) sleepDuration.textContent = `${stats.averageDuration.toFixed(1)} hrs`;
   if (sleepQuality) sleepQuality.textContent = `${Math.round(stats.averageQuality * 20)}%`;
@@ -2178,7 +2187,7 @@ function updateSleepRecordsList() {
   if (!sleepRecordsList) return;
   
   // Get all sleep records
-  const records = sleepTracker.getSleepRecords();
+  const records = window.sleepTracker.getSleepRecords();
   
   // Clear the list
   sleepRecordsList.innerHTML = '';
@@ -2254,7 +2263,7 @@ function updateSleepChart() {
   const ctx = chartCanvas.getContext('2d');
   
   // Get the weekly sleep data
-  const weeklyData = sleepTracker.getWeeklySleepSummary();
+  const weeklyData = window.sleepTracker.getWeeklySleepSummary();
   
   // Prepare data for Chart.js
   const labels = weeklyData.map(day => {
@@ -2675,7 +2684,7 @@ function setupDoubleTapToggle(inputId) {
  */
 function deleteSleepRecord(recordId) {
   if (confirm('Are you sure you want to delete this sleep record?')) {
-    if (sleepTracker.deleteSleepRecord(recordId)) {
+    if (window.sleepTracker.deleteSleepRecord(recordId)) {
       updateDashboard();
       showMessage('Sleep record deleted successfully!', 'success');
     } else {
@@ -2698,7 +2707,7 @@ function updateActivityChart() {
   const ctx = chartCanvas.getContext('2d');
   
   // Get activities
-  const activities = fitnessTracker.getActivities();
+  const activities = window.fitnessTracker.getActivities();
   
   // Group activities by type and calculate total calories
   const activityTypes = ['running', 'cycling', 'weights', 'swimming', 'other'];
@@ -2901,7 +2910,7 @@ function getChartConfig(chartType, activityTypes, activityLabels, typeCalories) 
 
 // Get daily activity data for line chart
 function getDailyActivityData(activityTypes) {
-  const activities = fitnessTracker.getActivities();
+  const activities = window.fitnessTracker.getActivities();
   const days = 7; // Last 7 days
   
   // Create date labels for the last 7 days
@@ -2950,8 +2959,8 @@ function updateConnectionsView() {
   const syncedCaloriesCount = document.getElementById('synced-calories-count');
   const syncAllButton = document.getElementById('sync-all-button');
   
-  const connections = healthConnectionManager.getConnections();
-  const stats = healthConnectionManager.getAggregateStats();
+  const connections = window.healthConnectionManager.getConnections();
+  const stats = window.healthConnectionManager.getAggregateStats();
   
   // Update stats
   if (lastSyncTime) {
@@ -3043,7 +3052,7 @@ function updateConnectionsView() {
  * @param {string} connectionId - ID of the connection to sync
  */
 function syncConnection(connectionId) {
-  const connection = healthConnectionManager.getConnectionById(connectionId);
+  const connection = window.healthConnectionManager.getConnectionById(connectionId);
   
   if (!connection) {
     showMessage('Connection not found.', 'danger');
@@ -3058,7 +3067,7 @@ function syncConnection(connectionId) {
       if (result.data) {
         // Update steps if available
         if (result.data.steps && result.data.steps > 0) {
-          fitnessTracker.addSteps(result.data.steps);
+          window.fitnessTracker.addSteps(result.data.steps);
         }
         
         // Add workouts if available
@@ -3076,7 +3085,7 @@ function syncConnection(connectionId) {
             activity.sourceConnection = workout.sourceConnection || connection.id;
             activity.sourceId = workout.sourceId;
             
-            fitnessTracker.addActivity(activity);
+            window.fitnessTracker.addActivity(activity);
           });
         }
         
@@ -3090,13 +3099,13 @@ function syncConnection(connectionId) {
             'Synced from ' + connection.getDisplayName(),
             []
           );
-          sleepTracker.addSleepRecord(sleepRecord);
+          window.sleepTracker.addSleepRecord(sleepRecord);
         }
       }
       
       // Save updated data
-      fitnessTracker.saveToLocalStorage();
-      sleepTracker.saveToLocalStorage();
+      window.fitnessTracker.saveToLocalStorage();
+      window.sleepTracker.saveToLocalStorage();
       
       updateConnectionsView();
       updateDashboard();
@@ -3114,7 +3123,7 @@ function syncConnection(connectionId) {
  * @param {string} connectionId - ID of the connection to disconnect
  */
 function disconnectDevice(connectionId) {
-  const connection = healthConnectionManager.getConnectionById(connectionId);
+  const connection = window.healthConnectionManager.getConnectionById(connectionId);
   
   if (!connection) {
     showMessage('Connection not found.', 'danger');
@@ -3124,7 +3133,7 @@ function disconnectDevice(connectionId) {
   if (confirm(`Are you sure you want to disconnect ${connection.getDisplayName()}?`)) {
     showMessage(`Disconnecting ${connection.getDisplayName()}...`, 'info');
     
-    healthConnectionManager.removeConnection(connectionId)
+    window.healthConnectionManager.removeConnection(connectionId)
       .then(result => {
         updateConnectionsView();
         updateDashboard();
@@ -3189,7 +3198,7 @@ function showMessage(message, type = 'info') {
  */
 function openActivityModal(activityId) {
   // Get the activity from the fitness tracker
-  const activity = fitnessTracker.getActivityById(activityId);
+  const activity = window.fitnessTracker.getActivityById(activityId);
   
   if (!activity) {
     showMessage('Activity not found', 'danger');
@@ -3317,7 +3326,7 @@ function handleEditActivityFormSubmit(event) {
   const date = new Date(document.getElementById('edit-activity-date').value);
   
   // Update the activity
-  const success = fitnessTracker.updateActivity(activityId, {
+  const success = window.fitnessTracker.updateActivity(activityId, {
     name,
     calories,
     duration,
@@ -3352,10 +3361,10 @@ function handleDeleteActivity(activityId) {
   
   // Only show confirmation if not already confirmed from swipe
   if (isSwipeDeleteConfirmed || confirm('Are you sure you want to delete this activity?')) {
-    const activity = fitnessTracker.getActivityById(activityId);
+    const activity = window.fitnessTracker.getActivityById(activityId);
     
     // First delete the activity from the fitness tracker
-    const success = fitnessTracker.deleteActivity(activityId);
+    const success = window.fitnessTracker.deleteActivity(activityId);
     
     if (success) {
       // Close the modal if it's open
@@ -3373,7 +3382,7 @@ function handleDeleteActivity(activityId) {
       // If the activity was synced from a health source, update the connection
       if (activity && activity.sourceConnection) {
         // Tell the connected health source to delete this activity
-        const connection = healthConnectionManager.getConnectionById(activity.sourceConnection);
+        const connection = window.healthConnectionManager.getConnectionById(activity.sourceConnection);
         if (connection) {
           connection.deleteActivityFromSource(activity.sourceId)
             .then(() => {
@@ -4106,6 +4115,8 @@ function initializeSpeechRecognition() {
       });
       
       console.log('Voice command button event listener set up');
+    } catch (error) {
+      console.error('Error setting up voice command button:', error);
     }
   } else {
     console.warn('Voice command button not found in the DOM after setup');
@@ -4186,7 +4197,7 @@ function handleHealthSnapshotFormSubmit(event) {
     location
   );
   
-  if (healthSnapshotTracker.addSnapshot(snapshot)) {
+  if (window.healthSnapshotTracker.addSnapshot(snapshot)) {
     // Update the UI
     updateHealthSnapshotWidget();
     
@@ -4209,7 +4220,7 @@ function handleHealthSnapshotFormSubmit(event) {
  */
 function updateHealthSnapshotWidget() {
   // Get the most recent snapshot
-  const recentSnapshot = healthSnapshotTracker.getMostRecentSnapshot();
+  const recentSnapshot = window.healthSnapshotTracker.getMostRecentSnapshot();
   
   // Get the snapshot button
   const captureBtn = document.getElementById('capture-snapshot-btn');
