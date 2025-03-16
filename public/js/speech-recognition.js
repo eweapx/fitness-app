@@ -40,14 +40,37 @@ class SpeechRecognizer {
   initializeSpeechRecognition() {
     console.log('Initializing speech recognition from speech-recognition.js');
 
+    // First check if there's an existing instance that might be in use
+    let existingRecognition = null;
+    
     // Check if we already have a global instance to avoid duplicates
     if (window.speechRecognizer && window.speechRecognizer !== this) {
       console.log('Speech recognition already initialized by app.js');
       // Use the existing instance's recognition object if available
       if (window.speechRecognizer.recognition) {
-        this.recognition = window.speechRecognizer.recognition;
-        this.voiceCommandsEnabled = window.speechRecognizer.voiceCommandsEnabled;
-        return;
+        existingRecognition = window.speechRecognizer.recognition;
+        
+        // Make sure it's not in an active state
+        try {
+          if (existingRecognition.state === 'active') {
+            try {
+              existingRecognition.stop();
+              console.log('Stopped existing active recognition');
+            } catch (e) {
+              console.warn('Could not stop existing recognition:', e);
+            }
+          }
+        } catch (e) {
+          // State might not be accessible on all browsers
+          console.warn('Could not check recognition state:', e);
+        }
+        
+        // Use the existing instance if it appears valid
+        if (!existingRecognition._manuallyAborted) {
+          this.recognition = existingRecognition;
+          this.voiceCommandsEnabled = window.speechRecognizer.voiceCommandsEnabled;
+          return;
+        }
       }
     }
 
@@ -63,6 +86,9 @@ class SpeechRecognizer {
         this.recognition.interimResults = false;
         this.recognition.lang = 'en-US';
         
+        // Add custom property to track state when we manually abort
+        this.recognition._manuallyAborted = false;
+        
         // Set up event handlers with explicit binding to maintain context
         this.recognition.onstart = this.handleRecognitionStart.bind(this);
         this.recognition.onresult = this.handleRecognitionResult.bind(this);
@@ -71,6 +97,12 @@ class SpeechRecognizer {
         
         this.voiceCommandsEnabled = true;
         console.log('Speech recognition initialized successfully');
+        
+        // Store a reference to this instance in the window object for debugging
+        // and potential reuse by other components
+        if (!window.speechRecognizer) {
+          window.speechRecognizer = this;
+        }
       } catch (error) {
         console.error('Error initializing speech recognition:', error);
         this.voiceCommandsEnabled = false;
@@ -123,36 +155,112 @@ class SpeechRecognizer {
     try {
       console.log('Resetting speech recognition state');
       
+      // Track if we're doing a full reset vs a partial reset
+      const fullReset = Boolean(this.recognition);
+      
       // Only try to stop if we think we're listening
       if (this.isListening && this.recognition) {
         try {
           this.recognition.stop();
+          console.log('Successfully stopped existing recognition');
         } catch (e) {
           console.warn('Could not stop existing recognition:', e);
+          // If we get an InvalidStateError, the recognition was already stopped
+          if (e.name === 'InvalidStateError') {
+            console.log('Recognition was already stopped');
+          }
         }
       }
       
       // Clean up existing recognition object
       if (this.recognition) {
-        this.recognition.onstart = null;
-        this.recognition.onresult = null;
-        this.recognition.onerror = null;
-        this.recognition.onend = null;
+        // Store reference to old recognition object
+        const oldRecognition = this.recognition;
+        
+        // Remove event listeners from the old object to prevent memory leaks
+        try {
+          oldRecognition.onstart = null;
+          oldRecognition.onresult = null;
+          oldRecognition.onerror = null;
+          oldRecognition.onend = null;
+        } catch (e) {
+          console.warn('Error removing event listeners:', e);
+        }
         
         try {
-          this.recognition.abort();
+          // Try to abort the recognition session
+          oldRecognition.abort();
+          console.log('Successfully aborted recognition');
         } catch (e) {
           console.warn('Could not abort recognition:', e);
+          // Some browsers might not support abort or throw errors if in invalid state
+        }
+        
+        // Remove the recognition object temporarily
+        this.recognition = null;
+        
+        // Remove global references if they point to our old object
+        if (window.formSpeechRecognition === oldRecognition) {
+          window.formSpeechRecognition = null;
+          console.log('Cleared global speech recognition reference');
         }
       }
       
-      // Create a fresh recognition instance
-      setTimeout(() => {
-        this.initializeSpeechRecognition();
-      }, 100);
+      // Reset internal state
+      this.isListening = false;
+      this.expectingResults = false;
+      this.resultReceived = false;
       
-    } catch (e) {
-      console.error('Error resetting recognition state:', e);
+      // Create a fresh recognition instance with a slight delay
+      // Use a longer delay for full resets to ensure browser has time to clean up
+      const delayTime = fullReset ? 300 : 200;
+      
+      setTimeout(() => {
+        // Check if SpeechRecognition is supported by the browser
+        if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+          try {
+            // Create a fresh speech recognition instance
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            this.recognition = new SpeechRecognition();
+            
+            // Configure recognition
+            this.recognition.continuous = false;
+            this.recognition.interimResults = false;
+            this.recognition.lang = 'en-US';
+            
+            // Set up event handlers with explicit binding to maintain context
+            this.recognition.onstart = this.handleRecognitionStart.bind(this);
+            this.recognition.onresult = this.handleRecognitionResult.bind(this);
+            this.recognition.onerror = this.handleRecognitionError.bind(this);
+            this.recognition.onend = this.handleRecognitionEnd.bind(this);
+            
+            // Update the global reference
+            window.formSpeechRecognition = this.recognition;
+            
+            console.log('Speech recognition successfully reset');
+            
+            // Make sure UI is in sync
+            this.updateMicrophoneButton(false);
+            
+            // Clear any global timeout that might be active
+            if (this.recoveryTimeout) {
+              clearTimeout(this.recoveryTimeout);
+              this.recoveryTimeout = null;
+            }
+          } catch (error) {
+            console.error('Error creating new recognition after reset:', error);
+            // If we hit an error during reset, make sure UI still reflects non-listening state
+            this.updateMicrophoneButton(false);
+          }
+        } else {
+          console.error('Speech Recognition API not supported');
+        }
+      }, delayTime);
+    } catch (error) {
+      console.error('Error in resetRecognitionState:', error);
+      // In case of a severe error, ensure UI is still in non-listening state
+      this.isListening = false;
+      this.updateMicrophoneButton(false);
     }
   }
 
@@ -221,6 +329,23 @@ class SpeechRecognizer {
           this.initializeSpeechRecognition();
         }
         
+        // Check if the recognition object is already active
+        try {
+          if (this.recognition.state === 'active') {
+            console.warn('Recognition already active, stopping first');
+            try {
+              this.recognition.stop();
+            } catch (stopError) {
+              console.warn('Error stopping active recognition:', stopError);
+              // If stop fails, do a full reset
+              this.resetRecognitionState();
+            }
+          }
+        } catch (stateError) {
+          // State property might not be accessible, ignore errors
+          console.warn('Could not check recognition state:', stateError);
+        }
+        
         // Start recognition with a delay to ensure proper initialization
         setTimeout(() => {
           try {
@@ -265,9 +390,48 @@ class SpeechRecognizer {
       // Call the more robust reset function
       this.resetRecognitionState();
       
-      // Try again after a short delay
+      // Try again after a short delay with a completely new instance
       setTimeout(() => {
-        showToast('Speech recognition restarted. Please try again.', 'info');
+        try {
+          // If recognition is null, create a new instance
+          if (!this.recognition) {
+            this.initializeSpeechRecognition();
+          }
+          
+          // Try one more time to start recognition
+          try {
+            this.recognition.start();
+            this.isListening = true;
+            this.updateMicrophoneButton(true);
+            console.log('Speech recognition successfully restarted after InvalidStateError');
+          } catch (retryError) {
+            console.error('Failed to restart recognition after reset:', retryError);
+            
+            // If we still get an InvalidStateError, try with another new instance after a longer delay
+            if (retryError.name === 'InvalidStateError') {
+              console.warn('Another InvalidStateError. Creating fresh instance with longer delay...');
+              this.recognition = null;
+              
+              setTimeout(() => {
+                this.initializeSpeechRecognition();
+                try {
+                  this.recognition.start();
+                  this.isListening = true;
+                  this.updateMicrophoneButton(true);
+                  console.log('Speech recognition started on third attempt');
+                } catch (finalError) {
+                  console.error('Final attempt to restart recognition failed:', finalError);
+                  showToast('Speech recognition unavailable. Please try again later.', 'error');
+                }
+              }, 500);
+            } else {
+              showToast('Speech recognition failed to restart. Please try again.', 'error');
+            }
+          }
+        } catch (e) {
+          console.error('Error during recovery from InvalidStateError:', e);
+          showToast('Speech recognition failed to restart. Please refresh the page.', 'error');
+        }
       }, 300);
     } else {
       showToast('Could not start speech recognition: ' + (error.message || 'Unknown error'), 'error');

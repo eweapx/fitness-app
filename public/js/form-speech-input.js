@@ -23,14 +23,32 @@ class FormSpeechInput {
     // Check for browser support
     if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
       try {
-        // Create speech recognition instance
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        this.recognition = new SpeechRecognition();
-        
-        // Configure recognition for form input
-        this.recognition.continuous = true;
-        this.recognition.interimResults = true;
-        this.recognition.lang = 'en-US';
+        // Check if we already have a global instance we can reuse
+        if (window.formSpeechRecognition && window.formSpeechRecognition.state !== 'active') {
+          console.log('Reusing existing speech recognition instance');
+          this.recognition = window.formSpeechRecognition;
+          
+          // Make sure the recognition object is in a clean state
+          try {
+            if (this.recognition.state === 'active') {
+              this.recognition.stop();
+            }
+          } catch (e) {
+            console.warn('Error stopping existing recognition:', e);
+          }
+        } else {
+          // Create speech recognition instance
+          const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+          this.recognition = new SpeechRecognition();
+          
+          // Configure recognition for form input
+          this.recognition.continuous = true;
+          this.recognition.interimResults = true;
+          this.recognition.lang = 'en-US';
+          
+          // Store globally for reuse
+          window.formSpeechRecognition = this.recognition;
+        }
         
         // Set up event handlers with explicit binding to maintain context
         this.recognition.onstart = this.handleRecognitionStart.bind(this);
@@ -54,22 +72,21 @@ class FormSpeechInput {
    * Find all form inputs that should have speech input and add buttons
    */
   setupSpeechButtons() {
-    // Add speech input buttons to eligible text inputs and textareas
-    document.addEventListener('DOMContentLoaded', () => {
-      this.addSpeechButtonsToForms();
-      
-      // Re-add buttons when new content is loaded via AJAX
-      // Use MutationObserver to detect DOM changes
-      const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-          if (mutation.addedNodes.length) {
-            this.addSpeechButtonsToForms();
-          }
-        });
+    // Immediately add speech buttons to existing elements
+    this.addSpeechButtonsToForms();
+    
+    // Re-add buttons when new content is loaded via AJAX
+    // Use MutationObserver to detect DOM changes
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.addedNodes.length) {
+          this.addSpeechButtonsToForms();
+        }
       });
-      
-      observer.observe(document.body, { childList: true, subtree: true });
     });
+    
+    // Start observing the document with the configured parameters
+    observer.observe(document.body, { childList: true, subtree: true });
   }
   
   /**
@@ -171,18 +188,55 @@ class FormSpeechInput {
       stopButton.classList.remove('d-none');
       inputElement.classList.add('speech-active');
       
-      // Start recognition
-      this.recognition.start();
-      console.log('Started listening for form input');
+      // Make sure we have a valid recognition object
+      if (!this.recognition || this.recognition.onend === null) {
+        console.warn('Recognition object is invalid or missing event handlers. Re-initializing...');
+        this.initializeSpeechRecognition();
+      }
       
-      // Create a status label
-      this.createStatusLabel(inputElement);
-      
-      // Set timeout to automatically stop after period of silence
-      this.resetInactivityTimer();
-      
+      try {
+        // Start recognition with a small delay to ensure it's ready
+        setTimeout(() => {
+          try {
+            this.recognition.start();
+            console.log('Started listening for form input');
+            
+            // Create a status label
+            this.createStatusLabel(inputElement);
+            
+            // Set timeout to automatically stop after period of silence
+            this.resetInactivityTimer();
+          } catch (delayedError) {
+            if (delayedError.name === 'InvalidStateError') {
+              console.warn('InvalidStateError when starting recognition. Attempting recovery...');
+              // Try to create a new recognition instance
+              this.initializeSpeechRecognition();
+              
+              // Try one more time after a longer delay
+              setTimeout(() => {
+                try {
+                  this.recognition.start();
+                  console.log('Started listening for form input (second attempt)');
+                } catch (finalError) {
+                  console.error('Still failed to start recognition:', finalError);
+                  this.showSpeechError(finalError);
+                  this.resetButtonState(micButton, stopButton);
+                }
+              }, 300);
+            } else {
+              console.error('Error starting speech recognition after delay:', delayedError);
+              this.showSpeechError(delayedError);
+              this.resetButtonState(micButton, stopButton);
+            }
+          }
+        }, 100);
+      } catch (startError) {
+        console.error('Error starting speech input:', startError);
+        this.showSpeechError(startError);
+        this.resetButtonState(micButton, stopButton);
+      }
     } catch (error) {
-      console.error('Error starting speech input:', error);
+      console.error('Error in startListeningForInput:', error);
       this.showSpeechError(error);
       this.resetButtonState(micButton, stopButton);
     }
@@ -249,12 +303,23 @@ class FormSpeechInput {
    * @param {HTMLElement} stopButton - The stop button
    */
   stopListening(micButton, stopButton) {
-    if (!this.isListening) return;
+    if (!this.isListening && !this.targetInput) return;
     
     try {
-      // Stop the recognition
-      this.recognition.stop();
-      console.log('Stopped listening for form input');
+      // Stop the recognition if it exists
+      if (this.recognition) {
+        try {
+          this.recognition.stop();
+          console.log('Stopped listening for form input');
+        } catch (stopError) {
+          console.error('Error stopping recognition:', stopError);
+          
+          // If we got an InvalidStateError, the recognition may already be stopped
+          if (stopError.name === 'InvalidStateError') {
+            console.warn('Recognition was already stopped or in an invalid state');
+          }
+        }
+      }
       
       // Clear any active timeout
       if (this.stopTimeout) {
@@ -283,8 +348,16 @@ class FormSpeechInput {
         statusLabel.remove();
       }
       
+      // Always reset listening state
+      this.isListening = false;
+      
     } catch (error) {
-      console.error('Error stopping speech input:', error);
+      console.error('Error in stopListening:', error);
+      // Make sure UI is reset even if there's an error
+      this.isListening = false;
+      if (micButton && stopButton) {
+        this.resetButtonState(micButton, stopButton);
+      }
     }
   }
   
@@ -807,4 +880,23 @@ function showToast(message, type = 'info') {
       }, 300);
     }, 5000);
   }
+}
+
+// Initialize the speech input when the page loads
+if (typeof window !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('Initializing FormSpeechInput instance');
+      window.formSpeechInput = new FormSpeechInput();
+    });
+  } else {
+    // Document already loaded
+    console.log('Document already loaded, initializing FormSpeechInput instance');
+    window.formSpeechInput = new FormSpeechInput();
+  }
+}
+
+// Export the class for use in other modules
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { FormSpeechInput };
 }
