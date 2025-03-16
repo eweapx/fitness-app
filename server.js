@@ -158,6 +158,16 @@ app.get('/signup.html', (req, res) => {
   res.sendFile(path.join(publicDir, 'signup.html'));
 });
 
+// Fitness app route
+app.get('/fitness', (req, res) => {
+  res.sendFile(path.join(publicDir, 'fitness.html'));
+});
+
+// Fitness.html route (alternative for direct file access)
+app.get('/fitness.html', (req, res) => {
+  res.sendFile(path.join(publicDir, 'fitness.html'));
+});
+
 // Route for our simple test page
 app.get('/simple', (req, res) => {
   res.sendFile(path.join(publicDir, 'simple-index.html'));

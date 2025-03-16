@@ -1480,6 +1480,7 @@
     <script src="/js/app.js"></script>
     <script src="/js/sample-data.js"></script>
     <script src="/js/speech-recognition.js"></script>
+    <script src="/js/form-speech-input.js"></script>
 
     <!-- Voice Command Instructions Modal -->
     <div class="modal fade" id="voiceCommandHelpModal" tabindex="-1" aria-labelledby="voiceCommandHelpModalLabel" aria-hidden="true">
@@ -1565,6 +1566,77 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Sleep Modal -->
+    <div class="modal fade" id="addSleepModal" tabindex="-1" aria-labelledby="addSleepModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addSleepModalLabel">Log Sleep</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="add-sleep-form">
+                        <div class="mb-3">
+                            <label for="sleep-date" class="form-label">Date</label>
+                            <input type="date" class="form-control" id="sleep-date" required>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="sleep-bedtime" class="form-label">Bedtime</label>
+                                <input type="time" class="form-control" id="sleep-bedtime" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="sleep-waketime" class="form-label">Wake time</label>
+                                <input type="time" class="form-control" id="sleep-waketime" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="sleep-quality" class="form-label">Sleep Quality (1-5)</label>
+                            <select class="form-select" id="sleep-quality" required>
+                                <option value="">Select quality</option>
+                                <option value="1">1 - Poor</option>
+                                <option value="2">2 - Fair</option>
+                                <option value="3">3 - Good</option>
+                                <option value="4">4 - Very Good</option>
+                                <option value="5">5 - Excellent</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Sleep Disturbances</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="sleep-disturbances" id="sleep-disturbance-none" value="none" checked>
+                                <label class="form-check-label" for="sleep-disturbance-none">None</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="sleep-disturbances" id="sleep-disturbance-noise" value="noise">
+                                <label class="form-check-label" for="sleep-disturbance-noise">Noise</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="sleep-disturbances" id="sleep-disturbance-stress" value="stress">
+                                <label class="form-check-label" for="sleep-disturbance-stress">Stress/Anxiety</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="sleep-disturbances" id="sleep-disturbance-temperature" value="temperature">
+                                <label class="form-check-label" for="sleep-disturbance-temperature">Temperature</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="sleep-disturbances" id="sleep-disturbance-discomfort" value="discomfort">
+                                <label class="form-check-label" for="sleep-disturbance-discomfort">Physical Discomfort</label>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="sleep-notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="sleep-notes" rows="2"></textarea>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">Save Sleep Record</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
