@@ -18,16 +18,17 @@ class SpeechRecognizer {
     this.resultReceived = false;
     
     // Command handlers for different types of data
+    // Explicitly bind all handlers to this instance to preserve context
     this.commandHandlers = {
-      'activity': this.handleActivityCommand,
-      'workout': this.handleActivityCommand, // Alias for activity
-      'exercise': this.handleActivityCommand, // Alias for activity
-      'nutrition': this.handleNutritionCommand,
-      'meal': this.handleNutritionCommand, // Alias for nutrition
-      'food': this.handleNutritionCommand, // Alias for nutrition
-      'sleep': this.handleSleepCommand,
-      'habit': this.handleHabitCommand,
-      'steps': this.handleStepsCommand
+      'activity': this.handleActivityCommand.bind(this),
+      'workout': this.handleActivityCommand.bind(this), // Alias for activity
+      'exercise': this.handleActivityCommand.bind(this), // Alias for activity
+      'nutrition': this.handleNutritionCommand.bind(this),
+      'meal': this.handleNutritionCommand.bind(this), // Alias for nutrition
+      'food': this.handleNutritionCommand.bind(this), // Alias for nutrition
+      'sleep': this.handleSleepCommand.bind(this),
+      'habit': this.handleHabitCommand.bind(this),
+      'steps': this.handleStepsCommand.bind(this)
     };
     
     this.initializeSpeechRecognition();
@@ -37,28 +38,51 @@ class SpeechRecognizer {
    * Initialize the speech recognition API
    */
   initializeSpeechRecognition() {
+    console.log('Initializing speech recognition from speech-recognition.js');
+
+    // Check if we already have a global instance to avoid duplicates
+    if (window.speechRecognizer && window.speechRecognizer !== this) {
+      console.log('Speech recognition already initialized by app.js');
+      // Use the existing instance's recognition object if available
+      if (window.speechRecognizer.recognition) {
+        this.recognition = window.speechRecognizer.recognition;
+        this.voiceCommandsEnabled = window.speechRecognizer.voiceCommandsEnabled;
+        return;
+      }
+    }
+
     // Check for browser support
     if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-      // Create speech recognition instance
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      this.recognition = new SpeechRecognition();
-      
-      // Configure recognition
-      this.recognition.continuous = false;
-      this.recognition.interimResults = false;
-      this.recognition.lang = 'en-US';
-      
-      // Set up event handlers
-      this.recognition.onstart = this.handleRecognitionStart.bind(this);
-      this.recognition.onresult = this.handleRecognitionResult.bind(this);
-      this.recognition.onerror = this.handleRecognitionError.bind(this);
-      this.recognition.onend = this.handleRecognitionEnd.bind(this);
-      
-      this.voiceCommandsEnabled = true;
-      console.log('Speech recognition initialized successfully');
+      try {
+        // Create speech recognition instance
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        this.recognition = new SpeechRecognition();
+        
+        // Configure recognition
+        this.recognition.continuous = false;
+        this.recognition.interimResults = false;
+        this.recognition.lang = 'en-US';
+        
+        // Set up event handlers with explicit binding to maintain context
+        this.recognition.onstart = this.handleRecognitionStart.bind(this);
+        this.recognition.onresult = this.handleRecognitionResult.bind(this);
+        this.recognition.onerror = this.handleRecognitionError.bind(this);
+        this.recognition.onend = this.handleRecognitionEnd.bind(this);
+        
+        this.voiceCommandsEnabled = true;
+        console.log('Speech recognition initialized successfully');
+      } catch (error) {
+        console.error('Error initializing speech recognition:', error);
+        this.voiceCommandsEnabled = false;
+      }
     } else {
       console.error('Speech recognition not supported in this browser');
       this.voiceCommandsEnabled = false;
+    }
+    
+    // Register as the global instance if none exists
+    if (!window.speechRecognizer) {
+      window.speechRecognizer = this;
     }
   }
 
@@ -451,21 +475,38 @@ class SpeechRecognizer {
   processCommand(command) {
     if (!command) return;
     
+    console.log('Processing command:', command);
+    
     // Convert to lowercase for easier matching
     const lowerCommand = command.toLowerCase().trim();
+    
+    // Debug what was recognized
+    showToast(`Heard: "${command}"`, 'info');
     
     // Check for "log" or "add" commands
     if (lowerCommand.includes('log') || lowerCommand.includes('add')) {
       // Find which type of data to log
+      let handlerFound = false;
       for (const [key, handler] of Object.entries(this.commandHandlers)) {
         if (lowerCommand.includes(key)) {
-          handler.call(this, lowerCommand);
+          console.log(`Found handler for "${key}" command`);
+          handlerFound = true;
+          
+          try {
+            handler(lowerCommand);
+          } catch (error) {
+            console.error(`Error in ${key} command handler:`, error);
+            showToast(`Error processing ${key} command: ${error.message}`, 'error');
+          }
           return;
         }
       }
       
       // If no specific data type found
-      showToast('Could not determine what to log. Try "log activity", "log meal", "log sleep", etc.', 'warning');
+      if (!handlerFound) {
+        console.warn('No matching command handler found for:', lowerCommand);
+        showToast('Could not determine what to log. Try "log activity", "log meal", "log sleep", etc.', 'warning');
+      }
     } else {
       showToast('Commands should start with "log" or "add". Try "log an activity" or "add a meal".', 'info');
     }
@@ -1294,16 +1335,21 @@ class SpeechRecognizer {
   }
 }
 
-// Initialize speech recognition on page load
+// We'll use the app.js initialization instead of this one to avoid conflicts
+// The speech recognition is initialized in app.js via initializeSpeechRecognition()
+// This event listener is kept for backwards compatibility with pages that don't include app.js
 document.addEventListener('DOMContentLoaded', function() {
-  // Create the speech recognizer
+  // Only initialize if not already done in app.js
   if (!window.speechRecognizer) {
+    console.log('Initializing speech recognition from speech-recognition.js');
     window.speechRecognizer = new SpeechRecognizer();
     
     // Add the microphone button to the navbar if it doesn't exist
     addMicrophoneButton();
     
     console.log('Speech recognition functionality loaded');
+  } else {
+    console.log('Speech recognition already initialized by app.js');
   }
 });
 

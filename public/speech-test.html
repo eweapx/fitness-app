@@ -10,9 +10,24 @@
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
-            margin: 2rem;
+            margin: 0;
+            padding: 0;
         }
-        .log {
+        .container {
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+        }
+        .test-log-entry {
+            margin-bottom: 0.5rem;
+            padding: 0.5rem;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .log-timestamp {
+            color: #6c757d;
+            font-family: monospace;
+            margin-right: 0.5rem;
+        }
+        #recognition-test-log {
             background-color: #f8f9fa;
             border: 1px solid #dee2e6;
             border-radius: 5px;
@@ -20,51 +35,131 @@
             margin-top: 1rem;
             height: 300px;
             overflow-y: auto;
+            font-size: 0.9rem;
         }
-        .log-item {
-            margin-bottom: 0.5rem;
-            padding: 0.5rem;
-            border-bottom: 1px solid #e9ecef;
+        .card {
+            margin-bottom: 1rem;
         }
-        .success { color: green; }
-        .error { color: red; }
-        .info { color: blue; }
+        .toggle-container {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1000;
+        }
+        .test-area, .debug-area {
+            transition: all 0.3s;
+        }
+        .form-check {
+            margin: 1rem 0;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Speech Recognition Test</h1>
-        <p>This page tests our enhanced speech recognition error handling and state tracking.</p>
-        
-        <div class="row mb-4">
-            <div class="col">
-                <button id="start-button" class="btn btn-primary">
-                    <i class="bi bi-mic"></i> Start Listening
-                </button>
-                <button id="stop-button" class="btn btn-danger mx-2">
-                    <i class="bi bi-mic-mute"></i> Stop Listening
-                </button>
-                <button id="toggle-button" class="btn btn-success">
-                    <i class="bi bi-mic"></i> Toggle Listening
-                </button>
-                <button id="force-error-button" class="btn btn-warning mx-2">
-                    <i class="bi bi-exclamation-triangle"></i> Force Error
-                </button>
-                <button id="clear-log-button" class="btn btn-secondary">
-                    <i class="bi bi-trash"></i> Clear Log
-                </button>
+    <!-- Main navigation bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">Health & Fitness Tracker</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/speech-test.html">Speech Test</a>
+                    </li>
+                </ul>
             </div>
         </div>
+    </nav>
+
+    <div class="container">
+        <h1>Speech Recognition Test</h1>
+        <p class="lead">This page helps debug and test the speech recognition functionality in isolation.</p>
         
         <div class="row">
-            <div class="col">
-                <h3>Test Log</h3>
-                <div id="log" class="log"></div>
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Speech Recognition Test</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>Click the button below to test if your browser supports speech recognition and if the microphone is working properly.</p>
+                        
+                        <div class="d-flex mb-3">
+                            <button id="test-recognition-btn" class="btn btn-primary me-2">
+                                <i class="bi bi-mic"></i> Test Speech Recognition
+                            </button>
+                            <button id="stop-recognition-btn" class="btn btn-danger me-2">
+                                <i class="bi bi-stop-fill"></i> Stop Test
+                            </button>
+                            <button id="clear-log-btn" class="btn btn-secondary">
+                                <i class="bi bi-trash"></i> Clear Log
+                            </button>
+                        </div>
+                        
+                        <div id="recognition-test-log"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Test Instructions</h5>
+                    </div>
+                    <div class="card-body">
+                        <h6>Recommended test phrases:</h6>
+                        <ul>
+                            <li>"Log an activity called morning run for 30 minutes"</li>
+                            <li>"Add a meal called breakfast with 500 calories"</li>
+                            <li>"Log 8 hours of sleep"</li>
+                            <li>"Log 10000 steps"</li>
+                        </ul>
+                        
+                        <hr>
+                        
+                        <h6>Troubleshooting:</h6>
+                        <ul>
+                            <li>Make sure your microphone is enabled in browser settings</li>
+                            <li>Try using Chrome or Edge browsers for best compatibility</li>
+                            <li>Speak clearly and at a normal pace</li>
+                            <li>Reload the page if speech recognition stops responding</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Voice Commands Guide</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>All commands should start with "log" or "add" followed by the type of data:</p>
+                        
+                        <ul>
+                            <li><strong>Activities:</strong> "log activity", "log workout", "add exercise"</li>
+                            <li><strong>Nutrition:</strong> "log meal", "add food", "log nutrition"</li>
+                            <li><strong>Sleep:</strong> "log sleep", "add sleep"</li>
+                            <li><strong>Habits:</strong> "log habit", "add habit"</li>
+                            <li><strong>Steps:</strong> "log steps", "add steps"</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- Toast container for notifications -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+
+    <!-- Scripts -->
     <script src="js/utils.js"></script>
+    <script src="js/speech-recognition.js"></script>
+    <script src="js/speech-recognition-test.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    
     <script>
         // Create a toast container if it doesn't exist
         if (!document.querySelector('.toast-container')) {
@@ -73,125 +168,5 @@
             document.body.appendChild(toastContainer);
         }
     </script>
-    <script src="js/speech-recognition.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const logElement = document.getElementById('log');
-            const startButton = document.getElementById('start-button');
-            const stopButton = document.getElementById('stop-button');
-            const toggleButton = document.getElementById('toggle-button');
-            const forceErrorButton = document.getElementById('force-error-button');
-            const clearLogButton = document.getElementById('clear-log-button');
-            
-            // Override console methods for logging
-            const originalLog = console.log;
-            const originalError = console.error;
-            const originalWarn = console.warn;
-            
-            console.log = function() {
-                originalLog.apply(console, arguments);
-                addLogItem('log', arguments[0], 'info');
-            };
-            
-            console.error = function() {
-                originalError.apply(console, arguments);
-                addLogItem('error', arguments[0], 'error');
-            };
-            
-            console.warn = function() {
-                originalWarn.apply(console, arguments);
-                addLogItem('warn', arguments[0], 'warning');
-            };
-            
-            function addLogItem(type, message, className) {
-                const item = document.createElement('div');
-                item.className = `log-item ${className}`;
-                item.textContent = `[${type.toUpperCase()}] ${message}`;
-                logElement.appendChild(item);
-                logElement.scrollTop = logElement.scrollHeight;
-            }
-            
-            // Initialize speech recognizer
-            const recognizer = new SpeechRecognizer();
-            
-            // Mock command handlers for testing
-            recognizer.commandHandlers = {
-                'activity': function(cmd) { console.log('Activity command received: ' + cmd); },
-                'meal': function(cmd) { console.log('Meal command received: ' + cmd); },
-                'sleep': function(cmd) { console.log('Sleep command received: ' + cmd); },
-                'habit': function(cmd) { console.log('Habit command received: ' + cmd); }
-            };
-            
-            // Set up button handlers
-            startButton.addEventListener('click', function() {
-                addLogItem('test', 'Start button clicked', 'success');
-                try {
-                    recognizer.startListening();
-                } catch (e) {
-                    addLogItem('test', 'Error starting: ' + e.message, 'error');
-                }
-            });
-            
-            stopButton.addEventListener('click', function() {
-                addLogItem('test', 'Stop button clicked', 'success');
-                try {
-                    recognizer.stopListening();
-                } catch (e) {
-                    addLogItem('test', 'Error stopping: ' + e.message, 'error');
-                }
-            });
-            
-            toggleButton.addEventListener('click', function() {
-                addLogItem('test', 'Toggle button clicked', 'success');
-                try {
-                    recognizer.toggleListening();
-                } catch (e) {
-                    addLogItem('test', 'Error toggling: ' + e.message, 'error');
-                }
-            });
-            
-            forceErrorButton.addEventListener('click', function() {
-                addLogItem('test', 'Forcing InvalidStateError scenario', 'warning');
-                
-                // Create a conflict scenario that would trigger InvalidStateError
-                if (recognizer.recognition) {
-                    try {
-                        // First start it
-                        recognizer.recognition.start();
-                        
-                        // Then try to start again without stopping, which should trigger InvalidStateError
-                        setTimeout(() => {
-                            try {
-                                recognizer.recognition.start();
-                                addLogItem('test', 'Second start - should have failed but did not!', 'error');
-                            } catch (innerError) {
-                                addLogItem('test', 'Expected error: ' + innerError.message, 'success');
-                                // Test our recovery mechanism
-                                setTimeout(() => {
-                                    addLogItem('test', 'Testing recovery from error state...', 'info');
-                                    recognizer.resetRecognitionState();
-                                    recognizer.startListening();
-                                }, 500);
-                            }
-                        }, 300);
-                    } catch (e) {
-                        addLogItem('test', 'Error during force error test: ' + e.message, 'error');
-                    }
-                } else {
-                    addLogItem('test', 'Recognition not initialized', 'error');
-                }
-            });
-            
-            clearLogButton.addEventListener('click', function() {
-                logElement.innerHTML = '';
-                addLogItem('test', 'Log cleared', 'info');
-            });
-            
-            // Initialize
-            addLogItem('test', 'Speech recognition test initialized', 'success');
-        });
-    </script>
-    
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

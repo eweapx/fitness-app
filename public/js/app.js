@@ -3991,13 +3991,33 @@ function updateWaterIntakeValue() {
  * Initialize speech recognition for voice commands
  */
 function initializeSpeechRecognition() {
-  // Create the speech recognizer instance
-  window.speechRecognizer = new SpeechRecognizer();
+  console.log('Initializing speech recognition from app.js');
+  
+  // Create the speech recognizer instance if it doesn't exist yet
+  if (!window.speechRecognizer) {
+    window.speechRecognizer = new SpeechRecognizer();
+    console.log('Speech recognizer instance created');
+  } else {
+    console.log('Using existing speech recognizer instance');
+  }
+
+  // Make sure the microphone button exists in the DOM
+  if (typeof window.addMicrophoneButton === 'function') {
+    window.addMicrophoneButton();
+    console.log('Added/verified microphone button');
+  } else {
+    console.error('addMicrophoneButton function not found - speech-recognition.js may not be loaded');
+  }
   
   // Set up click handler for the voice command toggle button
   const voiceCommandBtn = document.getElementById('voice-command-toggle');
   if (voiceCommandBtn) {
-    voiceCommandBtn.addEventListener('click', function() {
+    // Remove any existing listeners to avoid duplication
+    const newBtn = voiceCommandBtn.cloneNode(true);
+    voiceCommandBtn.parentNode.replaceChild(newBtn, voiceCommandBtn);
+    
+    // Add the click event listener
+    newBtn.addEventListener('click', function() {
       if (window.speechRecognizer) {
         window.speechRecognizer.toggleListening();
         console.log('Voice command button clicked, toggling speech recognition');
@@ -4009,7 +4029,7 @@ function initializeSpeechRecognition() {
     
     console.log('Voice command button event listener set up');
   } else {
-    console.warn('Voice command button not found in the DOM');
+    console.warn('Voice command button not found in the DOM after setup');
   }
 }
 
